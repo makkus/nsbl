@@ -1,0 +1,4 @@
+{% for role, url in cookiecutter.freckles_ansible_roles.iteritems() %}
+- name: {{ role }}
+  src: {{ url }}
+{% endfor %}

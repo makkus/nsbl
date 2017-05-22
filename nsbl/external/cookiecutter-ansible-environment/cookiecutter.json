@@ -1,0 +1,14 @@
+{
+    "execution_dir": "freckles",
+    "freckles_group_name": "freckles",
+    "freckles_role_name": "ansible-freckles",
+    "freckles_playbook_dir": "~/.cache/freckles/play",
+    "freckles_playbook": "~/.cache/freckles/play/freckles_playbook.yml",
+    "freckles_ask_sudo": "--ask-become-pass",
+    "freckles_library_path": "./library",
+    "freckles_develop_roles_path": "",
+    "freckles_ansible_roles": {},
+    "freckles_callback_plugins": "",
+    "freckles_callback_plugin_name": "freckles_callback",
+    "freckles_extra_script_commands": ""
+}
