@@ -12,6 +12,13 @@ envs:
           vars:
             var_group_1_1: val1
             var_group_1_2: val2
+          tasks:
+            - shell:
+                free_form: ls -lah
+            - shell:
+                free_form: ls -lah /tmp
+
+
       - group_2:
           var_group_2_1: val1
           var_group_2_2: val2

@@ -4,29 +4,21 @@ import pprint
 import click
 import sys
 from .nsbl import Nsbl
+from .env_creator import AnsibleEnvironment, NsblCreateException
 
 @click.command()
-@click.option('--list', help='list of all groups', required=False, is_flag=True)
-@click.option('--host', help='variables of a host', required=False, nargs=1)
-@click.option('--config', help='configuration file(s)', required=True, multiple=True)
-def main(list, host, config):
+def main():
     """Console script for nsbl"""
 
-    if list and host:
-        click.echo("Using both '--list' and '--host' options not allowd")
-        sys.exit(1)
+    print("XX")
+    execute()
 
-    nsbl_obj = Nsbl(config)
-
-    # print(nsbl_obj.config)
-    if list:
-        result = nsbl_obj.list()
-        print(result)
-    elif host:
-        result = nsbl_obj.host(host)
-        print(result)
-
-
+def execute():
+    env = AnsibleEnvironment(["/home/markus/projects/nsbl/examples/boxes.yml"], "/home/markus/temp/test_env")
+    try:
+        env.create()
+    except NsblCreateException as e:
+        print(e)
 
 if __name__ == "__main__":
     main()

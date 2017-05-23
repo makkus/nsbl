@@ -1,0 +1,4 @@
+{% for role, url in cookiecutter.nsbl_roles.iteritems() %}
+- name: {{ role }}
+  src: {{ url }}
+{% endfor %}

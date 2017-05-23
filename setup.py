@@ -33,7 +33,8 @@ setup(
                  'nsbl'},
     entry_points={
         'console_scripts': [
-            'nsbl=nsbl.cli:main'
+            'nsbl=nsbl.cli:main',
+            'nsbl_inv=nsbl.inventory_cli:main'
         ]
     },
     include_package_data=True,
