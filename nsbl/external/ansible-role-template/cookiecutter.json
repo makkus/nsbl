@@ -1,0 +1,33 @@
+
+{
+    "role_name": "test",
+    "defaults": {
+        "var1": "value1",
+        "var2": "value2",
+        "var3": ["list1", "list2", "list3"],
+        "var4": {"key1": "value1", "key2": "value2", "key3": "value3"}
+    },
+    "tasks": {
+        "task2": {
+            "name": "test2_name",
+            "type": "apt",
+            "task": {
+                "task_name": {
+                    "var1": "value1",
+                    "var2": "value2"
+                }
+            }
+        },
+        "task1": {
+            "name": "test1_name",
+            "type": "apt",
+            "task": {
+                "task_name": {
+                    "var1": "value1",
+                    "var2": "value2"
+                }
+            }
+        }
+    },
+    "_extensions": ["freckles.jinja.freckles_extensions.utils"]
+}

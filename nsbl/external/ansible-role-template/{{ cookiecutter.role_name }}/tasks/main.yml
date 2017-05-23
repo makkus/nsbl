@@ -1,0 +1,12 @@
+---
+# tasks file for ansible-role-template
+{% for task_name, details in cookiecutter.tasks | dictsort -%}
+- name: {{ task_name }}
+  {{ details.module_name }}: {% if details.free_form == "True" %} {{ "\"{{" }} free_form {{ "}}\"" }} {% endif %}
+  args:
+    {% for arg in details.args -%}
+    {{ arg }}: {{ "\"{{" }} {{ arg }} {{ " | default(omit) }}\"" }}
+    {% endfor %}
+  become: {{ details.become | default("no") }}
+  ignore_errors: "{{ ignore_errors | default('yes') }}"
+{% endfor %}
