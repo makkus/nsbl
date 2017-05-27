@@ -4,12 +4,13 @@
 import pprint
 import logging
 import os
-from .nsbl import Nsbl
+from .nsbl import NsblInventory, NsblTasks
 from cookiecutter.main import cookiecutter
 import click
 import yaml
 import inspect
 import subprocess
+import sys
 
 log = logging.getLogger("nsbl")
 
@@ -50,7 +51,7 @@ class AnsibleEnvironment(object):
         self.callback_plugins = callback_plugins,
         self.callback_plugin_name = callback_plugin_name
 
-        self.nsbl = Nsbl(self.configs)
+        self.nsbl = NsblInventory(self.configs)
 
     def create(self):
 
@@ -81,11 +82,4 @@ class AnsibleEnvironment(object):
 
         template_path = os.path.join(os.path.dirname(__file__), "external", "cookiecutter-ansible-environment")
 
-        pprint.pprint(self.env_dir)
-        pprint.pprint(cookiecutter_details)
-
         cookiecutter(template_path, extra_context=cookiecutter_details, no_input=True)
-
-    def process_tasks(self, tasks):
-
-        for task in tasks:

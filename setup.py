@@ -12,6 +12,7 @@ with open('HISTORY.rst') as history_file:
 requirements = [
     'Click>=6.0',
     'cookiecutter>=1.5.1',
+    'ansible>=2.2.0'
 ]
 
 test_requirements = [
@@ -33,7 +34,7 @@ setup(
                  'nsbl'},
     entry_points={
         'console_scripts': [
-            'nsbl=nsbl.cli:main',
+            'nsbl=nsbl.cli:cli',
             'nsbl_inv=nsbl.inventory_cli:main'
         ]
     },

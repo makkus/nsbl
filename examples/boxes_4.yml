@@ -1,0 +1,25 @@
+envs:
+  - group_1:
+      meta:
+        hosts:
+          - localhost
+      vars:
+        var_group_1_1: val1
+        var_group_1_2: val2
+      tasks:
+        - docker:
+            meta:
+              become: yes
+              roles:
+                docker: angstwad.docker_ubuntu
+            vars:
+              docker_apt_cache_valid_time: 1200
+        - shell:
+            free_form: shell_whatever
+        - shell:
+            meta:
+              become: yes
+              var_keys:
+                - free_form
+            vars:
+              free_form: ls -lah /tmp

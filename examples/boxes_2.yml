@@ -13,13 +13,16 @@ envs:
             var_group_1_1: val1
             var_group_1_2: val2
           tasks:
-            - shell:
+            - docker:
                 meta:
-                  become: no
-                  var_keys:
-                    - free_form
+                  become: yes
+                  roles:
+                    docker: angstwad.docker_ubuntu
                 vars:
-                  free_form: ls -lah
+                  docker_apt_cache_valid_time: 1200
+            - shell:
+                free_form: shell_whatever
+            - apt
             - shell:
                 meta:
                   become: no

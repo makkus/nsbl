@@ -3,7 +3,7 @@
 import pprint
 import click
 import sys
-from .nsbl import Nsbl
+from .nsbl import NsblInventory, NsblTasks
 
 @click.command()
 @click.option('--list', help='list of all groups', required=False, is_flag=True)
@@ -16,7 +16,7 @@ def main(list, host, config):
         click.echo("Using both '--list' and '--host' options not allowd")
         sys.exit(1)
 
-    nsbl_obj = Nsbl(config)
+    nsbl_obj = NsblInventory(config)
 
     # print(nsbl_obj.config)
     if list:

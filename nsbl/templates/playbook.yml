@@ -1,0 +1,9 @@
+---
+- name: name
+  hosts: {{ groups }}
+  roles:
+{% for role in roles %}    - role: {{ role.role_name }}
+      become: {{ role.become }}
+{% for key, var in role.vars.items() %}      {{ key }}: {{ var }}
+{% endfor %}
+{% endfor %}
