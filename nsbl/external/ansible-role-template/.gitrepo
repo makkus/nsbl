@@ -1,0 +1,11 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:makkus/ansible-role-template.git
+	branch = master
+	commit = 37ca408fd27d8a4ac80f8730fde240bf1a7ab181
+	parent = 355d093483c8108b1c563471e57ff85ebe8b439f
+	cmdver = 0.3.1

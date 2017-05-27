@@ -1,0 +1,15 @@
+galaxy_info:
+  author: Markus Binsteiner
+  description: Dynamically created role name
+  company: nsbl
+
+  license: license (CC-BY)
+
+  min_ansible_version: 2.0
+
+  galaxy_tags: []
+
+dependencies: []
+  # List your role dependencies here, one per line.
+  # Be sure to remove the '[]' above if you add dependencies
+  # to this list.
