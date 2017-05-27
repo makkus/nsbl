@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-nsbl_inv --config {{ cookiecutter.nsbl_script_configs }} $@
