@@ -1,4 +1,5 @@
-{% for role, url in cookiecutter.nsbl_roles.iteritems() %}
+{% for role, details in cookiecutter.nsbl_roles.iteritems() %}
 - name: {{ role }}
-  src: {{ url }}
+  src: {{ details.url }}
+  {% if 'version' in details.keys() -%}version: {{ details.version }}{% endif %}
 {% endfor %}

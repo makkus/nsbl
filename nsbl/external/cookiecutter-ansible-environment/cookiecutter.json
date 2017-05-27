@@ -3,5 +3,6 @@
     "nsbl_script_configs": "",
     "nsbl_roles": {},
     "nsbl_callback_plugins": "",
-    "nsbl_callback_plugin_name": ""
+    "nsbl_callback_plugin_name": "",
+    "_extensions": ["nsbl.ansible_extensions.utils"]
 }
