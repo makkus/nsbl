@@ -28,3 +28,16 @@ envs:
               allowed_vars: [name]
             vars:
               name: zile
+        - install-packages:
+            packages:
+              - zile:
+                  Ubuntu: zile
+              - fortunes
+        - meta:
+            become: yes
+            name: install-packages
+          vars:
+            packages:
+              - sl
+              - fortunes-de
+            test: testval

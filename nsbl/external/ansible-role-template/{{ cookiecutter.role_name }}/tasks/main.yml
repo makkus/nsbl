@@ -7,6 +7,6 @@
     {% for arg in details.allowed_vars -%}
     {{ arg }}: {{ "\"{{" }} task_{{ details.id }}.{{ arg }} {{ " | default(omit) }}\"" }}
     {% endfor %}{% endif %}
-  become: {{ details.become | default("no") }}
+{% if "become" in details.keys() %}  become: {{ details.become }}{% endif %}
   ignore_errors: "{{ details.ignore_errors | default('yes') }}"
 {% endfor %}

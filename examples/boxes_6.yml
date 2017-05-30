@@ -1,0 +1,25 @@
+envs:
+  - group_1:
+      meta:
+        become: yes
+        hosts:
+          - localhost
+      vars:
+        packages:
+          emacs-whatever:
+            ubuntu: zile
+      tasks:
+        - install-packages:
+            packages:
+              - zile:
+                  Ubuntu: zile
+              - fortunes
+        - meta:
+            become: yes
+            name: install-packages
+          vars:
+            packages:
+              - sl
+              - fortunes-de
+            test: testval
+        - install-packages

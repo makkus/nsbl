@@ -4,7 +4,7 @@
 import pprint
 import logging
 import os
-from .nsbl import NsblInventory, NsblTasks
+from .nsbl import NsblInventory
 from cookiecutter.main import cookiecutter
 import click
 import yaml

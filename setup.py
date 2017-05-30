@@ -11,8 +11,10 @@ with open('HISTORY.rst') as history_file:
 
 requirements = [
     'Click>=6.0',
+    'click-log>=0.1.8',
     'cookiecutter>=1.5.1',
-    'ansible>=2.2.0'
+    'ansible>=2.2.0',
+    'gitpython==2.1.3'
 ]
 
 test_requirements = [

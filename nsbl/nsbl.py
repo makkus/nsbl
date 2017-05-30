@@ -6,15 +6,17 @@ import json
 import copy
 import os
 import subprocess
+import shutil
+import yaml
+import sys
 
 from six import string_types
 from collections import OrderedDict
 from cookiecutter.main import cookiecutter
-from frkl import Frkl, dict_merge, DEFAULT_LEAF_DEFAULT_KEY
+from frkl import Frkl, dict_merge, DEFAULT_LEAF_DEFAULT_KEY, ConfigProcessor
 from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, START_VALUES_NAME, UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, Jinja2TemplateProcessor, IdProcessor
 
 import logging
-
 log = logging.getLogger("nsbl")
 
 ENVS_KEY = "envs"
@@ -37,6 +39,13 @@ TASK_ROLES_KEY = "roles"
 
 TASK_TYPE_TASK = "ansible_task"
 TASK_TYPE_ROLE = "ansible_role"
+
+INT_TASK_TYPE = "internal_role"
+EXT_TASK_TYPE = "external_role"
+DYN_TASK_TYPE = "single_task"
+DYN_ROLE_TYPE = "dynamic_role"
+
+ROLE_META_FILENAME = "meta.yml"
 
 NSBL_INVENTORY_BOOTSTRAP_FORMAT = {
     CHILD_MARKER_NAME: ENVS_KEY,
@@ -66,26 +75,13 @@ NSBL_TASKS_ID_INIT = {
     "id_key": TASKS_META_KEY,
     "id_name": ID_NAME
 }
+# DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
+    # UrlAbbrevProcessor(), EnsureUrlProcessor(), Jinja2TemplateProcessor(NSBL_TASKS_TEMPLATE_INIT), EnsurePythonObjectProcessor(), FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT), IdProcessor(NSBL_TASKS_ID_INIT)
+# ]
+
 DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
-    UrlAbbrevProcessor(), EnsureUrlProcessor(), Jinja2TemplateProcessor(NSBL_TASKS_TEMPLATE_INIT), EnsurePythonObjectProcessor(), FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT), IdProcessor(NSBL_TASKS_ID_INIT)
+    FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
 ]
-
-def create_tasks_bootstrap_chain(init_vars={}):
-
-    nsbl_tasks_bootstrap_format = {
-        CHILD_MARKER_NAME: TASKS_KEY,
-        DEFAULT_LEAF_NAME: TASKS_META_KEY,
-        DEFAULT_LEAFKEY_NAME: TASK_NAME_KEY,
-        KEY_MOVE_MAP_NAME: VARS_KEY,
-        "use_context": True,
-        START_VALUES_NAME: init_vars
-    }
-
-    nsbl_tasks_bootstrap_chain = [
-        FrklProcessor(nsbl_tasks_bootstrap_format), IdProcessor(NSBL_TASKS_ID_INIT)
-    ]
-
-    return nsbl_tasks_bootstrap_chain
 
 class NsblException(Exception):
 
@@ -97,28 +93,79 @@ ENV_TYPE_HOST = 'host'
 ENV_TYPE_GROUP = 'group'
 DEFAULT_ENV_TYPE = ENV_TYPE_GROUP
 
+class RepoRoles(object):
+
+    def __init__(self, folders):
+
+        if isinstance(folders, string_types):
+            self.folders = [folders]
+        else:
+            self.folders = folders
+        self.roles = self.read_role_repos()
+
+    def read_role_repos(self):
+
+        result = {}
+
+        for repo in self.folders:
+            for basename in [name for name in os.listdir(repo) if os.path.isdir(os.path.join(repo, name))]:
+
+                roles_metadata = os.path.join(repo, basename, ROLE_META_FILENAME)
+
+                dependencies = []
+                default_role = None
+                roles = {}
+                if os.path.exists(roles_metadata):
+                    with open(roles_metadata) as f:
+                        content = yaml.load(f)
+
+                    if "dependencies" in content.keys():
+                        dependencies = content["dependencies"]
+                        if isinstance(dependencies, string_types):
+                            dependencies = [dependencies]
+                    if "default_role" in content.keys():
+                        default_role = content["default_role"]
+
+                    if "roles" in content.keys():
+                        roles = content["roles"]
+
+                roles_path = os.path.join(repo, basename, "roles")
+
+                if not default_role and os.path.exists(os.path.join(roles_path, basename)):
+                    default_role = basename
+                elif not default_role:
+                    if os.path.exists(os.path.join(roles_path)):
+                        child_dirs = [name for name in os.listdir(roles_path) if  os.path.isdir(os.path.join(roles_path, name))]
+                        if len(child_dirs) == 1:
+                            default_role = child_dirs[0]
+                    else:
+                        if len(roles) == 1:
+                            default_role = list(roles.keys())[0]
+                if not default_role:
+                    log.error("No default role found for: {}".format(basename))
+                    continue
+
+                if basename in result.keys():
+                    raise Exception("Multiple roles/tasks with name in role repositories: {}".format(basename))
+
+                result[basename] = {"roles_path": roles_path, "default_role": default_role, "dependencies": dependencies, TASK_ROLES_KEY: roles}
+
+        return result
+
 class Nsbl(object):
 
-    def __init__(self, configs, default_env_type=DEFAULT_ENV_TYPE):
+    def __init__(self, configs, roles_repos, default_env_type=DEFAULT_ENV_TYPE):
 
         self.configs = configs
-        self.inventory = NsblInventory(self.configs, default_env_type)
+        self.roles_repos = roles_repos
+        self.repo_roles = RepoRoles(self.roles_repos)
+        self.inventory = NsblInventory(self.configs, self.repo_roles, default_env_type)
         self.tasks = []
+        self.tasks = self.inventory.tasks
         self.ansible_roles = {}
 
-        for task_env, tasks, in self.inventory.tasks.items():
-
-            # init_vars = self.inventory.get_vars(task_env)
-            nsbl_task = NsblTasks(task_env, {}, tasks)
-            self.tasks.append(nsbl_task)
-
-            task_roles = nsbl_task.ansible_roles
-            for role_name, role_desc in task_roles.items():
-
-                if role_name in self.ansible_roles.keys() and not self.ansible_roles[role_name] == role_desc:
-                    raise NsblException("Role with name {} specified twice, with different values: '{}' - '{}'".format(role_name, role_desc, self.ansible_roles[role_name]))
-                self.ansible_roles[role_name] = role_desc
-
+    def get_all_roles():
+        pass
 
     def render_environment(self, env_dir):
 
@@ -177,20 +224,21 @@ class Nsbl(object):
         jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
         template = jinja_env.get_template('playbook.yml')
 
-        output_text = template.render(groups=task.task_env, roles=task.roles)
+        output_text = template.render(groups=task.task_env, roles=task.roles, meta=task.meta_vars)
 
         return output_text
 
 class NsblInventory(object):
 
-    def __init__(self, configs, default_env_type=DEFAULT_ENV_TYPE):
+    def __init__(self, configs, repo_roles={}, default_env_type=DEFAULT_ENV_TYPE):
 
         self.frkl_obj = Frkl(configs, NSBL_INVENTORY_BOOTSTRAP_CHAIN)
         self.config = self.frkl_obj.process()
         self.default_env_type = default_env_type
+        self.repo_roles = repo_roles
         self.groups = {}
         self.hosts = {}
-        self.tasks = OrderedDict()
+        self.tasks = []
 
         self.assemble_groups()
 
@@ -266,7 +314,7 @@ class NsblInventory(object):
                 raise NsblException("Environment type needs to be either 'host' or 'group': {}".format(env_type))
 
             if TASKS_KEY in env.keys():
-                self.tasks[env_name] = env[TASKS_KEY]
+                self.tasks.append(NsblTaskList(env, self.repo_roles, env_name))
 
 
     def list(self):
@@ -290,195 +338,232 @@ class NsblInventory(object):
         else:
             raise NsblException("Neither group or host with name '{}' exists".format(env_name))
 
-class NsblRole(object):
 
-    def __repr__(self):
+class NsblTaskProcessor(ConfigProcessor):
 
-        return str(self.get_role_desc())
+    def validate_init(self):
 
-    def get_role_desc(self):
+        self.meta_roles = self.init_params['env'].get(TASKS_META_KEY, {}).get(TASK_ROLES_KEY, {})
+        self.repo_roles = self.init_params['repo_roles']
 
-        return {"role_name": self.role_name, "vars": self.vars, "become": self.become}
+        return True
 
-class NsblExtRole(NsblRole):
+    def process_current_config(self):
 
-    def __init__(self, tasks):
+        new_config = self.current_input_config
 
-        self.role_name = tasks[TASKS_META_KEY][TASK_NAME_KEY]
-        self.vars = tasks[VARS_KEY]
-        self.become = tasks[TASKS_META_KEY].get(TASK_BECOME_KEY, False)
+        roles = new_config.get(TASKS_META_KEY, {}).get(TASK_ROLES_KEY, {})
 
-    def prepare_role(self, env_dir):
+        task_name = new_config[TASKS_META_KEY][TASK_NAME_KEY]
 
-        pass
+        if task_name in self.repo_roles.roles.keys():
+            task_type = INT_TASK_TYPE
+            task_roles = self.repo_roles.roles[task_name]
+
+        elif task_name in roles.keys() or task_name in self.meta_roles.keys():
+            task_type = EXT_TASK_TYPE
+            task_roles = self.expand_external_role(roles)
+        else:
+            task_type = DYN_TASK_TYPE
+            task_roles = {}
+
+        new_config[TASKS_META_KEY][TASK_TYPE_KEY] = task_type
+        new_config[TASKS_META_KEY][TASK_ROLES_KEY] = task_roles
+        return new_config
+
+    def expand_external_role(self, role_dict):
+
+        result = {}
+        for role_name, role_details in role_dict.items():
+            temp_role = {}
+            if isinstance(role_details, string_types):
+                temp_role["url"] = role_details
+            elif isinstance(role_details, dict):
+                temp_role["url"] = role_details["url"]
+                if "version" in role_details.keys():
+                    temp_role["version"] = role_details["version"]
+            result[role_name] = temp_role
+
+        return result
 
 
-class NsblIntRole(NsblRole):
+class NsblDynamicRoleProcessor(ConfigProcessor):
 
-    def __init__(self, tasks):
+    def validate_init(self):
+        self.id_role = 0
+        self.current_tasks = []
+        return True
 
-        self.role_name = tasks[TASKS_META_KEY][TASK_NAME_KEY]
-        self.become = tasks[TASKS_META_KEY].get(TASK_BECOME_KEY, False)
-        self.vars = tasks[VARS_KEY]
+    def handles_last_call(self):
 
-    def prepare_role(self, env_dir):
+        return True
 
-        print("preparing int role")
+    def create_role_dict(self, tasks):
 
-    def get_role_desc(self):
-
-        return { "role": self.role_name, "become": self.become, "vars": self.vars }
-
-
-class NsblDynRole(NsblRole):
-
-    def __init__(self, tasks, role_name, base_vars={}, default_priority=10000, default_become=False, default_ignore_errors=True):
-
-        self.role_name = role_name
-        self.become = False
-        self.tasks = {}
-        self.vars = {}
-
-        for idx, task in enumerate(tasks):
-
-            # if task[TASKS_META_KEY].get(TASK_BECOME_KEY, False):
-                # self.become = True
-
-            task_id = task[TASKS_META_KEY][ID_NAME]
-
-            self.task_roles = task[TASKS_META_KEY].get(TASK_ROLES_KEY, {})
-
-            task_become = task[TASKS_META_KEY].get(TASK_BECOME_KEY, default_become)
-            task_ignore_errors = task[TASKS_META_KEY].get(TASK_IGNORE_ERRORS_KEY, default_ignore_errors)
-            task_module = task[TASKS_META_KEY][TASK_NAME_KEY]
-            task_vars = task.get(VARS_KEY, {})
-
-            if DEFAULT_LEAF_DEFAULT_KEY in task_vars.keys() and 'free_form' not in task_vars.keys():
-                task_vars['free_form'] = task_vars.pop(DEFAULT_LEAF_DEFAULT_KEY)
-
-            self.vars["task_{}".format(task_id)] = task_vars
-
-            if TASK_ALLOWED_VARS_KEY in task[TASKS_META_KEY].keys():
-                task_allowed_vars = task[TASKS_META_KEY][TASK_ALLOWED_VARS_KEY]
-            else:
-                task_allowed_vars = list(task[TASKS_META_KEY].get(VARS_KEY, {}).keys())
-
-            free_form = "free_form" in task_vars.keys()
-            if free_form and 'free_form' in task_allowed_vars:
-                task_allowed_vars.remove('free_form')
-            if task[TASKS_META_KEY].get(TASK_PRIORITY_KEY, False):
-                priority = task[TASKS_META_KEY][TASK_PRIORITY_KEY]
-            else:
-                priority = default_priority + (idx * 10)
-
-            key = "{:04d}_{:04d} -> {}".format(priority, task_id, task_module)
-
-            self.tasks[key] = {"vars": task_vars, "module": task_module, "free_form": free_form, "priority": priority, "id": task_id, "become": task_become, "ignore_errors": task_ignore_errors, "allowed_vars": task_allowed_vars}
-
-        self.signature = []
-        for task_name in sorted(self.tasks):
-            self.signature.append(self.tasks[task_name]["module"])
-
-    def prepare_role(self, env_dir):
-
-        role_local_path = os.path.join(os.path.dirname(__file__), "external", "ansible-role-template")
-        role_dict = {
-            "role_name": self.role_name,
-            "tasks": self.tasks,
+        dyn_role = {
+            TASKS_META_KEY: {
+                TASK_NAME_KEY: "dyn_role_{}".format(self.id_role),
+                TASK_ROLES_KEY: copy.deepcopy(self.current_tasks),
+                TASK_TYPE_KEY: DYN_ROLE_TYPE
+            },
+            VARS_KEY: {}
         }
 
-        current_dir = os.getcwd()
-        int_roles_base_dir = os.path.join(env_dir, "roles", "dynamic")
-        os.chdir(int_roles_base_dir)
-        cookiecutter(role_local_path, extra_context=role_dict, no_input=True)
-        os.chdir(current_dir)
+        return dyn_role
 
+    def process_current_config(self):
 
-class NsblTasks(object):
+        if not self.last_call:
 
-    def __init__(self, task_env, init_vars={}, *configs):
+            new_config = self.current_input_config
 
-        self.task_env = task_env
-        self.configs = configs
-        bootstrap_chain = create_tasks_bootstrap_chain(init_vars)
-        self.frkl_obj = Frkl(configs, bootstrap_chain)
-        self.tasks = self.frkl_obj.process()
-        self.ansible_roles = {}
-        self.roles = []
-        self.ext_roles = False
-
-        self.process()
-
-    def __repr__(self):
-
-        return "NsblTasks(env='{}', roles='{}')".format(self.task_env, self.roles)
-
-
-    def process(self):
-
-        current_tasks = []
-
-        dyn_role_nr = 1
-
-        # gather all ansible roles
-        for task in self.tasks:
-
-            task_roles = task[TASKS_META_KEY].get(TASK_ROLES_KEY, {})
-            for role_name in task_roles.keys():
-                if role_name in self.ansible_roles.keys() and task_roles[role_name] != self.ansible_roles[role_name]:
-                    raise NsblException("Role with name '{}' specified twice, with different values: {} - {}".format(role_name, task_roles[role_name], self.ansible_roles[role_name]))
-
-                role = task_roles[role_name]
-                if isinstance(role, string_types):
-                    role = {"url": role}
-                elif not isinstance(role, dict) or "url" not in role.keys():
-                    raise NsblException("Role value needs to be string or dict with 'url' and possibly 'version' key: {}".format(role))
-
-                self.ansible_roles[role_name] = role
-
-        #TODO: check for 'internal' role repos
-
-        for task in self.tasks:
-
-            task_name = task[TASKS_META_KEY][TASK_NAME_KEY]
-
-            if TASK_TYPE_KEY not in task[TASKS_META_KEY].keys():
-                if task_name in self.ansible_roles.keys():
-                    task[TASKS_META_KEY][TASK_TYPE_KEY] = TASK_TYPE_ROLE
-                else:
-                    task[TASKS_META_KEY][TASK_TYPE_KEY] = TASK_TYPE_TASK
-
-            if task[TASKS_META_KEY][TASK_TYPE_KEY] == TASK_TYPE_TASK:
-                current_tasks.append(task)
-            elif len(current_tasks) > 0:
-                new_role = self.create_dyn_role(current_tasks, "dyn_role_{}".format(dyn_role_nr))
-                self.roles.append(new_role)
-                dyn_role_nr = dyn_role_nr + 1
-                current_tasks = []
-                self.roles.append(self.create_role(task))
+            if new_config[TASKS_META_KEY][TASK_TYPE_KEY] == DYN_TASK_TYPE:
+                self.current_tasks.append(new_config)
+                yield None
             else:
-                self.roles.append(self.create_role(task))
+                if len(self.current_tasks) > 0:
+                    dyn_role = self.create_role_dict(self.current_tasks)
+                    self.id_role = self.id_role+1
+                    self.current_tasks = []
 
-        if len(current_tasks) > 0:
-            new_role = self.create_dyn_role(current_tasks, "dyn_role_{}".format(dyn_role_nr))
-            current_tasks = []
-            self.roles.append(new_role)
+                    yield dyn_role
 
-
-
-    def create_dyn_role(self, tasks, role_name):
-
-        role = NsblDynRole(tasks, role_name)
-        return role
-
-    def create_role(self, task):
-
-        ansible_role = self.ansible_roles[task[TASKS_META_KEY][TASK_NAME_KEY]]
-
-        if ansible_role['url'].startswith("nsbl:"):
-            role = NsblIntRole(task)
+                yield new_config
         else:
-            role = NsblExtRole(task)
-            self.ext_roles = True
+            if len(self.current_tasks) > 0:
+                yield self.create_role_dict(self.current_tasks)
+            else:
+                yield None
 
-        return role
+
+class NsblTaskList(object):
+
+    def __init__(self, env, repo_roles, env_name="localhost"):
+
+        self.env = env
+        self.env_name = env_name
+        self.repo_roles = repo_roles
+
+        nsbl_task_processor = NsblTaskProcessor({'env': self.env, 'repo_roles': self.repo_roles})
+
+        nsbl_dynrole_processor = NsblDynamicRoleProcessor()
+        id_processor = IdProcessor(NSBL_TASKS_ID_INIT)
+
+        # otherwise each tasks inherits from the ones before
+        temp_tasks = [[name] for name in self.env[TASKS_KEY]]
+        frkl_obj = Frkl(temp_tasks, DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN + [nsbl_task_processor, nsbl_dynrole_processor, id_processor])
+        # frkl_obj = Frkl(temp_tasks, DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN + [nsbl_task_processor])
+        self.tasks = frkl_obj.process()
+        self.ext_roles = {}
+        self.int_roles = []
+        self.dyn_roles = {}
+
+        self.process_tasks()
+
+        for task, roles in self.ext_roles.items():
+            print("-------------------")
+            pprint.pprint(task)
+            pprint.pprint(roles)
+            print("---")
+        sys.exit(0)
+
+    def add_ext_roles(self, new_roles):
+
+        for role_name, role in new_roles.items():
+            if role_name in self.ext_roles.keys():
+                if role != self.ext_roles["role_name"]:
+                    raise Exception("Role '{}' added multiple times, with different urls/versions: {} - {}".format(role_name, role, self.ext_roles[role_name]))
+            else:
+                self.ext_roles[role_name] = role
+
+    def add_int_role(self, role):
+
+        role_path = role["roles_path"]
+
+
+    def process_tasks(self):
+
+        for task in self.tasks:
+
+            task_type = task[TASKS_META_KEY][TASK_TYPE_KEY]
+            if task_type == INT_TASK_TYPE:
+                new_ext_roles = task[TASKS_META_KEY][TASK_ROLES_KEY][TASK_ROLES_KEY]
+                self.add_ext_roles(new_ext_roles)
+                self.add_int_role(task[TASKS_META_KEY][TASK_ROLES_KEY])
+            elif task_type == DYN_ROLE_TYPE:
+                pass
+            elif task_type == EXT_TASK_TYPE:
+                new_roles = task[TASKS_META_KEY][TASK_ROLES_KEY]
+                self.add_ext_roles(new_roles)
+
+            else:
+                raise Exception("Task type '{}' not known.".format(task_type))
+
+
+
+# class NsblDynRole(NsblRole):
+
+#     def __init__(self, tasks, role_name, meta_vars={}, default_priority=10000, default_ignore_errors=True):
+
+#         self.role_name = role_name
+#         self.become = None
+#         self.tasks = {}
+#         self.meta_vars = meta_vars
+#         self.vars = {}
+
+#         for idx, task in enumerate(tasks):
+
+#             task_id = task[TASKS_META_KEY][ID_NAME]
+
+#             self.task_roles = task[TASKS_META_KEY].get(TASK_ROLES_KEY, {})
+
+#             task_become = task[TASKS_META_KEY].get(TASK_BECOME_KEY, None)
+#             task_ignore_errors = task[TASKS_META_KEY].get(TASK_IGNORE_ERRORS_KEY, default_ignore_errors)
+#             task_module = task[TASKS_META_KEY][TASK_NAME_KEY]
+#             task_vars = task.get(VARS_KEY, {})
+
+#             if DEFAULT_LEAF_DEFAULT_KEY in task_vars.keys() and 'free_form' not in task_vars.keys():
+#                 task_vars['free_form'] = task_vars.pop(DEFAULT_LEAF_DEFAULT_KEY)
+
+#             self.vars["task_{}".format(task_id)] = task_vars
+
+#             if TASK_ALLOWED_VARS_KEY in task[TASKS_META_KEY].keys():
+#                 task_allowed_vars = task[TASKS_META_KEY][TASK_ALLOWED_VARS_KEY]
+#             else:
+#                 task_allowed_vars = list(task[TASKS_META_KEY].get(VARS_KEY, {}).keys())
+
+#             free_form = "free_form" in task_vars.keys()
+#             if free_form and 'free_form' in task_allowed_vars:
+#                 task_allowed_vars.remove('free_form')
+#             if task[TASKS_META_KEY].get(TASK_PRIORITY_KEY, False):
+#                 priority = task[TASKS_META_KEY][TASK_PRIORITY_KEY]
+#             else:
+#                 priority = default_priority + (idx * 10)
+
+#             key = "{:04d}_{:04d} -> {}".format(priority, task_id, task_module)
+
+#             self.tasks[key] = {"vars": task_vars, "module": task_module, "free_form": free_form, "priority": priority, "id": task_id, "ignore_errors": task_ignore_errors, "allowed_vars": task_allowed_vars}
+#             if task_become is not None:
+#                 self.tasks[key]["become"] = task_become
+
+#         self.signature = []
+#         for task_name in sorted(self.tasks):
+#             self.signature.append(self.tasks[task_name]["module"])
+
+#     def get_required_roles(self):
+
+#         return {self.role_name: {"type": "dynamic", "tasks": self.tasks}}
+
+#     # def prepare_role(self, env_dir):
+
+#     #     role_local_path = os.path.join(os.path.dirname(__file__), "external", "ansible-role-template")
+#     #     role_dict = {
+#     #         "role_name": self.role_name,
+#     #         "tasks": self.tasks,
+#     #     }
+
+#     #     current_dir = os.getcwd()
+#     #     int_roles_base_dir = os.path.join(env_dir, "roles", "dynamic")
+#     #     os.chdir(int_roles_base_dir)
+#     #     cookiecutter(role_local_path, extra_context=role_dict, no_input=True)
+#     #     os.chdir(current_dir)
