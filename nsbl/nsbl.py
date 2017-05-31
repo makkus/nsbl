@@ -30,6 +30,7 @@ VARS_KEY = "vars"
 TASKS_META_KEY = "meta"
 TASKS_KEY = "tasks"
 TASK_NAME_KEY = "name"
+ROLE_NAME_KEY = "role"
 TASK_TYPE_KEY = "type"
 TASK_PRIORITY_KEY = "priority"
 TASK_BECOME_KEY = "become"
@@ -142,7 +143,7 @@ class RepoRoles(object):
                         if len(roles) == 1:
                             default_role = list(roles.keys())[0]
                 if not default_role:
-                    log.error("No default role found for: {}".format(basename))
+                    log.error("No default role found for '{}', ignoring internal role".format(basename))
                     continue
 
                 if basename in result.keys():
@@ -157,7 +158,13 @@ class Nsbl(object):
     def __init__(self, configs, roles_repos, default_env_type=DEFAULT_ENV_TYPE):
 
         self.configs = configs
+        if isinstance(roles_repos, string_types):
+            roles_repos = [roles_repos]
+        elif not isinstance(roles_repos, (list, tuple)):
+            raise Exception("roles_repos needs to be string or list: '{}'".format(roles_repos))
+
         self.roles_repos = roles_repos
+
         self.repo_roles = RepoRoles(self.roles_repos)
         self.inventory = NsblInventory(self.configs, self.repo_roles, default_env_type)
         self.tasks = []
@@ -178,9 +185,14 @@ class Nsbl(object):
             rel_path = os.path.relpath(path, inventory_dir)
             rel_configs.append(rel_path)
 
+        roles_repos_string = ""
+        if self.roles_repos:
+            roles_repos_string = " --repo ".join([os.path.relpath(name, inventory_dir) for name in self.roles_repos])
+
         cookiecutter_details = {
             "env_dir": env_dir,
             "nsbl_script_configs": " --config ".join(rel_configs),
+            "role_repo_paths": roles_repos_string,
             "nsbl_roles": all_ext_roles,
             "nsbl_callback_plugins": "",
             "nsbl_callback_plugin_name": ""
@@ -203,8 +215,8 @@ class Nsbl(object):
             role_local_path = os.path.join(os.path.dirname(__file__), "external", "ansible-role-template")
             # cookiecutter doesn't like input lists, so converting to dict
             tasks = {}
-            for idx, task in enumerate(role):
-                task_name = "task_{}".format(idx)
+            for task in role:
+                task_name = task[TASKS_META_KEY]["task_id"]
                 tasks[task_name] = task
                 if "allowed_vars" not in task[TASKS_META_KEY].keys():
                     task[TASKS_META_KEY]['allowed_vars'] = list(task[VARS_KEY].keys())
@@ -214,51 +226,39 @@ class Nsbl(object):
                 "tasks": tasks
             }
 
-            pprint.pprint(role_dict)
+
             current_dir = os.getcwd()
             int_roles_base_dir = os.path.join(env_dir, "roles", "dynamic")
             os.chdir(int_roles_base_dir)
+            pprint.pprint(role_dict)
             cookiecutter(role_local_path, extra_context=role_dict, no_input=True)
             os.chdir(current_dir)
 
+        # create internal roles
+        for role_name, role in all_int_roles.items():
 
+            target = os.path.join(env_dir, "roles", "internal", role_name)
+            shutil.copytree(role, target)
 
+        if all_ext_roles:
+            # download external roles
+            log.debug("Downloading and installing external roles...")
+            res = subprocess.check_output([os.path.join(env_dir, "extensions", "setup", "role_update.sh")])
+            for line in res.splitlines():
+                log.debug("Installing role: {}".format(line.encode('utf8')))
 
-        # # add 'internal' roles
-        # ext_roles = False
-        # for idx, task in enumerate(self.tasks):
+        for idx, task in enumerate(self.tasks):
 
-        #     if task.ext_roles:
-        #         ext_roles = True
+            jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
+            template = jinja_env.get_template('playbook.yml')
+            output_text = template.render(groups=task.env_name, tasks=task.tasks, env=task.env)
 
-        #     for role in task.roles:
-        #         role.prepare_role(env_dir)
+            playbook_name = "play_{}_{}.yml".format(idx, task.env_name)
+            playbook_file = os.path.join(env_dir, "plays", playbook_name)
 
-        #     content = self.render_playbook(task)
-        #     playbook_name = "play_{}_{}.yml".format(idx, task.task_env)
+            with open(playbook_file, "w") as text_file:
+                text_file.write(output_text)
 
-        #     playbook_file = os.path.join(env_dir, "plays", playbook_name)
-
-        #     with open(playbook_file, "w") as text_file:
-        #         text_file.write(content)
-
-        # if ext_roles:
-        #     # download external roles
-        #     log.info("Downloading and installing external roles...")
-        #     res = subprocess.check_output([os.path.join(env_dir, "extensions", "setup", "role_update.sh")])
-        #     for line in res.splitlines():
-        #         log.debug("Installing role: {}".format(line.encode('utf8')))
-
-
-
-    def render_playbook(self, task):
-
-        jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
-        template = jinja_env.get_template('playbook.yml')
-
-        output_text = template.render(groups=task.task_env, roles=task.roles, meta=task.meta_vars)
-
-        return output_text
 
 class NsblInventory(object):
 
@@ -433,14 +433,20 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
 
     def create_role_dict(self, tasks):
 
+        task_vars = {}
+        for idx, t in enumerate(tasks):
+            task_id = "_dyn_role_task_{}".format(idx)
+            t[TASKS_META_KEY]["task_id"] = task_id
+            for key, value in t.get(VARS_KEY, {}).items():
+                task_vars["{}_{}".format(task_id, key)] = value
+
         dyn_role = {
             TASKS_META_KEY: {
-                TASK_NAME_KEY: "dyn_role_{}_{}".format(self.env_name, self.id_role),
+                TASK_NAME_KEY: "env_{}_dyn_role_{}".format(self.env_name, self.id_role),
                 TASK_ROLES_KEY: copy.deepcopy(self.current_tasks),
                 TASK_TYPE_KEY: DYN_ROLE_TYPE
             },
-            VARS_KEY: {}
-        }
+            VARS_KEY: task_vars}
 
         return dyn_role
 
@@ -525,9 +531,11 @@ class NsblTaskList(object):
             else:
                 log.debug("(Internal role) dependency '{}' already added, ignoring.".format(dep))
 
-    def add_dyn_role(self, tasks):
+    def add_dyn_role(self, role_name, tasks):
 
-        role_name = "env_{}_dyn_role_{}".format(self.env_name, len(self.dyn_roles))
+        for t in tasks:
+            if VARS_KEY not in t.keys():
+                t[VARS_KEY] = {}
         self.dyn_roles[role_name] = tasks
 
     def process_tasks(self):
@@ -536,14 +544,18 @@ class NsblTaskList(object):
 
             task_type = task[TASKS_META_KEY][TASK_TYPE_KEY]
             if task_type == INT_TASK_TYPE:
-                new_ext_roles = task[TASKS_META_KEY][TASK_ROLES_KEY][TASK_ROLES_KEY]
+                # new_ext_roles = task[TASKS_META_KEY][TASK_ROLES_KEY][TASK_ROLES_KEY]
                 # self.add_ext_roles(new_ext_roles)
                 self.add_int_role(task[TASKS_META_KEY][TASK_ROLES_KEY])
+                task[TASKS_META_KEY][ROLE_NAME_KEY] = task[TASKS_META_KEY][TASK_ROLES_KEY]['default_role']
             elif task_type == DYN_ROLE_TYPE:
-                self.add_dyn_role(task[TASKS_META_KEY][TASK_ROLES_KEY])
+                name = task[TASKS_META_KEY][TASK_NAME_KEY]
+                self.add_dyn_role(name, task[TASKS_META_KEY][TASK_ROLES_KEY])
+                task[TASKS_META_KEY][ROLE_NAME_KEY] = task[TASKS_META_KEY][TASK_NAME_KEY]
             elif task_type == EXT_TASK_TYPE:
                 new_roles = task[TASKS_META_KEY][TASK_ROLES_KEY]
                 self.add_ext_roles(new_roles)
+                task[TASKS_META_KEY][ROLE_NAME_KEY] = task[TASKS_META_KEY][TASK_NAME_KEY]
 
             else:
                 raise Exception("Task type '{}' not known.".format(task_type))
