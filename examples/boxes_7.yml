@@ -22,7 +22,6 @@ envs:
               allowed_vars: [free_form]
             vars:
               free_form: ls -lah /tmp
-              test: test_var
         - install-packages:
             packages:
               - zile:

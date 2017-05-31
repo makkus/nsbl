@@ -16,6 +16,11 @@ from cookiecutter.main import cookiecutter
 from frkl import Frkl, dict_merge, DEFAULT_LEAF_DEFAULT_KEY, ConfigProcessor
 from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, START_VALUES_NAME, UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, Jinja2TemplateProcessor, IdProcessor
 
+try:
+    set
+except NameError:
+    from sets import Set as set
+
 import logging
 log = logging.getLogger("nsbl")
 
@@ -220,6 +225,11 @@ class Nsbl(object):
                 tasks[task_name] = task
                 if "allowed_vars" not in task[TASKS_META_KEY].keys():
                     task[TASKS_META_KEY]['allowed_vars'] = list(task[VARS_KEY].keys())
+                else:
+                    for key in task.get(VARS_KEY, {}).keys():
+                        task[TASKS_META_KEY]['allowed_vars'].append(key)
+
+                task[TASKS_META_KEY]['allowed_vars'] = list(set(task[TASKS_META_KEY]['allowed_vars']))
 
             role_dict = {
                 "role_name": role_name,
@@ -230,7 +240,7 @@ class Nsbl(object):
             current_dir = os.getcwd()
             int_roles_base_dir = os.path.join(env_dir, "roles", "dynamic")
             os.chdir(int_roles_base_dir)
-            pprint.pprint(role_dict)
+
             cookiecutter(role_local_path, extra_context=role_dict, no_input=True)
             os.chdir(current_dir)
 
@@ -247,6 +257,7 @@ class Nsbl(object):
             for line in res.splitlines():
                 log.debug("Installing role: {}".format(line.encode('utf8')))
 
+        playbooks = []
         for idx, task in enumerate(self.tasks):
 
             jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
@@ -254,10 +265,19 @@ class Nsbl(object):
             output_text = template.render(groups=task.env_name, tasks=task.tasks, env=task.env)
 
             playbook_name = "play_{}_{}.yml".format(idx, task.env_name)
+            playbooks.append(playbook_name)
             playbook_file = os.path.join(env_dir, "plays", playbook_name)
 
             with open(playbook_file, "w") as text_file:
                 text_file.write(output_text)
+
+        template = jinja_env.get_template('play.yml')
+        output_text = template.render(playbooks=playbooks)
+        all_plays_name = "play.yml"
+        all_plays_file = os.path.join(env_dir, "plays", all_plays_name)
+
+        with open(all_plays_file, "w") as text_file:
+            text_file.write(output_text)
 
 
 class NsblInventory(object):
