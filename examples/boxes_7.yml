@@ -1,0 +1,35 @@
+envs:
+  - group_1:
+      meta:
+        hosts:
+          - localhost
+      vars:
+        var_group_1_1: val1
+        var_group_1_2: val2
+      tasks:
+        - docker:
+            meta:
+              become: yes
+              roles:
+                docker: angstwad.docker_ubuntu
+            vars:
+              docker_apt_cache_valid_time: 1200
+        - shell: whoami
+        - shell:
+            meta:
+              become: no
+              #allowed_vars: [free_form, test_var, test_var2]
+            vars:
+              free_form: ls -lah /tmp
+              test: test_var
+        - install-packages:
+            packages:
+              - zile:
+                  Ubuntu: zile
+              - fortunes
+        - apt:
+            meta:
+              become: yes
+              allowed_vars: [name]
+            vars:
+              name: zile-manual

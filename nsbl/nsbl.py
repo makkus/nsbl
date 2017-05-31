@@ -62,7 +62,7 @@ DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT = {
     CHILD_MARKER_NAME: TASKS_KEY,
     DEFAULT_LEAF_NAME: TASKS_META_KEY,
     DEFAULT_LEAFKEY_NAME: TASK_NAME_KEY,
-    KEY_MOVE_MAP_NAME: VARS_KEY,
+    KEY_MOVE_MAP_NAME: {'*': (VARS_KEY, 'free_form')},
     "use_context": True
 }
 NSBL_TASKS_TEMPLATE_INIT = {
@@ -162,15 +162,15 @@ class Nsbl(object):
         self.inventory = NsblInventory(self.configs, self.repo_roles, default_env_type)
         self.tasks = []
         self.tasks = self.inventory.tasks
-        self.ansible_roles = {}
-
-    def get_all_roles():
-        pass
 
     def render_environment(self, env_dir):
 
         parent_dir = os.path.abspath(os.path.join(env_dir, os.pardir))
         link_dir = None
+
+        all_ext_roles = {}
+        for tasks in self.tasks:
+            all_ext_roles.update(tasks.ext_roles)
 
         rel_configs = []
         inventory_dir = os.path.join(env_dir, "inventory")
@@ -181,7 +181,7 @@ class Nsbl(object):
         cookiecutter_details = {
             "env_dir": env_dir,
             "nsbl_script_configs": " --config ".join(rel_configs),
-            "nsbl_roles": self.ansible_roles,
+            "nsbl_roles": all_ext_roles,
             "nsbl_callback_plugins": "",
             "nsbl_callback_plugin_name": ""
             }
@@ -191,31 +191,63 @@ class Nsbl(object):
 
         template_path = os.path.join(os.path.dirname(__file__), "external", "cookiecutter-ansible-environment")
         cookiecutter(template_path, extra_context=cookiecutter_details, no_input=True)
+        all_int_roles = {}
+        all_dyn_roles = {}
+        for tasks in self.tasks:
+            all_int_roles.update(tasks.int_roles)
+            all_dyn_roles.update(tasks.dyn_roles)
 
-        # add 'internal' roles
-        ext_roles = False
-        for idx, task in enumerate(self.tasks):
 
-            if task.ext_roles:
-                ext_roles = True
+        # create dynamic roles
+        for role_name, role in all_dyn_roles.items():
+            role_local_path = os.path.join(os.path.dirname(__file__), "external", "ansible-role-template")
+            # cookiecutter doesn't like input lists, so converting to dict
+            tasks = {}
+            for idx, task in enumerate(role):
+                task_name = "task_{}".format(idx)
+                tasks[task_name] = task
+                if "allowed_vars" not in task[TASKS_META_KEY].keys():
+                    task[TASKS_META_KEY]['allowed_vars'] = list(task[VARS_KEY].keys())
 
-            for role in task.roles:
-                role.prepare_role(env_dir)
+            role_dict = {
+                "role_name": role_name,
+                "tasks": tasks
+            }
 
-            content = self.render_playbook(task)
-            playbook_name = "play_{}_{}.yml".format(idx, task.task_env)
+            pprint.pprint(role_dict)
+            current_dir = os.getcwd()
+            int_roles_base_dir = os.path.join(env_dir, "roles", "dynamic")
+            os.chdir(int_roles_base_dir)
+            cookiecutter(role_local_path, extra_context=role_dict, no_input=True)
+            os.chdir(current_dir)
 
-            playbook_file = os.path.join(env_dir, "plays", playbook_name)
 
-            with open(playbook_file, "w") as text_file:
-                text_file.write(content)
 
-        if ext_roles:
-            # download external roles
-            log.info("Downloading and installing external roles...")
-            res = subprocess.check_output([os.path.join(env_dir, "extensions", "setup", "role_update.sh")])
-            for line in res.splitlines():
-                log.debug("Installing role: {}".format(line.encode('utf8')))
+
+        # # add 'internal' roles
+        # ext_roles = False
+        # for idx, task in enumerate(self.tasks):
+
+        #     if task.ext_roles:
+        #         ext_roles = True
+
+        #     for role in task.roles:
+        #         role.prepare_role(env_dir)
+
+        #     content = self.render_playbook(task)
+        #     playbook_name = "play_{}_{}.yml".format(idx, task.task_env)
+
+        #     playbook_file = os.path.join(env_dir, "plays", playbook_name)
+
+        #     with open(playbook_file, "w") as text_file:
+        #         text_file.write(content)
+
+        # if ext_roles:
+        #     # download external roles
+        #     log.info("Downloading and installing external roles...")
+        #     res = subprocess.check_output([os.path.join(env_dir, "extensions", "setup", "role_update.sh")])
+        #     for line in res.splitlines():
+        #         log.debug("Installing role: {}".format(line.encode('utf8')))
 
 
 
@@ -392,6 +424,7 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
     def validate_init(self):
         self.id_role = 0
         self.current_tasks = []
+        self.env_name = self.init_params["env_name"]
         return True
 
     def handles_last_call(self):
@@ -402,7 +435,7 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
 
         dyn_role = {
             TASKS_META_KEY: {
-                TASK_NAME_KEY: "dyn_role_{}".format(self.id_role),
+                TASK_NAME_KEY: "dyn_role_{}_{}".format(self.env_name, self.id_role),
                 TASK_ROLES_KEY: copy.deepcopy(self.current_tasks),
                 TASK_TYPE_KEY: DYN_ROLE_TYPE
             },
@@ -425,7 +458,6 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
                     dyn_role = self.create_role_dict(self.current_tasks)
                     self.id_role = self.id_role+1
                     self.current_tasks = []
-
                     yield dyn_role
 
                 yield new_config
@@ -446,26 +478,26 @@ class NsblTaskList(object):
 
         nsbl_task_processor = NsblTaskProcessor({'env': self.env, 'repo_roles': self.repo_roles})
 
-        nsbl_dynrole_processor = NsblDynamicRoleProcessor()
+        nsbl_dynrole_processor = NsblDynamicRoleProcessor({"env_name": self.env_name})
         id_processor = IdProcessor(NSBL_TASKS_ID_INIT)
 
         # otherwise each tasks inherits from the ones before
         temp_tasks = [[name] for name in self.env[TASKS_KEY]]
         frkl_obj = Frkl(temp_tasks, DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN + [nsbl_task_processor, nsbl_dynrole_processor, id_processor])
-        # frkl_obj = Frkl(temp_tasks, DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN + [nsbl_task_processor])
+
         self.tasks = frkl_obj.process()
         self.ext_roles = {}
-        self.int_roles = []
+        self.int_roles = {}
         self.dyn_roles = {}
 
         self.process_tasks()
 
-        for task, roles in self.ext_roles.items():
-            print("-------------------")
-            pprint.pprint(task)
-            pprint.pprint(roles)
-            print("---")
-        sys.exit(0)
+        # for task, roles in self.dyn_roles.items():
+            # print("-------------------")
+            # pprint.pprint(task)
+            # pprint.pprint(roles)
+            # print("---")
+
 
     def add_ext_roles(self, new_roles):
 
@@ -478,8 +510,25 @@ class NsblTaskList(object):
 
     def add_int_role(self, role):
 
-        role_path = role["roles_path"]
+        roles_path = role["roles_path"]
+        child_dirs = [name for name in os.listdir(roles_path) if os.path.isdir(os.path.join(roles_path, name))]
+        for role_dir_name in child_dirs:
+            if role_dir_name in self.int_roles.keys():
+                log.debug("Internal role with name '{}' added multiple times, ignoring this: {}".format(role_dir_name, os.path.join(roles_path, role_dir_name)))
+            else:
+                self.int_roles[role_dir_name] = os.path.join(roles_path, role_dir_name)
 
+        dependencies = role.get("dependencies", [])
+        for dep in dependencies:
+            if not dep in self.int_roles.keys():
+                self.add_int_role(self.repo_roles.roles[dep])
+            else:
+                log.debug("(Internal role) dependency '{}' already added, ignoring.".format(dep))
+
+    def add_dyn_role(self, tasks):
+
+        role_name = "env_{}_dyn_role_{}".format(self.env_name, len(self.dyn_roles))
+        self.dyn_roles[role_name] = tasks
 
     def process_tasks(self):
 
@@ -488,10 +537,10 @@ class NsblTaskList(object):
             task_type = task[TASKS_META_KEY][TASK_TYPE_KEY]
             if task_type == INT_TASK_TYPE:
                 new_ext_roles = task[TASKS_META_KEY][TASK_ROLES_KEY][TASK_ROLES_KEY]
-                self.add_ext_roles(new_ext_roles)
+                # self.add_ext_roles(new_ext_roles)
                 self.add_int_role(task[TASKS_META_KEY][TASK_ROLES_KEY])
             elif task_type == DYN_ROLE_TYPE:
-                pass
+                self.add_dyn_role(task[TASKS_META_KEY][TASK_ROLES_KEY])
             elif task_type == EXT_TASK_TYPE:
                 new_roles = task[TASKS_META_KEY][TASK_ROLES_KEY]
                 self.add_ext_roles(new_roles)

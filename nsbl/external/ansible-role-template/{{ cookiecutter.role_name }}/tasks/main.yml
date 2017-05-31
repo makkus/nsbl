@@ -2,11 +2,11 @@
 # tasks file for ansible-role-template
 {% for task_name, details in cookiecutter.tasks | dictsort -%}
 - name: {{ task_name }}
-  {{ details.module }}: {% if details.free_form == "True" -%} {{ "\"{{" }} task_{{ details.id }}.free_form {{ "}}\"" }} {% endif %}
-  {% if details.allowed_vars -%}args:
-    {% for arg in details.allowed_vars -%}
-    {{ arg }}: {{ "\"{{" }} task_{{ details.id }}.{{ arg }} {{ " | default(omit) }}\"" }}
+  {{ details['meta']['name'] }}: {% if 'free_form' in details['vars'].keys() -%} {{ "\"{{" }} {{ task_name}}.free_form {{ "}}\"" }} {% endif %}
+  {% if 'allowed_vars' in details['meta'].keys() and details['meta']['allowed_vars'] != ['free_form'] -%}args:
+    {% for arg in details['meta']['allowed_vars'] -%}{% if arg != 'free_form' -%}
+    {{ arg }}: {{ "\"{{" }} {{ task_name }}.{{ arg }} {{ " | default(omit) }}\"" }}{% endif %}
     {% endfor %}{% endif %}
-{% if "become" in details.keys() %}  become: {{ details.become }}{% endif %}
-  ignore_errors: "{{ details.ignore_errors | default('yes') }}"
+{% if "become" in details['meta'].keys() %}  become: {{ details['meta']['become'] }}{% endif %}
+  ignore_errors: "{{ details['meta']['ignore_errors'] | default('yes') }}"
 {% endfor %}
