@@ -1,0 +1,18 @@
+- group_1:
+    meta:
+      hosts:
+        - host_1
+        - host_2
+    vars:
+      var_group_1_1: val1
+      var_group_1_2: val2
+- group_2:
+    meta:
+      groups:
+        - group_1
+      hosts:
+        - host_3
+        - host_4
+    vars:
+      var_group_2_1: val1
+      var_group_2_2: val2

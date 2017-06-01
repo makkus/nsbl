@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-nsbl_inv --repos {{ cookiecutter.role_repo_paths }} --config {{ cookiecutter.nsbl_script_configs }} $@

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+nsbl_inv --repos {{ role_repo_paths }} --config {{ nsbl_script_configs }} $@
+
+exit 0

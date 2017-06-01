@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+cwd=$(pwd)
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+cd $script_dir
+
+nsbl_inv --repos {{ role_repo_paths }} --config {{ nsbl_script_configs }} $@
+
+cd $cwd

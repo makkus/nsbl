@@ -1,0 +1,16 @@
+{% for host_name, host_details in hosts | dictsort -%}
+{{ host_name }}
+{% endfor %}
+
+{% for group_name, group_details in groups | dictsort -%}
+[{{ group_name }}]
+{% for host in group_details.get("hosts", []) -%}
+{{ host }}
+{% endfor %}
+{% endfor %}
+{% for group_name, group_details in groups | dictsort -%}{% if group_details.get("children", []) %}[{{ group_name }}:children]
+{% endif -%}
+{% for child in group_details.get("children", []) -%}
+{{ child }}
+{% endfor %}
+{% endfor %}
