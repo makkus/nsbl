@@ -1,21 +1,19 @@
 # -*- coding: utf-8 -*-
 
-from jinja2 import Environment, PackageLoader
-import pprint
-import json
 import copy
-import os
-import subprocess
+import json
 import shutil
-import yaml
-import sys
-import stat
+import subprocess
 
-from six import string_types
-from collections import OrderedDict
+import os
+import yaml
 from cookiecutter.main import cookiecutter
-from frkl import Frkl, dict_merge, DEFAULT_LEAF_DEFAULT_KEY, ConfigProcessor
-from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, START_VALUES_NAME, UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, Jinja2TemplateProcessor, IdProcessor
+from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, \
+    UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, \
+    IdProcessor
+from frkl import Frkl, ConfigProcessor
+from jinja2 import Environment, PackageLoader
+from six import string_types
 
 try:
     set
@@ -23,6 +21,7 @@ except NameError:
     from sets import Set as set
 
 import logging
+
 log = logging.getLogger("nsbl")
 
 # stem key for inventory
@@ -52,7 +51,8 @@ NSBL_INVENTORY_BOOTSTRAP_FORMAT = {
 }
 # bootstrap chain used for creating the inventory
 NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
-    UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor(), FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)
+    UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor(),
+    FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)
 ]
 
 # meta infor for tasks (e.g. 'become')
@@ -104,22 +104,25 @@ ENV_TYPE_GROUP = 'group'
 DEFAULT_ENV_TYPE = ENV_TYPE_GROUP
 
 # DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
-    # UrlAbbrevProcessor(), EnsureUrlProcessor(), Jinja2TemplateProcessor(NSBL_TASKS_TEMPLATE_INIT), EnsurePythonObjectProcessor(), FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT), IdProcessor(NSBL_TASKS_ID_INIT)
+# UrlAbbrevProcessor(), EnsureUrlProcessor(), Jinja2TemplateProcessor(NSBL_TASKS_TEMPLATE_INIT), EnsurePythonObjectProcessor(), FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT), IdProcessor(NSBL_TASKS_ID_INIT)
 # ]
 
 DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
     FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
 ]
 
+
 class NsblException(Exception):
     """Base exception class for nsbl."""
-    def __init__(self, message):
 
+    def __init__(self, message):
         super(NsblException, self).__init__(message)
+
 
 class RepoRoles(object):
     """Class to encapsulate all folders that contain 'internal' roles.
     """
+
     def __init__(self, folders):
 
         if isinstance(folders, string_types):
@@ -160,7 +163,8 @@ class RepoRoles(object):
                     default_role = basename
                 elif not default_role:
                     if os.path.exists(os.path.join(roles_path)):
-                        child_dirs = [name for name in os.listdir(roles_path) if  os.path.isdir(os.path.join(roles_path, name))]
+                        child_dirs = [name for name in os.listdir(roles_path) if
+                                      os.path.isdir(os.path.join(roles_path, name))]
                         if len(child_dirs) == 1:
                             default_role = child_dirs[0]
                     else:
@@ -173,12 +177,13 @@ class RepoRoles(object):
                 if basename in result.keys():
                     raise Exception("Multiple roles/tasks with name in role repositories: {}".format(basename))
 
-                result[basename] = {"roles_path": roles_path, "default_role": default_role, "dependencies": dependencies, TASK_ROLES_KEY: roles}
+                result[basename] = {"roles_path": roles_path, "default_role": default_role,
+                                    "dependencies": dependencies, TASK_ROLES_KEY: roles}
 
         return result
 
-class Nsbl(object):
 
+class Nsbl(object):
     def __init__(self, configs, roles_repos, default_env_type=DEFAULT_ENV_TYPE):
         """Wrapper class to create an Ansible environment.
 
@@ -256,7 +261,8 @@ class Nsbl(object):
             roles_repos_string = ""
             if self.roles_repos:
                 if relative_paths:
-                    roles_repos_string = " --repo ".join([os.path.relpath(name, inventory_dir) for name in self.roles_repos])
+                    roles_repos_string = " --repo ".join(
+                        [os.path.relpath(name, inventory_dir) for name in self.roles_repos])
 
                     rel_configs = []
 
@@ -287,14 +293,12 @@ class Nsbl(object):
             st = os.stat(inventory_file)
             os.chmod(inventory_file, 0o775)
 
-
     def render_environment(self, env_dir, extract_vars=False):
         """Creates the ansible environment in the folder provided.
 
         Args:
           env_dir (str): the folder where the environment should be created
         """
-
 
         all_ext_roles = {}
         for tasks in self.tasks:
@@ -313,7 +317,7 @@ class Nsbl(object):
             "nsbl_roles": all_ext_roles,
             "nsbl_callback_plugins": "",
             "nsbl_callback_plugin_name": ""
-            }
+        }
 
         log.debug("Creating build environment from template...")
         log.debug("Using cookiecutter details: {}".format(cookiecutter_details))
@@ -331,7 +335,6 @@ class Nsbl(object):
         for tasks in self.tasks:
             all_int_roles.update(tasks.int_roles)
             all_dyn_roles.update(tasks.dyn_roles)
-
 
         # create dynamic roles
         for role_name, role in all_dyn_roles.items():
@@ -354,7 +357,6 @@ class Nsbl(object):
                 "tasks": tasks
             }
 
-
             current_dir = os.getcwd()
             int_roles_base_dir = os.path.join(env_dir, "roles", "dynamic")
             os.chdir(int_roles_base_dir)
@@ -364,7 +366,6 @@ class Nsbl(object):
 
         # create internal roles
         for role_name, role in all_int_roles.items():
-
             target = os.path.join(env_dir, "roles", "internal", role_name)
             shutil.copytree(role, target)
 
@@ -377,7 +378,6 @@ class Nsbl(object):
 
         playbooks = []
         for idx, task in enumerate(self.tasks):
-
             jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
             template = jinja_env.get_template('playbook.yml')
             output_text = template.render(groups=task.env_name, tasks=task.tasks, env=task.env)
@@ -399,7 +399,6 @@ class Nsbl(object):
 
 
 class NsblInventory(object):
-
     def __init__(self, configs, repo_roles={}, default_env_type=DEFAULT_ENV_TYPE):
         """Class to be used to create a dynamic ansible inventory from (elastic) yaml config files.
 
@@ -451,7 +450,9 @@ class NsblInventory(object):
 
         intersection = set(self.hosts[host_name].keys()).intersection(host_vars.keys())
         if intersection:
-            raise NsblException("Adding host more than once with intersecting keys, this is not possible because it's not clear which vars should take precedence. Intersection: {}".format(intersection))
+            raise NsblException(
+                "Adding host more than once with intersecting keys, this is not possible because it's not clear which vars should take precedence. Intersection: {}".format(
+                    intersection))
 
         self.hosts[host_name].update(host_vars)
 
@@ -484,7 +485,8 @@ class NsblInventory(object):
 
         for env in self.config:
             if ENV_META_KEY not in env.keys():
-                raise NsblException("Environment does not have metadata (missing '{}') key: {})".format(ENV_META_KEY, env))
+                raise NsblException(
+                    "Environment does not have metadata (missing '{}') key: {})".format(ENV_META_KEY, env))
             env_type = env[ENV_META_KEY].get(ENV_TYPE_KEY, False)
             if not env_type:
                 if ENV_HOSTS_KEY in env[ENV_META_KEY].keys():
@@ -496,13 +498,16 @@ class NsblInventory(object):
 
             env_name = env[ENV_META_KEY].get(ENV_NAME_KEY, False)
             if not env_name:
-                raise NsblException("Environment metadata needs to contain a name (either host- or group-name): {}".format(env[ENV_META_KEY]))
+                raise NsblException(
+                    "Environment metadata needs to contain a name (either host- or group-name): {}".format(
+                        env[ENV_META_KEY]))
 
             if env_type == ENV_TYPE_HOST:
                 self.add_host(env_name, env[VARS_KEY])
 
                 if ENV_HOSTS_KEY in env[ENV_META_KEY].keys():
-                    raise NsblException("An environment of type {} can't contain the {} key".format(ENV_TYPE_HOST, ENV_HOSTS_KEY))
+                    raise NsblException(
+                        "An environment of type {} can't contain the {} key".format(ENV_TYPE_HOST, ENV_HOSTS_KEY))
 
                 for group in env[ENV_META_KEY].get(ENV_GROUPS_KEY, []):
                     self.add_host_to_group(env_name, group)
@@ -523,9 +528,9 @@ class NsblInventory(object):
             if TASKS_KEY in env.keys():
                 self.tasks.append(NsblTaskList(env, self.repo_roles, env_name))
 
-        if "localhost" in self.hosts.keys() and "ansible_connection" not in self.hosts["localhost"].get(VARS_KEY, {}).keys():
+        if "localhost" in self.hosts.keys() and "ansible_connection" not in self.hosts["localhost"].get(VARS_KEY,
+                                                                                                        {}).keys():
             self.hosts["localhost"][VARS_KEY]["ansible_connection"] = "local"
-
 
     def list(self):
         """Lists all groups in the format that is required for ansible dynamic inventories.
@@ -577,7 +582,6 @@ class NsblTaskProcessor(ConfigProcessor):
 
     In particular, this extracts roles and tags them with their types.
     """
-
 
     def validate_init(self):
 
@@ -669,7 +673,7 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
             else:
                 if len(self.current_tasks) > 0:
                     dyn_role = self.create_role_dict(self.current_tasks)
-                    self.id_role = self.id_role+1
+                    self.id_role = self.id_role + 1
                     self.current_tasks = []
                     yield dyn_role
 
@@ -682,7 +686,6 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
 
 
 class NsblTaskList(object):
-
     def __init__(self, env, repo_roles, env_name="localhost"):
         """Holds a list of tasks, extracts and sorts roles (internal, external, dynamic)."""
 
@@ -697,7 +700,8 @@ class NsblTaskList(object):
 
         # otherwise each tasks inherits from the ones before
         temp_tasks = [[name] for name in self.env[TASKS_KEY]]
-        frkl_obj = Frkl(temp_tasks, DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN + [nsbl_task_processor, nsbl_dynrole_processor, id_processor])
+        frkl_obj = Frkl(temp_tasks, DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN + [nsbl_task_processor, nsbl_dynrole_processor,
+                                                                          id_processor])
 
         self.tasks = frkl_obj.process()
         self.ext_roles = {}
@@ -707,18 +711,20 @@ class NsblTaskList(object):
         self.process_tasks()
 
         # for task, roles in self.dyn_roles.items():
-            # print("-------------------")
-            # pprint.pprint(task)
-            # pprint.pprint(roles)
-            # print("---")
-
+        # print("-------------------")
+        # pprint.pprint(task)
+        # pprint.pprint(roles)
+        # print("---")
 
     def add_ext_roles(self, new_roles):
 
         for role_name, role in new_roles.items():
             if role_name in self.ext_roles.keys():
                 if role != self.ext_roles["role_name"]:
-                    raise Exception("Role '{}' added multiple times, with different urls/versions: {} - {}".format(role_name, role, self.ext_roles[role_name]))
+                    raise Exception(
+                        "Role '{}' added multiple times, with different urls/versions: {} - {}".format(role_name, role,
+                                                                                                       self.ext_roles[
+                                                                                                           role_name]))
             else:
                 self.ext_roles[role_name] = role
 
@@ -728,7 +734,10 @@ class NsblTaskList(object):
         child_dirs = [name for name in os.listdir(roles_path) if os.path.isdir(os.path.join(roles_path, name))]
         for role_dir_name in child_dirs:
             if role_dir_name in self.int_roles.keys():
-                log.debug("Internal role with name '{}' added multiple times, ignoring this: {}".format(role_dir_name, os.path.join(roles_path, role_dir_name)))
+                log.debug("Internal role with name '{}' added multiple times, ignoring this: {}".format(role_dir_name,
+                                                                                                        os.path.join(
+                                                                                                            roles_path,
+                                                                                                            role_dir_name)))
             else:
                 self.int_roles[role_dir_name] = os.path.join(roles_path, role_dir_name)
 
@@ -776,6 +785,3 @@ class NsblTaskList(object):
 
             else:
                 raise Exception("Task type '{}' not known.".format(task_type))
-
-
-
