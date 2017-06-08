@@ -1,0 +1,28 @@
+- localhost:
+    meta:
+      type: host
+    vars:
+      dotfiles:
+        local: ~/dotfiles
+        url: https://github.com/makkus/dotfiles-new.git
+        paths: ["minimal", "dev", "no-x", "x"]
+      packages:
+
+    tasks:
+      - install-nix
+      - install-conda
+      - update-package-cache
+      - install-git:
+          packages:
+            - spacemacs:
+                - dest: ~/.emacs.d
+                - repo: https://github.com/syl20bnr/spacemacs
+            - zplug:
+                - dest: ~/zplug
+                - repo: https://github.com/zplug/zplug
+
+      - dotfiles:
+          install: yes
+          stow: yes
+
+

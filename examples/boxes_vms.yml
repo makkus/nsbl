@@ -1,0 +1,26 @@
+envs:
+- common:
+    meta:
+      type: group
+      hosts:
+        - postgresql
+
+- postgresql:
+    vars:
+      proxmox_host: "ja.ilmark.us"
+      vmid: 150
+      ip: 10.0.1.150
+      bridge: "vmbr1"
+      hostname: "postgresql.ilmark.us
+      memory: 1024
+      cpus: 2
+      cpuunits: 1024
+      disk: 8
+      swap: 512
+      gateway: 10.0.1.1
+      use_systemd: true
+      disable_firewall: false
+      incoming_tcp_ports:
+        - 5432
+
+

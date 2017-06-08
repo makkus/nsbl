@@ -17,8 +17,7 @@ def main(list, host, config, repos):
         click.echo("Using both '--list' and '--host' options not allowd")
         sys.exit(1)
 
-    repos = RepoRoles(repos)
-    nsbl_obj = NsblInventory(config, repo_roles=repos)
+    nsbl_obj = NsblInventory(config, roles_repo_folders=repos)
 
     # print(nsbl_obj.config)
     if list:

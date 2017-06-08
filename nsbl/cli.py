@@ -14,10 +14,12 @@ import click_log
 
 @click.group(invoke_without_command=True)
 @click.option('--version', help='the version of frkl you are using', is_flag=True)
+@click.option('--role-repo', '-r', help='path to a local folder containing ansible roles', multiple=True)
+@click.option('--task-desc', '-t', help='path to a local task description yaml file', multiple=True)
 @click_log.simple_verbosity_option()
 @click.pass_context
 @click_log.init("nsbl")
-def cli(ctx, version):
+def cli(ctx, version, role_repo, task_desc):
     """Console script for nsbl"""
 
     if version:
@@ -25,6 +27,8 @@ def cli(ctx, version):
         sys.exit(0)
 
     ctx.obj = {}
+    ctx.obj['role-repos'] = role_repo
+    ctx.obj['task-desc'] = task_desc
 
 
 @cli.command('list-groups')
@@ -34,7 +38,7 @@ def cli(ctx, version):
 @click.pass_context
 def list_groups(ctx, config, format, pager):
 
-    nsbl = Nsbl(config, "/home/markus/projects/nsbl-roles")
+    nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
     output(nsbl.inventory.groups, format)
 
 def output(python_object, format="raw", pager=False):
@@ -60,7 +64,7 @@ def output(python_object, format="raw", pager=False):
 @click.pass_context
 def list_hosts(ctx, config, format, pager):
 
-    nsbl = Nsbl(config, "/home/markus/projects/nsbl-roles")
+    nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
     output(nsbl.inventory.hosts, format)
 
 @cli.command('list-tasks')
@@ -70,7 +74,7 @@ def list_hosts(ctx, config, format, pager):
 @click.pass_context
 def list_tasks(ctx, config, format, pager):
 
-    nsbl = Nsbl(config, "/home/markus/projects/nsbl-roles")
+    nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
 
     result = []
     for task in nsbl.tasks:
@@ -87,13 +91,13 @@ def list_tasks(ctx, config, format, pager):
 @click.pass_context
 def extract_inventory(ctx, config, target, static, relative):
 
-    nsbl = Nsbl(config, "/home/markus/projects/nsbl-roles")
+    nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
     if static:
-        nsbl.extract_vars("/tmp/inventory")
-        nsbl.write_inventory_file_or_script("/tmp/inventory", extract_vars=True)
+        nsbl.inventory.extract_vars("/tmp/inventory")
+        nsbl.inventory.write_inventory_file_or_script("/tmp/inventory", extract_vars=True)
     else:
         os.makedirs("/tmp/inventory")
-        nsbl.write_inventory_file_or_script("/tmp/inventory", extract_vars=False, relative_paths=relative)
+        nsbl.inventory.write_inventory_file_or_script("/tmp/inventory", extract_vars=False, relative_paths=relative)
 
 @cli.command('print-inventory')
 @click.argument('config', required=True, nargs=-1)
@@ -101,9 +105,9 @@ def extract_inventory(ctx, config, target, static, relative):
 @click.pass_context
 def print_inventory(ctx, config, pager):
 
-    nsbl = Nsbl(config, "/home/markus/projects/nsbl-roles")
+    nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
 
-    inv_string = nsbl.get_inventory_config_string()
+    inv_string = nsbl.inventory.get_inventory_config_string()
     output(inv_string, format="raw", pager=pager)
 
 @cli.command('create-environment')
@@ -113,7 +117,7 @@ def print_inventory(ctx, config, pager):
 @click.pass_context
 def create(ctx, config, target, static):
 
-    nsbl = Nsbl(config, "/home/markus/projects/nsbl-roles")
+    nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
 
     nsbl.render_environment(target, extract_vars=static)
 

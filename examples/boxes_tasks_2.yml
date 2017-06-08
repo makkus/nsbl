@@ -1,0 +1,19 @@
+- localhost:
+    meta:
+      type: host
+
+    tasks:
+      - install-nix
+      - install-conda
+      - install:
+           pkg_mgr: nix
+           packages:
+             - zile
+      - checkout-git:
+           repos:
+             - dest: ~/TEST_.emacs.d
+               repo: https://github.com/syl20bnr/spacemacs
+             - dest: ~/TEST_.zplug
+               repo: https://github.com/zplug/zplug
+
+

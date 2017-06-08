@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import copy
+import pprint
 import json
 import shutil
 import subprocess
+import sys
 
 import os
 import yaml
 from cookiecutter.main import cookiecutter
 from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, \
     UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, \
-    IdProcessor
+    IdProcessor, dict_merge
 from frkl import Frkl, ConfigProcessor
 from jinja2 import Environment, PackageLoader
 from six import string_types
@@ -58,17 +60,22 @@ NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
 # meta infor for tasks (e.g. 'become')
 TASKS_META_KEY = "meta"
 # name of the task, can be internal or external role, or an ansible module
-TASK_NAME_KEY = "name"
+TASK_META_NAME_KEY = "name"
 # name that the role has, used in the playbook, added automatically according to the type of task that is processed
 ROLE_NAME_KEY = "role"
 # the type of task
-TASK_TYPE_KEY = "type"
+TASK_TYPE_KEY = "task-type"
 # key to indicate whether a task/role should be executed with superuser privileges
 TASK_BECOME_KEY = "become"
 # key to tell nsbl which variable keys are valid if the type is ansible module. ansible modules don't like getting fed keys that are not related to them
 TASK_ALLOWED_VARS_KEY = "allowed_vars"
 # key to indicate which role dependencies should be added for the ansible environment to be created
-TASK_ROLES_KEY = "roles"
+TASK_ROLES_KEY = "task-roles"
+TASK_DYN_ROLE_DETAILS = "task-dyn-role-details"
+# key to indicate allowed keys for an ansible module
+VAR_KEYS_KEY = "var_keys"
+# name that gets used by ansible, either a module name, or a role name
+TASK_NAME_KEY = "task-name"
 
 # indicator for task type internal role
 INT_TASK_TYPE = "internal_role"
@@ -84,8 +91,8 @@ ROLE_META_FILENAME = "meta.yml"
 DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT = {
     CHILD_MARKER_NAME: TASKS_KEY,
     DEFAULT_LEAF_NAME: TASKS_META_KEY,
-    DEFAULT_LEAFKEY_NAME: TASK_NAME_KEY,
-    KEY_MOVE_MAP_NAME: {'*': (VARS_KEY, 'free_form')},
+    DEFAULT_LEAFKEY_NAME: TASK_META_NAME_KEY,
+    KEY_MOVE_MAP_NAME: {'*': (VARS_KEY, 'default')},
     "use_context": True
 }
 NSBL_TASKS_TEMPLATE_INIT = {
@@ -111,6 +118,83 @@ DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
     FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
 ]
 
+# ------------------------------
+# util functions
+
+def get_local_role_desc(role_name, role_repos=[]):
+
+    url = False
+    if os.path.exists(role_name):
+        url = role_name
+    else:
+        for repo in role_repos:
+            path = os.path.join(os.path.expanduser(repo), role_name)
+            if os.path.exists(path):
+                url = role_name
+
+    if not url:
+        raise NsblException("Can't find local role '{}' (neither as absolute path nor in any of the local role repos)".format(role_name))
+
+    return {"url": url}
+
+def merge_roles(role_obj, role_repos=[]):
+
+    role_dict = {}
+
+    if isinstance(role_obj, dict):
+        if "url" in role_obj.keys() or "version" in role_obj.keys():
+            raise NsblException("Although dictionaries and lists can be mixed for the {} key, dictionaries need to use role-names as keys, the keyworkds 'url' and 'version' are not allowed. Mostly likely this is a misconfiguration.")
+        role_dict.update(role_obj)
+    elif isinstance(role_obj, string_types):
+        temp = get_local_role_desc(role_obj, role_repos)
+        role_dict[role_obj] = temp
+    elif isinstance(role_obj, (list, tuple)):
+        for role_obj_child in role_obj:
+            temp = merge_roles(role_obj_child, role_repos)
+            role_dict.update(temp)
+    else:
+        raise NsblException("Role description needs to be either a list of strings or a dict. Value '{}' is not valid.".format(role_obj))
+
+    return role_dict
+
+def expand_external_role(role_dict, role_repos=[]):
+
+    temp_role_dict = merge_roles(role_dict, role_repos)
+
+    result = {}
+    for role_name, role_details in temp_role_dict.items():
+        temp_role = {}
+        if isinstance(role_details, string_types):
+            temp_role["url"] = role_details
+        elif isinstance(role_details, dict):
+            temp_role["url"] = role_details["url"]
+            if "version" in role_details.keys():
+                temp_role["version"] = role_details["version"]
+        result[role_name] = temp_role
+
+    return result
+
+def get_internal_role_path(role_dict, role_repos=[]):
+
+    if isinstance(role_dict, string_types):
+        url = role_dict
+    elif isinstance(role_dict, dict):
+        url = role_dict["url"]
+    else:
+        raise NsblException("Type '{}' not supported for role description: {}".format(type(role_dict), role_dict))
+
+    if os.path.exists(url):
+        return url
+
+    for repo in role_repos:
+        path = os.path.join(os.path.expanduser(repo), url)
+        if os.path.exists(path):
+            return path
+
+    return False
+
+
+
 
 class NsblException(Exception):
     """Base exception class for nsbl."""
@@ -119,179 +203,36 @@ class NsblException(Exception):
         super(NsblException, self).__init__(message)
 
 
-class RepoRoles(object):
-    """Class to encapsulate all folders that contain 'internal' roles.
-    """
-
-    def __init__(self, folders):
-
-        if isinstance(folders, string_types):
-            self.folders = [folders]
-        else:
-            self.folders = folders
-        self.roles = self.read_role_repos()
-
-    def read_role_repos(self):
-
-        result = {}
-
-        for repo in self.folders:
-            for basename in [name for name in os.listdir(repo) if os.path.isdir(os.path.join(repo, name))]:
-
-                roles_metadata = os.path.join(repo, basename, ROLE_META_FILENAME)
-
-                dependencies = []
-                default_role = None
-                roles = {}
-                if os.path.exists(roles_metadata):
-                    with open(roles_metadata) as f:
-                        content = yaml.load(f)
-
-                    if "dependencies" in content.keys():
-                        dependencies = content["dependencies"]
-                        if isinstance(dependencies, string_types):
-                            dependencies = [dependencies]
-                    if "default_role" in content.keys():
-                        default_role = content["default_role"]
-
-                    if "roles" in content.keys():
-                        roles = content["roles"]
-
-                roles_path = os.path.join(repo, basename, "roles")
-
-                if not default_role and os.path.exists(os.path.join(roles_path, basename)):
-                    default_role = basename
-                elif not default_role:
-                    if os.path.exists(os.path.join(roles_path)):
-                        child_dirs = [name for name in os.listdir(roles_path) if
-                                      os.path.isdir(os.path.join(roles_path, name))]
-                        if len(child_dirs) == 1:
-                            default_role = child_dirs[0]
-                    else:
-                        if len(roles) == 1:
-                            default_role = list(roles.keys())[0]
-                if not default_role:
-                    log.debug("No default role found for '{}', ignoring internal role".format(basename))
-                    continue
-
-                if basename in result.keys():
-                    raise Exception("Multiple roles/tasks with name in role repositories: {}".format(basename))
-
-                result[basename] = {"roles_path": roles_path, "default_role": default_role,
-                                    "dependencies": dependencies, TASK_ROLES_KEY: roles}
-
-        return result
-
-
 class Nsbl(object):
-    def __init__(self, configs, roles_repos, default_env_type=DEFAULT_ENV_TYPE):
+    def __init__(self, configs, int_task_descs, role_repos=[], default_env_type=DEFAULT_ENV_TYPE):
         """Wrapper class to create an Ansible environment.
 
         Args:
           configs (list): the configuration(s) describing the inventory and tasks
-          roles_reopos (list): path(s) to all local role repos
+          int_tasks_descs (list): path(s)/urls to all local role repos
           default_env_type (str): the default type for an environment if not provided in the config (either ENV_TYPE_HOST or ENV_TYPE_GROUP)
         """
 
         self.configs = configs
-        if isinstance(roles_repos, string_types):
-            roles_repos = [roles_repos]
-        elif not isinstance(roles_repos, (list, tuple)):
-            raise Exception("roles_repos needs to be string or list: '{}'".format(roles_repos))
-
-        self.roles_repos = roles_repos
-
-        self.repo_roles = RepoRoles(self.roles_repos)
-        self.inventory = NsblInventory(self.configs, self.repo_roles, default_env_type)
-        self.tasks = []
-        self.tasks = self.inventory.tasks
-
-    def get_inventory_config_string(self):
-
-        jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
-        template = jinja_env.get_template('hosts')
-        output_text = template.render(groups=self.inventory.groups, hosts=self.inventory.hosts)
-
-        return output_text
-
-    def extract_vars(self, inventory_dir):
-
-        for group, group_vars in self.inventory.groups.items():
-            vars = group_vars.get(VARS_KEY, {})
-            if not vars:
-                continue
-            group_dir = os.path.join(inventory_dir, "group_vars", group)
-            var_file = os.path.join(group_dir, "{}.yml".format(group))
-            content = yaml.dump(vars, default_flow_style=False)
-
-            os.makedirs(group_dir)
-            with open(var_file, "w") as text_file:
-                text_file.write(content)
-
-        for host, host_vars in self.inventory.hosts.items():
-            vars = host_vars.get(VARS_KEY, {})
-            if not vars:
-                continue
-            host_dir = os.path.join(inventory_dir, "host_vars", host)
-            var_file = os.path.join(host_dir, "{}.yml".format(host))
-            content = yaml.dump(vars, default_flow_style=False)
-
-            os.makedirs(host_dir)
-            with open(var_file, "w") as text_file:
-                text_file.write(content)
-
-    def write_inventory_file_or_script(self, inventory_dir, extract_vars=False, relative_paths=True):
-
-        if extract_vars:
-            inventory_string = self.get_inventory_config_string()
-            inventory_name = "hosts"
-            inventory_file = os.path.join(inventory_dir, inventory_name)
-
-            with open(inventory_file, "w") as text_file:
-                text_file.write(inventory_string)
-
+        if isinstance(role_repos, string_types):
+            self.role_repos = [role_repos]
         else:
-            # write dynamic inventory script
-            jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
-            if relative_paths:
-                template = jinja_env.get_template('inventory_relative')
-            else:
-                template = jinja_env.get_template('inventory_absolute')
+            self.role_repos = role_repos
 
-            roles_repos_string = ""
-            if self.roles_repos:
-                if relative_paths:
-                    roles_repos_string = " --repo ".join(
-                        [os.path.relpath(name, inventory_dir) for name in self.roles_repos])
+        if isinstance(int_task_descs, string_types):
+            int_task_descs = [int_task_descs]
+        elif not isinstance(int_task_descs, (list, tuple)):
+            raise Exception("task_descs needs to be string or list: '{}'".format(int_task_descs))
 
-                    rel_configs = []
+        task_desk_frkl = Frkl(int_task_descs, [UrlAbbrevProcessor(),
+                                           EnsureUrlProcessor(),
+                                           EnsurePythonObjectProcessor(),
+                                           FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)])
 
-                    for path in self.configs:
-                        rel_path = os.path.relpath(path, inventory_dir)
-                        rel_configs.append(rel_path)
+        self.int_task_descs = task_desk_frkl.process()
 
-                    script_configs = " --config ".join(rel_configs)
-                else:
-                    roles_repos_string = " --repo ".join([os.path.abspath(name) for name in self.roles_repos])
-
-                    abs_configs = []
-                    for path in self.configs:
-                        abs_path = os.path.abspath(path)
-                        abs_configs.append(abs_path)
-                    script_configs = " --config".join(abs_configs)
-
-            output_text = template.render(role_repo_paths=roles_repos_string, nsbl_script_configs=script_configs)
-
-            inventory_string = self.get_inventory_config_string()
-            inventory_target_name = "inventory"
-
-            inventory_file = os.path.join(inventory_dir, inventory_target_name)
-
-            with open(inventory_file, "w") as text_file:
-                text_file.write(output_text)
-
-            st = os.stat(inventory_file)
-            os.chmod(inventory_file, 0o775)
+        self.inventory = NsblInventory(self.configs, self.int_task_descs, self.role_repos, default_env_type)
+        self.tasks = self.inventory.tasks
 
     def render_environment(self, env_dir, extract_vars=False):
         """Creates the ansible environment in the folder provided.
@@ -301,8 +242,28 @@ class Nsbl(object):
         """
 
         all_ext_roles = {}
+        all_int_roles = {}
+        #TODO: check for duplicate and different roles
         for tasks in self.tasks:
-            all_ext_roles.update(tasks.ext_roles)
+            meta_roles = tasks.meta_roles
+            for role_name, role_dict in meta_roles.items():
+                role_path = get_internal_role_path(role_dict, self.role_repos)
+                if role_path:
+                    all_int_roles[role_name] = role_path
+                else:
+                    all_ext_roles[role_name] = role_dict
+            for t in tasks.tasks:
+                task_name = t[TASKS_META_KEY][TASK_NAME_KEY]
+                local_role = get_internal_role_path(task_name, self.role_repos)
+                if local_role:
+                    all_int_roles[task_name] = local_role
+                roles = t.get(TASKS_META_KEY, {}).get(TASK_ROLES_KEY, {})
+                for role_name, role_dict in roles.items():
+                    role_path = get_internal_role_path(role_dict, self.role_repos)
+                    if role_path:
+                        all_int_roles[role_name] = role_path
+                    else:
+                        all_ext_roles[role_name] = role_dict
 
         inventory_dir = os.path.join(env_dir, "inventory")
 
@@ -326,31 +287,35 @@ class Nsbl(object):
         cookiecutter(template_path, extra_context=cookiecutter_details, no_input=True)
 
         if extract_vars:
-            self.extract_vars(inventory_dir)
+            self.inventory.extract_vars(inventory_dir)
 
-        self.write_inventory_file_or_script(inventory_dir, extract_vars=extract_vars)
+        self.inventory.write_inventory_file_or_script(inventory_dir, extract_vars=extract_vars)
 
-        all_int_roles = {}
+
         all_dyn_roles = {}
         for tasks in self.tasks:
-            all_int_roles.update(tasks.int_roles)
-            all_dyn_roles.update(tasks.dyn_roles)
+            for task in tasks.tasks:
+                if task[TASKS_META_KEY][TASK_TYPE_KEY] == DYN_ROLE_TYPE:
+                    all_dyn_roles[task[TASKS_META_KEY][TASK_NAME_KEY]] = task[TASKS_META_KEY][TASK_DYN_ROLE_DETAILS]
 
         # create dynamic roles
-        for role_name, role in all_dyn_roles.items():
+        for role_name, role_tasks in all_dyn_roles.items():
             role_local_path = os.path.join(os.path.dirname(__file__), "external", "ansible-role-template")
             # cookiecutter doesn't like input lists, so converting to dict
             tasks = {}
-            for task in role:
+
+            for task in role_tasks:
                 task_name = task[TASKS_META_KEY]["task_id"]
                 tasks[task_name] = task
-                if "allowed_vars" not in task[TASKS_META_KEY].keys():
-                    task[TASKS_META_KEY]['allowed_vars'] = list(task[VARS_KEY].keys())
+                if VARS_KEY not in task.keys():
+                    task[VARS_KEY] = {}
+                if VAR_KEYS_KEY not in task[TASKS_META_KEY].keys():
+                    task[TASKS_META_KEY][VAR_KEYS_KEY] = list(task.get(VARS_KEY, {}).keys())
                 else:
                     for key in task.get(VARS_KEY, {}).keys():
-                        task[TASKS_META_KEY]['allowed_vars'].append(key)
+                        task[TASKS_META_KEY][VAR_KEYS_KEY].append(key)
 
-                task[TASKS_META_KEY]['allowed_vars'] = list(set(task[TASKS_META_KEY]['allowed_vars']))
+                task[TASKS_META_KEY][VAR_KEYS_KEY] = list(set(task[TASKS_META_KEY][VAR_KEYS_KEY]))
 
             role_dict = {
                 "role_name": role_name,
@@ -399,24 +364,114 @@ class Nsbl(object):
 
 
 class NsblInventory(object):
-    def __init__(self, configs, repo_roles={}, default_env_type=DEFAULT_ENV_TYPE):
+
+    def __init__(self, configs, int_task_descs=[], role_repos=[], default_env_type=DEFAULT_ENV_TYPE):
         """Class to be used to create a dynamic ansible inventory from (elastic) yaml config files.
 
         Args:
           configs (list): list of paths to inventory config (elastic) yaml files
-          repo_roles (list): path(s) to all local role repos
+          int_task_descs (list): descriptions of internal tasks (used to 'expand' task name keywords)
           default_env_type (str): the default type for an environment if not provided in the config (either ENV_TYPE_HOST or ENV_TYPE_GROUP)
         """
 
+        self.configs = configs
         self.frkl_obj = Frkl(configs, NSBL_INVENTORY_BOOTSTRAP_CHAIN)
         self.config = self.frkl_obj.process()
         self.default_env_type = default_env_type
-        self.repo_roles = repo_roles
+        self.int_task_deskcs = int_task_descs
+        self.role_repos = role_repos
         self.groups = {}
         self.hosts = {}
         self.tasks = []
 
         self.assemble_groups()
+
+    def extract_vars(self, inventory_dir):
+
+        for group, group_vars in self.groups.items():
+            vars = group_vars.get(VARS_KEY, {})
+            if not vars:
+                continue
+            group_dir = os.path.join(inventory_dir, "group_vars", group)
+            var_file = os.path.join(group_dir, "{}.yml".format(group))
+            content = yaml.dump(vars, default_flow_style=False)
+
+            os.makedirs(group_dir)
+            with open(var_file, "w") as text_file:
+                text_file.write(content)
+
+        for host, host_vars in self.hosts.items():
+            vars = host_vars.get(VARS_KEY, {})
+            if not vars:
+                continue
+            host_dir = os.path.join(inventory_dir, "host_vars", host)
+            var_file = os.path.join(host_dir, "{}.yml".format(host))
+            content = yaml.dump(vars, default_flow_style=False)
+
+            os.makedirs(host_dir)
+            with open(var_file, "w") as text_file:
+                text_file.write(content)
+
+    def get_inventory_config_string(self):
+
+        jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
+        template = jinja_env.get_template('hosts')
+        output_text = template.render(groups=self.groups, hosts=self.hosts)
+
+        return output_text
+
+    def write_inventory_file_or_script(self, inventory_dir, extract_vars=False, relative_paths=True):
+
+        if extract_vars:
+            inventory_string = self.get_inventory_config_string()
+            inventory_name = "hosts"
+            inventory_file = os.path.join(inventory_dir, inventory_name)
+
+            with open(inventory_file, "w") as text_file:
+                text_file.write(inventory_string)
+
+        else:
+            # write dynamic inventory script
+            jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
+            if relative_paths:
+                template = jinja_env.get_template('inventory_relative')
+            else:
+                template = jinja_env.get_template('inventory_absolute')
+
+            roles_repos_string = ""
+            if self.roles_repo_folders:
+                if relative_paths:
+                    roles_repos_string = " --repo ".join(
+                        [os.path.relpath(name, inventory_dir) for name in self.roles_repo_folders])
+
+                    rel_configs = []
+
+                    for path in self.configs:
+                        rel_path = os.path.relpath(path, inventory_dir)
+                        rel_configs.append(rel_path)
+
+                    script_configs = " --config ".join(rel_configs)
+                else:
+                    roles_repos_string = " --repo ".join([os.path.abspath(name) for name in self.roles_repos])
+
+                    abs_configs = []
+                    for path in self.configs:
+                        abs_path = os.path.abspath(path)
+                        abs_configs.append(abs_path)
+                    script_configs = " --config".join(abs_configs)
+
+            output_text = template.render(role_repo_paths=roles_repos_string, nsbl_script_configs=script_configs)
+
+            inventory_string = self.get_inventory_config_string()
+            inventory_target_name = "inventory"
+
+            inventory_file = os.path.join(inventory_dir, inventory_target_name)
+
+            with open(inventory_file, "w") as text_file:
+                text_file.write(output_text)
+
+            st = os.stat(inventory_file)
+            os.chmod(inventory_file, 0o775)
 
     def add_group(self, group_name, group_vars):
         """Add a group to the dynamic inventory.
@@ -503,9 +558,9 @@ class NsblInventory(object):
                         env[ENV_META_KEY]))
 
             if env_type == ENV_TYPE_HOST:
-                self.add_host(env_name, env[VARS_KEY])
+                self.add_host(env_name, env.get(VARS_KEY, {}))
 
-                if ENV_HOSTS_KEY in env[ENV_META_KEY].keys():
+                if ENV_HOSTS_KEY in env.get(ENV_META_KEY, {}).keys():
                     raise NsblException(
                         "An environment of type {} can't contain the {} key".format(ENV_TYPE_HOST, ENV_HOSTS_KEY))
 
@@ -526,11 +581,12 @@ class NsblInventory(object):
                 raise NsblException("Environment type needs to be either 'host' or 'group': {}".format(env_type))
 
             if TASKS_KEY in env.keys():
-                self.tasks.append(NsblTaskList(env, self.repo_roles, env_name))
+                self.tasks.append(NsblTasks(env, self.int_task_deskcs, self.role_repos, env_name))
 
         if "localhost" in self.hosts.keys() and "ansible_connection" not in self.hosts["localhost"].get(VARS_KEY,
                                                                                                         {}).keys():
             self.hosts["localhost"][VARS_KEY]["ansible_connection"] = "local"
+
 
     def list(self):
         """Lists all groups in the format that is required for ansible dynamic inventories.
@@ -576,7 +632,6 @@ class NsblInventory(object):
         else:
             raise NsblException("Neither group or host with name '{}' exists".format(env_name))
 
-
 class NsblTaskProcessor(ConfigProcessor):
     """Processor to take a list of (unfrklized) tasks, and frklizes (expands) the data.
 
@@ -585,48 +640,52 @@ class NsblTaskProcessor(ConfigProcessor):
 
     def validate_init(self):
 
-        self.meta_roles = self.init_params['env'].get(TASKS_META_KEY, {}).get(TASK_ROLES_KEY, {})
-        self.repo_roles = self.init_params['repo_roles']
-
+        self.task_name_key = [TASKS_META_KEY, TASK_META_NAME_KEY]
+        self.meta_roles = self.init_params['meta_roles']
+        self.task_descs = self.init_params.get('task_descs', [])
+        self.role_repos = self.init_params.get('role_repos', [])
         return True
 
     def process_current_config(self):
 
         new_config = self.current_input_config
 
+        meta_task_name = new_config[TASKS_META_KEY][TASK_META_NAME_KEY]
+
+        for task_desc in self.task_descs:
+            task_desc_name = task_desc.get(TASKS_META_KEY, {}).get(TASK_META_NAME_KEY, None)
+
+            if not task_desc_name == meta_task_name:
+                continue
+
+            new_config = dict_merge(task_desc, new_config, copy_dct=True)
+
+        task_name = new_config.get(TASKS_META_KEY, {}).get(TASK_NAME_KEY, None)
+        if not task_name:
+            task_name = meta_task_name
+
+        task_type = new_config.get(TASKS_META_KEY, {}).get(TASK_TYPE_KEY, None)
         roles = new_config.get(TASKS_META_KEY, {}).get(TASK_ROLES_KEY, {})
+        task_roles = expand_external_role(roles, self.role_repos)
 
-        task_name = new_config[TASKS_META_KEY][TASK_NAME_KEY]
+        int_role_path = get_internal_role_path(task_name, self.role_repos)
+        if task_type == EXT_TASK_TYPE:
+            if task_name not in roles.keys and task_name not in self.meta_roles.keys() and not int_role_path:
+                    raise NsblException("Task name '{}' not found among role names, but task type is '{}'. This is invalid.".format(task_name, task_type))
 
-        if task_name in self.repo_roles.roles.keys():
-            task_type = INT_TASK_TYPE
-            task_roles = self.repo_roles.roles[task_name]
-
-        elif task_name in roles.keys() or task_name in self.meta_roles.keys():
-            task_type = EXT_TASK_TYPE
-            task_roles = self.expand_external_role(roles)
         else:
-            task_type = DYN_TASK_TYPE
-            task_roles = {}
+            if task_name in task_roles.keys() or task_name in self.meta_roles.keys() or int_role_path:
+                task_type = EXT_TASK_TYPE
+            else:
+                task_type = DYN_TASK_TYPE
 
-        new_config[TASKS_META_KEY][TASK_TYPE_KEY] = task_type
+            new_config[TASKS_META_KEY][TASK_TYPE_KEY] = task_type
+
+        new_config[TASKS_META_KEY][TASK_NAME_KEY] = task_name
         new_config[TASKS_META_KEY][TASK_ROLES_KEY] = task_roles
+
+
         return new_config
-
-    def expand_external_role(self, role_dict):
-
-        result = {}
-        for role_name, role_details in role_dict.items():
-            temp_role = {}
-            if isinstance(role_details, string_types):
-                temp_role["url"] = role_details
-            elif isinstance(role_details, dict):
-                temp_role["url"] = role_details["url"]
-                if "version" in role_details.keys():
-                    temp_role["version"] = role_details["version"]
-            result[role_name] = temp_role
-
-        return result
 
 
 class NsblDynamicRoleProcessor(ConfigProcessor):
@@ -645,17 +704,24 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
     def create_role_dict(self, tasks):
 
         task_vars = {}
+        role_name = ["dyn_role"]
+        roles = {}
+
         for idx, t in enumerate(tasks):
             task_id = "_dyn_role_task_{}".format(idx)
+            role_name.append(t[TASKS_META_KEY][TASK_META_NAME_KEY])
             t[TASKS_META_KEY]["task_id"] = task_id
+            roles.update(t[TASKS_META_KEY].get(TASK_ROLES_KEY, {}))
             for key, value in t.get(VARS_KEY, {}).items():
                 task_vars["{}_{}".format(task_id, key)] = value
 
         dyn_role = {
             TASKS_META_KEY: {
+                TASK_META_NAME_KEY: " ".join(role_name),
                 TASK_NAME_KEY: "env_{}_dyn_role_{}".format(self.env_name, self.id_role),
-                TASK_ROLES_KEY: copy.deepcopy(self.current_tasks),
-                TASK_TYPE_KEY: DYN_ROLE_TYPE
+                TASK_DYN_ROLE_DETAILS: copy.deepcopy(self.current_tasks),
+                TASK_TYPE_KEY: DYN_ROLE_TYPE,
+                TASK_ROLES_KEY: roles
             },
             VARS_KEY: task_vars}
 
@@ -663,8 +729,8 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
 
     def process_current_config(self):
 
-        if not self.last_call:
 
+        if not self.last_call:
             new_config = self.current_input_config
 
             if new_config[TASKS_META_KEY][TASK_TYPE_KEY] == DYN_TASK_TYPE:
@@ -685,75 +751,38 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
                 yield None
 
 
-class NsblTaskList(object):
-    def __init__(self, env, repo_roles, env_name="localhost"):
-        """Holds a list of tasks, extracts and sorts roles (internal, external, dynamic)."""
+class NsblTasks(object):
+
+    def __init__(self, env, int_task_descs=[], role_repos=[], env_name="localhost"):
 
         self.env = env
         self.env_name = env_name
-        self.repo_roles = repo_roles
+        self.role_repos = role_repos
+        self.meta_roles = expand_external_role(env.get(TASKS_META_KEY, {}).get(TASK_ROLES_KEY, {}), self.role_repos)
+        self.int_task_descs = int_task_descs
 
-        nsbl_task_processor = NsblTaskProcessor({'env': self.env, 'repo_roles': self.repo_roles})
+        # creating the expanded list of tasks
+        nsbl_task_processor = NsblTaskProcessor({'env': self.env, 'task_descs': self.int_task_descs, 'meta_roles': self.meta_roles, 'role_repos': self.role_repos})
 
+        # create the dynamic roles
         nsbl_dynrole_processor = NsblDynamicRoleProcessor({"env_name": self.env_name})
+
         id_processor = IdProcessor(NSBL_TASKS_ID_INIT)
 
         # otherwise each tasks inherits from the ones before
         temp_tasks = [[name] for name in self.env[TASKS_KEY]]
-        frkl_obj = Frkl(temp_tasks, DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN + [nsbl_task_processor, nsbl_dynrole_processor,
-                                                                          id_processor])
+
+        frkl_obj = Frkl(temp_tasks, [
+            FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT),
+            nsbl_task_processor, nsbl_dynrole_processor, id_processor])
+
 
         self.tasks = frkl_obj.process()
-        self.ext_roles = {}
-        self.int_roles = {}
-        self.dyn_roles = {}
 
-        self.process_tasks()
 
-        # for task, roles in self.dyn_roles.items():
-        # print("-------------------")
-        # pprint.pprint(task)
-        # pprint.pprint(roles)
-        # print("---")
+    def __repr__(self):
 
-    def add_ext_roles(self, new_roles):
-
-        for role_name, role in new_roles.items():
-            if role_name in self.ext_roles.keys():
-                if role != self.ext_roles["role_name"]:
-                    raise Exception(
-                        "Role '{}' added multiple times, with different urls/versions: {} - {}".format(role_name, role,
-                                                                                                       self.ext_roles[
-                                                                                                           role_name]))
-            else:
-                self.ext_roles[role_name] = role
-
-    def add_int_role(self, role):
-
-        roles_path = role["roles_path"]
-        child_dirs = [name for name in os.listdir(roles_path) if os.path.isdir(os.path.join(roles_path, name))]
-        for role_dir_name in child_dirs:
-            if role_dir_name in self.int_roles.keys():
-                log.debug("Internal role with name '{}' added multiple times, ignoring this: {}".format(role_dir_name,
-                                                                                                        os.path.join(
-                                                                                                            roles_path,
-                                                                                                            role_dir_name)))
-            else:
-                self.int_roles[role_dir_name] = os.path.join(roles_path, role_dir_name)
-
-        dependencies = role.get("dependencies", [])
-        for dep in dependencies:
-            if not dep in self.int_roles.keys():
-                self.add_int_role(self.repo_roles.roles[dep])
-            else:
-                log.debug("(Internal role) dependency '{}' already added, ignoring.".format(dep))
-
-    def add_dyn_role(self, role_name, tasks):
-
-        for t in tasks:
-            if VARS_KEY not in t.keys():
-                t[VARS_KEY] = {}
-        self.dyn_roles[role_name] = tasks
+        return "NsblTasks(env_name='{}', no_tasks='{}')".format(self.env_name, len(self.tasks))
 
     def get_dict(self):
 
@@ -763,25 +792,3 @@ class NsblTaskList(object):
         # temp["env"] = self.env
 
         return temp
-
-    def process_tasks(self):
-
-        for task in self.tasks:
-
-            task_type = task[TASKS_META_KEY][TASK_TYPE_KEY]
-            if task_type == INT_TASK_TYPE:
-                # new_ext_roles = task[TASKS_META_KEY][TASK_ROLES_KEY][TASK_ROLES_KEY]
-                # self.add_ext_roles(new_ext_roles)
-                self.add_int_role(task[TASKS_META_KEY][TASK_ROLES_KEY])
-                task[TASKS_META_KEY][ROLE_NAME_KEY] = task[TASKS_META_KEY][TASK_ROLES_KEY]['default_role']
-            elif task_type == DYN_ROLE_TYPE:
-                name = task[TASKS_META_KEY][TASK_NAME_KEY]
-                self.add_dyn_role(name, task[TASKS_META_KEY][TASK_ROLES_KEY])
-                task[TASKS_META_KEY][ROLE_NAME_KEY] = task[TASKS_META_KEY][TASK_NAME_KEY]
-            elif task_type == EXT_TASK_TYPE:
-                new_roles = task[TASKS_META_KEY][TASK_ROLES_KEY]
-                self.add_ext_roles(new_roles)
-                task[TASKS_META_KEY][ROLE_NAME_KEY] = task[TASKS_META_KEY][TASK_NAME_KEY]
-
-            else:
-                raise Exception("Task type '{}' not known.".format(task_type))

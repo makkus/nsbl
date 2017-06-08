@@ -3,7 +3,7 @@
   hosts: {{ groups }}
 {% if "become" in env['meta'].keys() %}  become: {{ env['meta']['become'] }}{% endif %}
   roles:
-{% for task in tasks %}    - role: {{ task['meta']['role'] }}
-{% for key, var in task['vars'].items() %}      {{ key }}: {{ var }}
+{% for task in tasks %}    - role: {{ task['meta']['task-name'] }}
+{% for key, var in task.get('vars', {}).items() %}      {{ key }}: {{ var }}
 {% endfor %}      {% if 'become' in task['meta'].keys() %}become: {{ task['meta']['become'] }}{% endif %}
 {% endfor %}

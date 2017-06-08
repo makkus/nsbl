@@ -14,11 +14,12 @@ requirements = [
     'click-log>=0.1.8',
     'cookiecutter>=1.5.1',
     'ansible>=2.2.0',
-    'gitpython==2.1.3'
+    'gitpython==2.1.3',
+    'frkl>=0.1.0'
 ]
 
 test_requirements = [
-    # TODO: put package test requirements here
+    'pytest>=3.0.7'
 ]
 
 setup(
