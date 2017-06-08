@@ -1,0 +1,12 @@
+- localhost:
+    meta:
+      type: host
+    tasks:
+      - install:
+           pkg_mgr: apt
+           update_cache: yes
+           packages:
+             - fortunes
+             #- http://ubuntu.dts.mg/ubuntu/pool/universe/z/zile/zile_2.4.11-1build1_amd64.deb
+             - /home/markus/Downloads/zile.deb
+

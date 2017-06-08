@@ -1,6 +1,11 @@
 - localhost:
     meta:
       type: host
+    vars:
+      dotfiles:
+          - dest: ~/dotfiles
+            paths: ["minimal", "dev", "no-x", "x"]
+            repo: https://github.com/makkus/dotfiles-new.git
 
     tasks:
       - install-nix
@@ -10,10 +15,11 @@
            packages:
              - zile
       - checkout-git:
-           repos:
-             - dest: ~/TEST_.emacs.d
-               repo: https://github.com/syl20bnr/spacemacs
-             - dest: ~/TEST_.zplug
-               repo: https://github.com/zplug/zplug
-
+          - dest: ~/.emacs.d
+            repo: https://github.com/syl20bnr/spacemacs
+          - dest: ~/.zplug
+            repo: https://github.com/zplug/zplug
+      - dotfiles:
+           install: yes
+           stow: yes
 

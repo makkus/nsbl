@@ -52,7 +52,7 @@ def output(python_object, format="raw", pager=False):
     elif format == 'pformat':
         output = pprint.pformat(python_object)
 
-    if not pager:
+    if pager:
         click.echo_via_pager(output)
     else:
         click.echo(output)
@@ -73,7 +73,6 @@ def list_hosts(ctx, config, format, pager):
 @click.option('--pager', '-p', required=False, default=False, is_flag=True, help='output via pager')
 @click.pass_context
 def list_tasks(ctx, config, format, pager):
-
     nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
 
     result = []
@@ -81,7 +80,7 @@ def list_tasks(ctx, config, format, pager):
         tasks = task.get_dict()
         result.append(tasks)
 
-    output(result, format)
+    output(result, format, pager)
 
 @cli.command('create-inventory')
 @click.argument('config', required=True, nargs=-1)

@@ -54,8 +54,9 @@ NSBL_INVENTORY_BOOTSTRAP_FORMAT = {
 # bootstrap chain used for creating the inventory
 NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
     UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor(),
-    FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)
-]
+    FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
+
+TASK_DESC_DEFAULT_FILENAME = "task-descs.yml"
 
 # meta infor for tasks (e.g. 'become')
 TASKS_META_KEY = "meta"
@@ -77,6 +78,9 @@ VAR_KEYS_KEY = "var_keys"
 # name that gets used by ansible, either a module name, or a role name
 TASK_NAME_KEY = "task-name"
 
+DEFAULT_KEY_KEY = "default-key"
+SPLIT_KEY_KEY = "split-key"
+
 # indicator for task type internal role
 INT_TASK_TYPE = "internal_role"
 # indicator for task type external role
@@ -95,6 +99,17 @@ DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT = {
     KEY_MOVE_MAP_NAME: {'*': (VARS_KEY, 'default')},
     "use_context": True
 }
+
+def generate_nsbl_tasks_format(task_descs):
+
+    result = copy.deepcopy(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
+
+    for task_desc in task_descs:
+        if DEFAULT_KEY_KEY in task_desc[TASKS_META_KEY].keys():
+            result[KEY_MOVE_MAP_NAME][task_desc[TASKS_META_KEY][TASK_META_NAME_KEY]] = task_desc[TASKS_META_KEY][DEFAULT_KEY_KEY]
+
+    return result
+
 NSBL_TASKS_TEMPLATE_INIT = {
     "use_environment_vars": True,
     "use_context": True
@@ -224,10 +239,18 @@ class Nsbl(object):
         elif not isinstance(int_task_descs, (list, tuple)):
             raise Exception("task_descs needs to be string or list: '{}'".format(int_task_descs))
 
+        if not int_task_descs:
+            int_task_descs = []
+            for repo in self.role_repos:
+                task_desc_file = os.path.join(os.path.expanduser(repo), TASK_DESC_DEFAULT_FILENAME)
+                if os.path.exists(task_desc_file):
+                    int_task_descs.append(task_desc_file)
+
+        frkl_format = generate_nsbl_tasks_format([])
         task_desk_frkl = Frkl(int_task_descs, [UrlAbbrevProcessor(),
-                                           EnsureUrlProcessor(),
-                                           EnsurePythonObjectProcessor(),
-                                           FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)])
+                                               EnsureUrlProcessor(),
+                                               EnsurePythonObjectProcessor(),
+                                               FrklProcessor(frkl_format)])
 
         self.int_task_descs = task_desk_frkl.process()
 
@@ -649,7 +672,6 @@ class NsblTaskProcessor(ConfigProcessor):
     def process_current_config(self):
 
         new_config = self.current_input_config
-
         meta_task_name = new_config[TASKS_META_KEY][TASK_META_NAME_KEY]
 
         for task_desc in self.task_descs:
@@ -684,8 +706,41 @@ class NsblTaskProcessor(ConfigProcessor):
         new_config[TASKS_META_KEY][TASK_NAME_KEY] = task_name
         new_config[TASKS_META_KEY][TASK_ROLES_KEY] = task_roles
 
+        #TODO: use 'with_items' instead of this
+        split_key = new_config[TASKS_META_KEY].get(SPLIT_KEY_KEY, None)
+        if split_key:
+            splitting = True
+        else:
+            splitting = False
 
-        return new_config
+        if splitting:
+            if split_key and isinstance(split_key, string_types):
+                split_key = split_key.split("/")
+
+            split_value = new_config
+            for split_token in split_key:
+                if not isinstance(split_value, dict):
+                    raise NsblException("Can't split config value using split key '{}': {}".format(split_key, new_config))
+                split_value = split_value.get(split_token, None)
+                if not split_value:
+                    break
+
+            if split_value and isinstance(split_value, (list, tuple)):
+
+                for item in split_value:
+                    item_new_config = copy.deepcopy(new_config)
+                    temp = item_new_config
+                    for token in split_key[:-1]:
+                        temp = temp[token]
+
+                    temp[split_key[-1]] = item
+
+                    yield item_new_config
+
+            else:
+                yield new_config
+        else:
+            yield new_config
 
 
 class NsblDynamicRoleProcessor(ConfigProcessor):
@@ -772,8 +827,9 @@ class NsblTasks(object):
         # otherwise each tasks inherits from the ones before
         temp_tasks = [[name] for name in self.env[TASKS_KEY]]
 
+        frkl_format = generate_nsbl_tasks_format(int_task_descs)
         frkl_obj = Frkl(temp_tasks, [
-            FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT),
+            FrklProcessor(frkl_format),
             nsbl_task_processor, nsbl_dynrole_processor, id_processor])
 
 
