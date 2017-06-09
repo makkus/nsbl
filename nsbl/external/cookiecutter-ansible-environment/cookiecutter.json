@@ -1,6 +1,12 @@
 {
     "env_dir": ".",
     "inventory": "../inventory",
+    "playbook_dir": "plays",
+    "library_path": "",
+    "action_plugins_path": "",
+    "extra_script_commands": "",
+    "ask_sudo": "",
+    "playbook": "all_plays.yml",
     "nsbl_roles": {},
     "nsbl_callback_plugins": "",
     "nsbl_callback_plugin_name": "",

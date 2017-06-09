@@ -1,0 +1,10 @@
+- localhost:
+    meta:
+      type: host
+    tasks:
+      - shell: ls -lah
+      - shell:
+          free_form: ls -lah >> /tmp/ls
+          chdir: /tmp
+
+

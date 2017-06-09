@@ -5,7 +5,7 @@ export DEBIAN_FRONTEND=noninteractive
 set -x
 set -e
 
-#cp -r /vagrant/bootstrap/.pip /home/vagrant/.pip
+cp -r /vagrant/vagrant/.pip /home/vagrant/.pip
 
 # create freckles virtualenv
 FRECKLES_DIR="$HOME/.freckles"
@@ -34,4 +34,5 @@ echo 'source "$HOME/.freckles/opt/venv_freckles/freckles/bin/activate"' >> "$HOM
 source "$HOME/.freckles/opt/venv_freckles/freckles/bin/activate"
 cd /vagrant
 pip install -r requirements_dev.txt
+pip install -e ../frkl
 python setup.py develop

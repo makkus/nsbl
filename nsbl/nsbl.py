@@ -135,6 +135,21 @@ DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
 
 # ------------------------------
 # util functions
+def get_pkg_mgr_sudo(mgr):
+    """Simple function to determine whether a given package manager needs sudo rights or not.
+    """
+    if mgr == 'no_install':
+        return False
+    elif mgr == 'nix':
+        return False
+    elif mgr == 'conda':
+        return False
+    elif mgr == 'git':
+        return False
+    elif mgr == 'homebrew':
+        return False
+    else:
+        return True
 
 def get_local_role_desc(role_name, role_repos=[]):
 
@@ -219,20 +234,35 @@ class NsblException(Exception):
 
 
 class Nsbl(object):
-    def __init__(self, configs, int_task_descs, role_repos=[], default_env_type=DEFAULT_ENV_TYPE):
+    def __init__(self, configs, int_task_descs=None, role_repos=None, default_env_type=DEFAULT_ENV_TYPE, use_default_roles=True, use_repo_task_descs=True):
         """Wrapper class to create an Ansible environment.
 
         Args:
           configs (list): the configuration(s) describing the inventory and tasks
           int_tasks_descs (list): path(s)/urls to all local role repos
           default_env_type (str): the default type for an environment if not provided in the config (either ENV_TYPE_HOST or ENV_TYPE_GROUP)
+          use_default_roles (bool): whether to use the default roles that come with nsbl
+          use_repo_task_descs (bool): whether to use task descriptions that come with roles repos (filename: TASK_DESC_DEFAULT_FILENAME in repo root directory)
         """
 
         self.configs = configs
+
+        if not role_repos:
+            role_repos = []
+
         if isinstance(role_repos, string_types):
             self.role_repos = [role_repos]
         else:
             self.role_repos = role_repos
+
+        default_roles_path = os.path.join(os.path.dirname(__file__), "external", "default-roles")
+
+        if not self.role_repos:
+            self.role_repos.append(default_roles_path)
+        elif use_default_roles:
+            self.role_repos.insert(0, default_roles_path)
+
+        #TODO: check whether paths exist
 
         if isinstance(int_task_descs, string_types):
             int_task_descs = [int_task_descs]
@@ -241,10 +271,17 @@ class Nsbl(object):
 
         if not int_task_descs:
             int_task_descs = []
+
+        if use_repo_task_descs:
+            repo_int_task_descs = []
             for repo in self.role_repos:
                 task_desc_file = os.path.join(os.path.expanduser(repo), TASK_DESC_DEFAULT_FILENAME)
                 if os.path.exists(task_desc_file):
-                    int_task_descs.append(task_desc_file)
+                    repo_int_task_descs.append(task_desc_file)
+
+            int_task_descs = repo_int_task_descs + int_task_descs
+
+        #TODO: check whether paths exist
 
         frkl_format = generate_nsbl_tasks_format([])
         task_desk_frkl = Frkl(int_task_descs, [UrlAbbrevProcessor(),
@@ -257,12 +294,16 @@ class Nsbl(object):
         self.inventory = NsblInventory(self.configs, self.int_task_descs, self.role_repos, default_env_type)
         self.tasks = self.inventory.tasks
 
-    def render_environment(self, env_dir, extract_vars=False):
+    def render_environment(self, env_dir, extract_vars=False, force=False):
         """Creates the ansible environment in the folder provided.
 
         Args:
           env_dir (str): the folder where the environment should be created
+          extract_vars (bool): whether to extract a hostvars and groupvars directory for the inventory (True), or render a dynamic inventory script for the environment (default, False)
         """
+
+        if os.path.exists(env_dir) and force:
+            shutil.rmtree(env_dir)
 
         all_ext_roles = {}
         all_int_roles = {}
@@ -295,9 +336,22 @@ class Nsbl(object):
         else:
             inv_target = "../inventory/inventory"
 
+        playbook_dir = os.path.join(env_dir, "plays")
+        ask_sudo = ""
+        all_plays_name = "all_plays.yml"
+
+        library_path = os.path.join(os.path.dirname(__file__), "external", "extra_plugins", "library")
+        action_plugins_path = os.path.join(os.path.dirname(__file__), "external", "extra_plugins", "action_plugins")
+
         cookiecutter_details = {
             "inventory": inv_target,
             "env_dir": env_dir,
+            "playbook_dir": playbook_dir,
+            "library_path": library_path,
+            "action_plugins_path": action_plugins_path,
+            "extra_script_commands": "",
+            "ask_sudo": ask_sudo,
+            "playbook": all_plays_name,
             "nsbl_roles": all_ext_roles,
             "nsbl_callback_plugins": "",
             "nsbl_callback_plugin_name": ""
@@ -307,6 +361,7 @@ class Nsbl(object):
         log.debug("Using cookiecutter details: {}".format(cookiecutter_details))
 
         template_path = os.path.join(os.path.dirname(__file__), "external", "cookiecutter-ansible-environment")
+
         cookiecutter(template_path, extra_context=cookiecutter_details, no_input=True)
 
         if extract_vars:
@@ -314,6 +369,11 @@ class Nsbl(object):
 
         self.inventory.write_inventory_file_or_script(inventory_dir, extract_vars=extract_vars)
 
+
+        # copy internal roles
+        for role_name, role in all_int_roles.items():
+            target = os.path.join(env_dir, "roles", "internal", role_name)
+            shutil.copytree(role, target)
 
         all_dyn_roles = {}
         for tasks in self.tasks:
@@ -342,7 +402,8 @@ class Nsbl(object):
 
             role_dict = {
                 "role_name": role_name,
-                "tasks": tasks
+                "tasks": tasks,
+                "dependencies": ""
             }
 
             current_dir = os.getcwd()
@@ -351,11 +412,6 @@ class Nsbl(object):
 
             cookiecutter(role_local_path, extra_context=role_dict, no_input=True)
             os.chdir(current_dir)
-
-        # create internal roles
-        for role_name, role in all_int_roles.items():
-            target = os.path.join(env_dir, "roles", "internal", role_name)
-            shutil.copytree(role, target)
 
         if all_ext_roles:
             # download external roles
@@ -379,7 +435,6 @@ class Nsbl(object):
 
         template = jinja_env.get_template('play.yml')
         output_text = template.render(playbooks=playbooks)
-        all_plays_name = "play.yml"
         all_plays_file = os.path.join(env_dir, "plays", all_plays_name)
 
         with open(all_plays_file, "w") as text_file:
@@ -526,13 +581,14 @@ class NsblInventory(object):
         if not host_vars:
             return
 
-        intersection = set(self.hosts[host_name].keys()).intersection(host_vars.keys())
+        intersection = set(self.hosts[host_name].get(VARS_KEY, {}).keys()).intersection(host_vars.keys())
+
         if intersection:
             raise NsblException(
                 "Adding host more than once with intersecting keys, this is not possible because it's not clear which vars should take precedence. Intersection: {}".format(
                     intersection))
 
-        self.hosts[host_name].update(host_vars)
+        self.hosts[host_name][VARS_KEY].update(host_vars)
 
     def add_group_to_group(self, child, group):
         """Adds a group as a subgroup of another group.
@@ -581,6 +637,7 @@ class NsblInventory(object):
                         env[ENV_META_KEY]))
 
             if env_type == ENV_TYPE_HOST:
+
                 self.add_host(env_name, env.get(VARS_KEY, {}))
 
                 if ENV_HOSTS_KEY in env.get(ENV_META_KEY, {}).keys():
@@ -634,7 +691,7 @@ class NsblInventory(object):
         dict: all inventory information for this host
         """
 
-        host_vars = self.hosts.get(host, {})
+        host_vars = self.hosts.get(host, {}).get(VARS_KEY, {})
         return json.dumps(host_vars, sort_keys=4, indent=4)
 
     def get_vars(self, env_name):
@@ -649,9 +706,9 @@ class NsblInventory(object):
         """
 
         if env_name in self.groups.keys():
-            return self.groups[env_name]
+            return self.groups[env_name].get(VARS_KEY, {})
         elif env_name in self.hosts.keys():
-            return self.hosts[env_name]
+            return self.hosts[env_name].get(VARS_KEY, {})
         else:
             raise NsblException("Neither group or host with name '{}' exists".format(env_name))
 

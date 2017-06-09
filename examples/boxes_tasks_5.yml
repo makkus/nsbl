@@ -1,0 +1,13 @@
+- localhost:
+    meta:
+      type: host
+    tasks:
+      - install:
+          vars:
+             name:
+               - zile-package:
+                   Ubuntu: zile-ubuntu
+                   Debian: zile
+
+
+

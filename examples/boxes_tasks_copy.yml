@@ -1,0 +1,9 @@
+- localhost:
+    meta:
+      type: host
+    tasks:
+      - mkdir:
+          - /tmp/test1
+          - /tmp/test3
+
+

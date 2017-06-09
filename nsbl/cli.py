@@ -109,16 +109,29 @@ def print_inventory(ctx, config, pager):
     inv_string = nsbl.inventory.get_inventory_config_string()
     output(inv_string, format="raw", pager=pager)
 
+@cli.command('print-available-tasks')
+@click.option('--pager', '-p', required=False, default=False, help='output via pager')
+@click.option('--format', '-f', required=False, default='yaml', help='output format, either json or yaml (default)')
+@click.pass_context
+def print_available_tasks(ctx, pager, format):
+
+    nsbl = Nsbl([], ctx.obj['task-desc'], ctx.obj['role-repos'])
+    int_tasks = nsbl.int_task_descs
+    output(int_tasks, format, pager)
+
 @cli.command('create-environment')
 @click.argument('config', required=True, nargs=-1)
 @click.option('--target', '-t', help="target output directory of created ansible environment, defaults to 'nsbl_env' in the current directory", default="nsbl_env")
 @click.option('--static/--dynamic', default=True, help="whether to render a dynamic inventory script using the provided config files instead of a plain ini-type config file and group_vars and host_vars folders, default: static")
+@click.option('--force', '-f', is_flag=True, help="delete potentially existing target directory", default=False)
 @click.pass_context
-def create(ctx, config, target, static):
+def create(ctx, config, target, static, force):
 
     nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
 
-    nsbl.render_environment(target, extract_vars=static)
+    nsbl.render_environment(target, extract_vars=static, force=force)
+
+
 
 if __name__ == "__main__":
     cli()

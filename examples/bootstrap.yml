@@ -6,23 +6,25 @@
         local: ~/dotfiles
         url: https://github.com/makkus/dotfiles-new.git
         paths: ["minimal", "dev", "no-x", "x"]
-      packages:
 
     tasks:
       - install-nix
-      - install-conda
-      - update-package-cache
-      - install-git:
-          packages:
-            - spacemacs:
-                - dest: ~/.emacs.d
-                - repo: https://github.com/syl20bnr/spacemacs
-            - zplug:
-                - dest: ~/zplug
-                - repo: https://github.com/zplug/zplug
+      #- install-conda
+      - checkout-git:
+          repos:
+            - dest: ~/.emacs.d
+              repo: https://github.com/syl20bnr/spacemacs
+            - dest: ~/.zplug
+              repo: https://github.com/zplug/zplug
+      - install:
+          name:
+          - zile
+          - gawk
+          #- https://releases.hashicorp.com/vagrant/1.9.4/vagrant_1.9.4_x86_64.deb
 
-      - dotfiles:
-          install: yes
-          stow: yes
+
+#      - dotfiles:
+#          install: yes
+#          stow: yes
 
 

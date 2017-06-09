@@ -57,6 +57,7 @@ Vagrant.configure("2") do |config|
   # the path on the guest to mount the folder. And the optional third
   # argument is a set of non-required options.
   config.vm.synced_folder ".", "/vagrant", id: "vagrant"
+  config.vm.synced_folder "../frkl", "/frkl", id: "frkl"
   config.vm.synced_folder "/home/markus/dotfiles", "/dotfiles", id: "dotfiles"
 
   # Provider-specific configuration so you can fine-tune various
@@ -88,5 +89,5 @@ Vagrant.configure("2") do |config|
   #   apt-get update
   #   apt-get install -y apache2
   # SHELL
-  config.vm.provision :shell, path: "vagrant_bootstrap.sh", privileged: false
+  config.vm.provision :shell, path: "vagrant/vagrant_bootstrap.sh", privileged: false
 end
