@@ -2,24 +2,69 @@
     meta:
       type: host
     vars:
-      dotfiles:
-        local: ~/dotfiles
-        url: https://github.com/makkus/dotfiles-new.git
-        paths: ["minimal", "dev", "no-x", "x"]
+      freckles_repo:
+        repo: https://github.com/makkus/dotfiles-new.git
+        #dest: ~/dotfiles
+        #paths: ["minimal", "dev", "no-x", "x"]
+        paths: ["no-x"]
+
+      packages:
+        - vars:
+            pkg_mgr: nix
+          packages:
+            - anki
+            - autocutsel
+        - vars:
+            pkg_mgr: auto
+          packages:
+              - gawk
+              - libz-dev
+
 
     tasks:
-      - install-nix
-      #- install-conda
-      - checkout-git:
-          repos:
-            - dest: ~/.emacs.d
-              repo: https://github.com/syl20bnr/spacemacs
-            - dest: ~/.zplug
-              repo: https://github.com/zplug/zplug
-      - install:
-          name:
-          - zile
-          - gawk
+      # - install-nix
+      # - install-conda
+      # - install:
+      #      pkg_mgr: nix
+      #      packages:
+      #         - zile
+      #         - gawk
+
+      - freckles
+
+
+
+      # - install:
+      #       packages:
+      #         - zile:
+      #             #pkg_mgr: nix
+      #             pkgs:
+      #               Debian:
+      #                 - zile
+      #                 - gawk
+      #               nix: zile-nix
+      #               #other: zile-other
+      #         - gawk
+      # - install:
+      #     packages:
+      #       - vars:
+      #           pkg_mgr: nix
+      #         packages:
+      #           - zile:
+      #               pkg:
+      #                 Debian: zile
+      #                 other: omit
+      #           - gawk
+
+     # - install:
+     #     pkg_mgr: git
+     #     repos:
+     #       - dest: ~/.emacs.d
+     #         repo: https://github.com/syl20bnr/spacemacs
+     #       - dest: ~/.zplug
+     #         repo: https://github.com/zplug/zplug
+
+      #- freckles
           #- https://releases.hashicorp.com/vagrant/1.9.4/vagrant_1.9.4_x86_64.deb
 
 

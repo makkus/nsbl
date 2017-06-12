@@ -1,107 +1,63 @@
+#!/usr/bin/python -tt
 # -*- coding: utf-8 -*-
-import logging
-import pprint
 
-from freckles import Freck
-from freckles.constants import *
-from freckles.runners.ansible_runner import (FRECK_META_ROLE_KEY,
-                                             FRECK_META_ROLES_KEY)
-from freckles.utils import create_dotfiles_dict, parse_dotfiles_item
-from task import AbstractTask
-from voluptuous import ALLOW_EXTRA, Required, Schema
+DOCUMENTATION = '''
+---
+module: stow
+short_description: Manage links to dotfiles
+'''
 
-log = logging.getLogger("freckles")
+import json
+import os
+from ansible.module_utils.basic import AnsibleModule
 
-PRECENDENCE_ERROR_STRING = "Possible precedence issue with control flow operator at"
-DEFAULT_STOW_SUDO = False
-DEFAULT_STOW_TARGET_BASE_DIR = os.path.expanduser("~/")
-STOW_TARGET_BASE_DIR_KEY = "stow_target_dir"
-FRECKLES_DEFAULT_STOW_ROLE_NAME = "stow-pkg"
-FRECKLES_DEFAULT_STOW_ROLE_URL = "frkl:ansible-stow"
+IGNORE_STRING="freckle"
 
-NO_STOW_MARKER_FILENAME = ".no_stow.frkl"
+def stow(module, stow_version):
 
-class Stow(AbstractTask):
+    params = module.params
 
-    def get_config_schema(self):
-        s = Schema({
-            Required(DOTFILES_KEY): list
-        }, extra=ALLOW_EXTRA)
+    state = params['state']
+    name = params['name']
+    source_dir = params['source_dir']
+    target_dir = params['target_dir']
 
-        return s
+    if stow_version.startswith("1") or stow_version.startswith("2.0"):
+        ignore_parameter = ""
+    else:
+        ignore_parameter = "--ignore={}".format(IGNORE_STRING)
 
-    def process_leaf(self, leaf, supported_runners=[FRECKLES_DEFAULT_RUNNER], debug=False):
+    cmd = "stow -v {} -d {} -t {} -R {}".format(ignore_parameter, source_dir, target_dir, name)
 
-        config = leaf[FRECK_VARS_KEY]
-        dotfiles = parse_dotfiles_item(config[DOTFILES_KEY])
+    rc, stdout, stderr = module.run_command(cmd, check_rc=False)
 
-        target_dir = config.get("stow_target_dir", False)
-        if target_dir:
-            target_dir = os.path.expanduser(target_dir)
-        else:
-            target_dir = os.path.expanduser("~")
-
-        apps = create_dotfiles_dict(dotfiles, default_details=config)
-        result = []
-        for app, details in apps.iteritems():
-
-            base_dir = details[DOTFILES_BASE_KEY]
-            folder = os.path.join(base_dir, app)
-            no_stow_marker_file = os.path.join(folder, NO_STOW_MARKER_FILENAME)
-
-            if os.path.exists(no_stow_marker_file):
-                log.debug("stow: ignoring folder (because it contains '{}'-marker file): {}".format(NO_STOW_MARKER_FILENAME, folder))
-                continue
-
-            meta = {}
-            meta[FRECK_META_ROLES_KEY] = {"stow": "frkl:ansible-stow"}
-            meta[TASK_NAME_KEY] = "stow"
-            meta[FRECK_ITEM_NAME_KEY] = app
-            meta[FRECK_DESC_KEY] = "stow - {} -> {}".format(base_dir, target_dir)
-            meta[FRECK_VARS_KEY] = {
-                "name": details[FRECK_ITEM_NAME_KEY],
-                "source_dir": base_dir,
-                "target_dir": target_dir
-            }
-
-            result.append(meta)
-
-        return (FRECKLES_ANSIBLE_RUNNER, result)
+    if rc == 0:
+        module.exit_json(changed=True, stderr=stderr)
+    else:
+        module.fail_json(msg="failed to stow ( {} ) {}: {}".format(cmd, name, stderr))
 
 
-    def handle_task_output(self, task, output_details):
+def main():
+    module = AnsibleModule(
+        argument_spec=dict(
+            state=dict(default='present', choices=['present', 'absent']),
+            name=dict(required=True),
+            source_dir=dict(required=True),
+            target_dir=dict(required=True),
+            use=dict(default='stow')
+        )
+    )
 
-        output = super(Stow, self).handle_task_output(task, output_details)
-        stdout = []
-        stderr = []
+    cmd = "stow --version"
+    rc, stdout, stderr = module.run_command(cmd, check_rc=False)
 
-        if output["state"] == FRECKLES_STATE_FAILED:
-            for output in output_details:
-                for line in output["result"]["msg"].split("\n"):
-                    stderr.append(line)
-        else:
-            # flatten stderr sublist
-            lines = [item for sublist in [entry.split("\n") for entry in output["stderr"]] for item in sublist]
+    if rc == 0:
+        stow_version = stdout.split()[-1]
+        # module.exit_json(changed=True, version=stow_version)
+    else:
+        module.fail_json("Can't execute/find 'stow': {}".format(stderr))
 
-            for line in lines:
-                if not line or line.startswith(PRECENDENCE_ERROR_STRING):
-                    continue
-                elif line.startswith("LINK") or line.startswith("UNLINK"):
-                    stdout.append(line)
-                else:
-                    stderr.append(line)
+    stow(module, stow_version)
 
-        output[FRECKLES_STDOUT_KEY] = stdout
-        output[FRECKLES_STDERR_KEY] = stderr
-
-        return output
-
-    def default_freck_config(self):
-
-        return {
-            FRECK_SUDO_KEY: DEFAULT_STOW_SUDO,
-            STOW_TARGET_BASE_DIR_KEY: DEFAULT_STOW_TARGET_BASE_DIR,
-            FRECK_RUNNER_KEY: FRECKLES_ANSIBLE_RUNNER,
-            FRECK_META_ROLES_KEY: {FRECKLES_DEFAULT_STOW_ROLE_NAME: FRECKLES_DEFAULT_STOW_ROLE_URL},
-            FRECK_META_ROLE_KEY: FRECKLES_DEFAULT_STOW_ROLE_NAME
-        }
+if __name__ == '__main__':
+    main()

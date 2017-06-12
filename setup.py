@@ -38,7 +38,8 @@ setup(
     entry_points={
         'console_scripts': [
             'nsbl=nsbl.cli:cli',
-            'nsbl_inv=nsbl.inventory_cli:main'
+            'nsbl-inventory=nsbl.inventory_cli:main',
+            'nsbl-playbook=nsbl.playbook_cli:cli'
         ]
     },
     include_package_data=True,

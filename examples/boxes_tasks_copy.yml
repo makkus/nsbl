@@ -2,7 +2,8 @@
     meta:
       type: host
     tasks:
-      - mkdir:
+      - create-folder:
+         path:
           - /tmp/test1
           - /tmp/test3
 

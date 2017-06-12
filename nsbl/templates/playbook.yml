@@ -4,6 +4,8 @@
 {% if "become" in env['meta'].keys() %}  become: {{ env['meta']['become'] }}{% endif %}
   roles:
 {% for task in tasks %}    - role: {{ task['meta']['task-name'] }}
+      _task_id: {{ task['meta']['_task_id'] }}
+      _env_id: {{ task['meta']['_env_id'] }}
 {% for key, var in task.get('vars', {}).items() %}      {{ key }}: {{ var }}
 {% endfor %}      {% if 'become' in task['meta'].keys() %}become: {{ task['meta']['become'] }}{% endif %}
 {% endfor %}

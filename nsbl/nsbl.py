@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import click
 import copy
 import pprint
 import json
@@ -77,9 +78,19 @@ TASK_DYN_ROLE_DETAILS = "task-dyn-role-details"
 VAR_KEYS_KEY = "var_keys"
 # name that gets used by ansible, either a module name, or a role name
 TASK_NAME_KEY = "task-name"
-
+# (optional) short description of the task
+TASK_DESC_KEY = "task-desc"
+# name to indicate to use the ansible 'with_items' directive
+TASK_WITH_ITEMS_KEY = "with_items"
+# id of the task within the task group
+TASK_ID_KEY = "_task_id"
+# id of the environment tasks are run in
+ENV_ID_KEY = "_env_id"
+# id of the task within a dynamic role
+DYN_TASK_ID_KEY = "_dyn_task_id"
 DEFAULT_KEY_KEY = "default-key"
 SPLIT_KEY_KEY = "split-key"
+WITH_ITEMS_KEY = "with_items"
 
 # indicator for task type internal role
 INT_TASK_TYPE = "internal_role"
@@ -150,6 +161,35 @@ def get_pkg_mgr_sudo(mgr):
         return False
     else:
         return True
+
+def get_git_auto_dest_name(repo, parent_dir="~"):
+
+    temp = "{}{}{}".format(parent_dir, os.path.sep, repo.split("/")[-1])
+
+    if temp.endswith(".git"):
+        temp = temp[0:-4]
+
+    return temp
+
+def ensure_git_repo_format(repo, dest=None):
+
+    if isinstance(repo, string_types):
+        if dest:
+            return {"repo": repo, "dest": dest}
+        else:
+            return {"repo": repo, "dest": get_git_auto_dest_name(repo)}
+    elif isinstance(repo, dict):
+        if "repo" not in repo.keys():
+            raise NsblException("Repo dictionary needs at least a 'repo' key: {}".format(repo))
+        if "dest" not in repo.keys():
+            if dest:
+                repo["dest"] = dest
+            else:
+                repo["dest"] = get_git_auto_dest_name(repo["repo"])
+        return repo
+    else:
+        raise NsblException("Repo value needs to be either string or dict format: {}".format(repo))
+
 
 def get_local_role_desc(role_name, role_repos=[]):
 
@@ -294,7 +334,7 @@ class Nsbl(object):
         self.inventory = NsblInventory(self.configs, self.int_task_descs, self.role_repos, default_env_type)
         self.tasks = self.inventory.tasks
 
-    def render_environment(self, env_dir, extract_vars=False, force=False):
+    def render_environment(self, env_dir, extract_vars=False, force=False, ansible_verbose=""):
         """Creates the ansible environment in the folder provided.
 
         Args:
@@ -302,6 +342,8 @@ class Nsbl(object):
           extract_vars (bool): whether to extract a hostvars and groupvars directory for the inventory (True), or render a dynamic inventory script for the environment (default, False)
         """
 
+        result = {}
+        result['env_dir'] = env_dir
         if os.path.exists(env_dir) and force:
             shutil.rmtree(env_dir)
 
@@ -330,31 +372,39 @@ class Nsbl(object):
                         all_ext_roles[role_name] = role_dict
 
         inventory_dir = os.path.join(env_dir, "inventory")
+        result["inventory_dir"] = inventory_dir
 
         if extract_vars:
             inv_target = "../inventory/hosts"
         else:
             inv_target = "../inventory/inventory"
 
+        result["extract_vars"] = extract_vars
+
         playbook_dir = os.path.join(env_dir, "plays")
+        result["playbook_dir"] = playbook_dir
+
         ask_sudo = ""
         all_plays_name = "all_plays.yml"
+        result["default_playbook_name"] = all_plays_name
 
-        library_path = os.path.join(os.path.dirname(__file__), "external", "extra_plugins", "library")
-        action_plugins_path = os.path.join(os.path.dirname(__file__), "external", "extra_plugins", "action_plugins")
+        ansible_playbook_args = ansible_verbose
+        result["ansible_playbook_args"] = ansible_playbook_args
+        result["run_playbooks_script"] = os.path.join(env_dir, "run_all_plays.sh")
 
         cookiecutter_details = {
             "inventory": inv_target,
             "env_dir": env_dir,
             "playbook_dir": playbook_dir,
-            "library_path": library_path,
-            "action_plugins_path": action_plugins_path,
+            "ansible_playbook_args": ansible_playbook_args,
+            "library_path": "library",
+            "action_plugins_path": "action_plugins",
             "extra_script_commands": "",
             "ask_sudo": ask_sudo,
             "playbook": all_plays_name,
             "nsbl_roles": all_ext_roles,
-            "nsbl_callback_plugins": "",
-            "nsbl_callback_plugin_name": ""
+            "callback_plugins": "callback_plugins",
+            "callback_plugin_name": ""
         }
 
         log.debug("Creating build environment from template...")
@@ -369,6 +419,19 @@ class Nsbl(object):
 
         self.inventory.write_inventory_file_or_script(inventory_dir, extract_vars=extract_vars)
 
+        # copy extra_plugins
+        library_path = os.path.join(os.path.dirname(__file__), "external", "extra_plugins", "library")
+        action_plugins_path = os.path.join(os.path.dirname(__file__), "external", "extra_plugins", "action_plugins")
+        callback_plugins_path = os.path.join(os.path.dirname(__file__), "external", "extra_plugins", "callback_plugins")
+        result["library_path"] = library_path
+        result["callback_plugins_pagh"] = callback_plugins_path
+        result["action_plugins_path"] = action_plugins_path
+
+        target_dir = os.path.join(env_dir, "plays")
+
+        shutil.copytree(library_path, os.path.join(target_dir, "library"))
+        shutil.copytree(action_plugins_path, os.path.join(target_dir, "action_plugins"))
+        shutil.copytree(callback_plugins_path, os.path.join(target_dir, "callback_plugins"))
 
         # copy internal roles
         for role_name, role in all_int_roles.items():
@@ -388,17 +451,25 @@ class Nsbl(object):
             tasks = {}
 
             for task in role_tasks:
-                task_name = task[TASKS_META_KEY]["task_id"]
+                task_name = task[TASKS_META_KEY][DYN_TASK_ID_KEY]
                 tasks[task_name] = task
                 if VARS_KEY not in task.keys():
                     task[VARS_KEY] = {}
-                if VAR_KEYS_KEY not in task[TASKS_META_KEY].keys():
+                if VAR_KEYS_KEY not in task[TASKS_META_KEY].keys() or task[TASKS_META_KEY][VAR_KEYS_KEY] == '*':
                     task[TASKS_META_KEY][VAR_KEYS_KEY] = list(task.get(VARS_KEY, {}).keys())
                 else:
                     for key in task.get(VARS_KEY, {}).keys():
                         task[TASKS_META_KEY][VAR_KEYS_KEY].append(key)
 
+                # make var_keys items unique
                 task[TASKS_META_KEY][VAR_KEYS_KEY] = list(set(task[TASKS_META_KEY][VAR_KEYS_KEY]))
+                if WITH_ITEMS_KEY in task[TASKS_META_KEY].keys():
+                    with_items_key = task[TASKS_META_KEY][WITH_ITEMS_KEY]
+
+                    # if with_items_key not in task[VARS_KEY]:
+                        # raise NsblException("Can't iterate over variable '{}' using with_items because key does not exist in: {}".format(task[TASK_NAME_KEY][VARS_KEY]))
+
+                    # task[TASKS_META_KEY][VARS_KEY] = "item"
 
             role_dict = {
                 "role_name": role_name,
@@ -440,6 +511,301 @@ class Nsbl(object):
         with open(all_plays_file, "w") as text_file:
             text_file.write(output_text)
 
+        result['lookup_dict'] = self.get_lookup_dict()
+        return result
+
+    def get_task(self, env_id, task_id, dyn_role_task_id=None):
+
+        for task in self.tasks:
+            if task.env_id != env_id:
+                continue
+
+            for int_tasks in task.tasks:
+
+                if int_tasks[TASKS_META_KEY][TASK_ID_KEY] != task_id:
+                    continue
+
+                if dyn_role_task_id != None:
+                    for t in  int_tasks[TASKS_META_KEY][TASK_DYN_ROLE_DETAILS]:
+                        if t[TASKS_META_KEY][DYN_TASK_ID_KEY] == dyn_role_task_id:
+                            return t
+                else:
+                    return int_tasks
+
+        return None
+
+    def get_lookup_dict(self):
+
+        result = {}
+        for task in self.tasks:
+
+            id = task.env_id
+            #id = task.env_name
+            tasks_lookup_dict = task.get_lookup_dict()
+
+            result[id] = tasks_lookup_dict
+
+        return result
+
+
+class NsblRunner(object):
+
+    def __init__(self, nsbl):
+
+        self.nsbl = nsbl
+
+    def run(self, target, extract_vars, force=True, ansible_verbose=""):
+
+        parameters = self.nsbl.render_environment(target, extract_vars=extract_vars, force=force, ansible_verbose=ansible_verbose )
+        lookup_dict = parameters['lookup_dict']
+
+        callback_adapter = NsblLogCallbackAdapter(lookup_dict)
+
+        run_env = os.environ.copy()
+        run_env['NSBL_ENVIRONMENT'] = "true"
+        script = parameters['run_playbooks_script']
+        proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env)
+
+        for line in iter(proc.stdout.readline, ''):
+            callback_adapter.add_log_message(line)
+
+        return
+
+
+        # current_env_id = None
+        # current_task_id = None
+        # current_dyn_task_id = None
+        # current_task = None
+        # current_task_output = []
+        # nsbl_item_details = False
+        # task_item_details = False
+
+
+        #     details = json.loads(line)
+        #     category = details['category']
+
+        #     # print(line)
+
+        #     if not category.startswith("nsbl"):
+
+        #         env_id = details[ENV_ID_KEY]
+        #         task_id = details[TASK_ID_KEY]
+
+        #         if env_id == None or task_id == None:
+        #             continue
+
+        #         task_changed = False
+        #         if env_id != current_env_id:
+        #             task_changed = True
+
+        #         if current_task_id != task_id:
+        #             task_changed = True
+
+        #         dyn_task_id = details.get(DYN_TASK_ID_KEY, None)
+
+        #         if dyn_task_id != None and current_dyn_task_id != dyn_task_id:
+        #             task_changed = True
+
+        #         if task_changed:
+        #             if current_env_id != None:
+        #                 self.process_task_finished(current_task_output, nsbl_item_details, task_item_details, current_env_id, current_task_id, current_dyn_task_id)
+        #             current_env_id = env_id
+        #             current_task_id = task_id
+        #             current_dyn_task_id = dyn_task_id
+        #             nsbl_item_details = False
+        #             task_item_details = False
+
+        #             if current_dyn_task_id == None:
+        #                 current_task = lookup_dict[current_env_id][current_task_id]
+        #             else:
+        #                 current_task = lookup_dict[current_env_id][current_task_id][current_dyn_task_id]
+
+        #         item = details.get('item', None)
+        #         task_desc = current_task[TASK_DESC_KEY]
+
+        #         msg = details.get("result", {}).get("msg", None)
+        #         if category == "task_start":
+        #             if task_changed:
+        #                 msg = " * {}...".format(task_desc)
+        #                 click.echo(msg)
+        #         elif category == "failed":
+        #             if details.get("ignore_errors", False):
+        #                 continue
+        #             else:
+        #                 msg = "        => failed: {}".format(msg)
+        #                 click.echo(msg)
+        #         elif category == "item_ok":
+        #             task_item_details = True
+        #             if not nsbl_item_details:
+        #                 msg = "    - {} =>\tok".format(details["item"])
+        #                 click.echo(msg)
+        #         elif category == "task_ok":
+        #             # if not nsbl_item_details and not task_item_details:
+        #             current_task_output.append(details)
+        #         elif category == "skipped":
+        #             current_task_output.append(details)
+
+
+        #         # print("env: {}, task: {}, dyn_task: {}".format(current_env_id, current_task_id, current_dyn_task_id))
+        #     else:
+        #         if current_env_id == None or current_task_id == None:
+        #             raise Exception("Item information before task information. This is a bug, needs fixing. Please contact developer.")
+        #         nsbl_item_details = True
+        #         if category == "nsbl_item_started":
+        #             msg = "    - {} =>".format(details["item"])
+        #         elif category == "nsbl_item_ok":
+        #             msg = "\tok\n"
+        #         elif category == "nsbl_item_failed":
+        #             msg = "\tfailed: {}\n".format(details["msg"])
+
+        #         click.echo(msg, nl=False)
+
+        # if current_task_output:
+        #     self.process_task_finished(current_task_output, nsbl_item_details, task_item_details, current_task_id, current_dyn_task_id)
+
+
+    def process_task_finished(self, current_task_output, nsbl_item_details, task_item_details, current_env_id, current_task_id, current_dyn_task_id=None):
+
+        # we don't need to print out anything if item_details are used as it is done while the item is being processed
+        # which makes for a nicer user experience
+        if not nsbl_item_details:
+            if current_task_output:
+                self.process_task_output(current_task_output)
+
+        del current_task_output[:]
+
+    def process_task_output(self, task_output):
+
+        non_skipped = False
+        changed = False
+        for t in task_output:
+            if  t['result']['changed']:
+                changed = True
+            if t['category'] != 'skipped':
+                non_skipped = True
+
+        if not changed:
+            click.echo("        => no change")
+        elif non_skipped:
+            click.echo("        => ok")
+        else:
+            # will probably never apply...
+            click.echo("        => skipped")
+
+class NsblLogCallbackAdapter(object):
+
+    def __init__(self, lookup_dict):
+
+        self.lookup_dict = lookup_dict
+        self.current_env_id = None
+        self.current_task_id = None
+        self.current_dyn_task_id = None
+        self.current_task_is_dyn_role = False
+        self.current_task = None
+
+        self.current_task_started = False
+        self.current_task_has_nsbl_items = False
+        self.current_task_has_items = False
+
+        self.current_task_saved_events = []
+
+    def add_log_message(self, line):
+
+        details = json.loads(line)
+
+        category = details["category"]
+
+        if not category.startswith("nsbl"):
+            env_id = details[ENV_ID_KEY]
+            task_id = details[TASK_ID_KEY]
+            if env_id == None or task_id == None:
+                return
+
+            task_changed = False
+            if env_id != self.current_env_id:
+                task_changed = True
+
+            if task_id != self.current_task_id:
+                task_changed = True
+
+            dyn_task_id = details.get(DYN_TASK_ID_KEY, None)
+            if dyn_task_id != None and self.current_dyn_task_id != dyn_task_id:
+                task_changed = True
+                self.current_task_is_dyn_role = True
+
+            if task_changed:
+                if self.current_env_id != None:
+                    self.process_task_changed()
+
+                self.current_env_id = env_id
+                self.current_task_id = task_id
+                self.current_dyn_task_id = dyn_task_id
+                self.nsbl_item_details = False
+                self.task_item_details = False
+
+                if self.current_dyn_task_id == None:
+                    self.current_task = self.lookup_dict[self.current_env_id][self.current_task_id]
+                else:
+                    self.current_task = self.lookup_dict[self.current_env_id][self.current_task_id][self.current_dyn_task_id]
+
+            task_desc = self.current_task[TASK_DESC_KEY]
+            task_name = self.current_task[TASK_NAME_KEY]
+        else:
+            task_desc = None
+            task_name = None
+
+        msg = details.get('msg', None)
+        item = details.get('item', None)
+        status = details.get('status', None)
+        skipped = details.get('skipped', None)
+        self.add_event(category, task_name, task_desc, status, item, msg, skipped)
+
+    def add_event(self, category, task_name, task_desc, status, item, msg, skipped):
+
+        output = None
+        # print("           ....{}".format(category))
+        if category.startswith("nsbl"):
+            if category == "nsbl_item_started":
+                self.current_task_has_nsbl_items = True
+                output = "    - {} =>".format(item)
+            elif category == "nsbl_item_ok":
+                output = "\tok\n"
+            elif category == "nsbl_item_failed":
+                output = "\tfailed: {}\n".format(msg)
+        else:
+            event = {"category": category, "task_name": task_name, "task_desc":task_desc, "status": status, "item": item, "msg": msg, "skipped": skipped}
+            if category == "task_start":
+                if not self.current_task_started:
+                    self.current_task_started = True
+                    output = " * {}...\n".format(task_desc)
+                else:
+                    self.current_task_saved_events.append(event)
+            elif category == "item_ok":
+                # print(self.current_task_has_nsbl_items)
+                self.current_task_has_items = True
+                if not self.current_task_has_nsbl_items:
+                    output = "    - {} =>\tok\n".format(item)
+            elif category == "item_failed":
+                if not self.current_task_has_nsbl_items:
+                    output = "    - {} =>\tfailed: {}\n".format(item, msg)
+            elif category == "failed":
+                if not self.current_task_has_nsbl_items and not self.current_task_has_items:
+                    self.current_task_saved_events.append(event)
+            elif category == "ok":
+                if not self.current_task_has_nsbl_items and not self.current_task_has_items:
+                    self.current_task_saved_events.append(event)
+
+        if output:
+            click.echo(output, nl=False)
+
+    def process_task_changed(self):
+
+        print("TASK_CHANGED: {}".format(self.current_task_saved_events))
+        self.current_task_started = False
+        self.current_task_has_nsbl_items = False
+        self.current_task_has_items = False
+        self.current_task_is_dyn_role = False
+        self.current_task_saved_events = []
 
 class NsblInventory(object):
 
@@ -617,6 +983,7 @@ class NsblInventory(object):
     def assemble_groups(self):
         """Kicks of the processing of the config files."""
 
+        env_id = 0
         for env in self.config:
             if ENV_META_KEY not in env.keys():
                 raise NsblException(
@@ -661,7 +1028,8 @@ class NsblInventory(object):
                 raise NsblException("Environment type needs to be either 'host' or 'group': {}".format(env_type))
 
             if TASKS_KEY in env.keys():
-                self.tasks.append(NsblTasks(env, self.int_task_deskcs, self.role_repos, env_name))
+                self.tasks.append(NsblTasks(env, env_id, self.int_task_deskcs, self.role_repos, env_name))
+                env_id += 1
 
         if "localhost" in self.hosts.keys() and "ansible_connection" not in self.hosts["localhost"].get(VARS_KEY,
                                                                                                         {}).keys():
@@ -763,6 +1131,11 @@ class NsblTaskProcessor(ConfigProcessor):
         new_config[TASKS_META_KEY][TASK_NAME_KEY] = task_name
         new_config[TASKS_META_KEY][TASK_ROLES_KEY] = task_roles
 
+
+        with_items_key = new_config[TASKS_META_KEY].get(WITH_ITEMS_KEY, None)
+        if with_items_key:
+            new_config[TASKS_META_KEY][TASK_WITH_ITEMS_KEY] = with_items_key
+
         #TODO: use 'with_items' instead of this
         split_key = new_config[TASKS_META_KEY].get(SPLIT_KEY_KEY, None)
         if split_key:
@@ -820,9 +1193,9 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
         roles = {}
 
         for idx, t in enumerate(tasks):
-            task_id = "_dyn_role_task_{}".format(idx)
+            task_id = "_dyn_task_{}".format(idx)
             role_name.append(t[TASKS_META_KEY][TASK_META_NAME_KEY])
-            t[TASKS_META_KEY]["task_id"] = task_id
+            t[TASKS_META_KEY][DYN_TASK_ID_KEY] = task_id
             roles.update(t[TASKS_META_KEY].get(TASK_ROLES_KEY, {}))
             for key, value in t.get(VARS_KEY, {}).items():
                 task_vars["{}_{}".format(task_id, key)] = value
@@ -865,9 +1238,10 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
 
 class NsblTasks(object):
 
-    def __init__(self, env, int_task_descs=[], role_repos=[], env_name="localhost"):
+    def __init__(self, env, env_id, int_task_descs=[], role_repos=[], env_name="localhost"):
 
         self.env = env
+        self.env_id = env_id
         self.env_name = env_name
         self.role_repos = role_repos
         self.meta_roles = expand_external_role(env.get(TASKS_META_KEY, {}).get(TASK_ROLES_KEY, {}), self.role_repos)
@@ -879,7 +1253,7 @@ class NsblTasks(object):
         # create the dynamic roles
         nsbl_dynrole_processor = NsblDynamicRoleProcessor({"env_name": self.env_name})
 
-        id_processor = IdProcessor(NSBL_TASKS_ID_INIT)
+        # id_processor = IdProcessor(NSBL_TASKS_ID_INIT)
 
         # otherwise each tasks inherits from the ones before
         temp_tasks = [[name] for name in self.env[TASKS_KEY]]
@@ -887,15 +1261,42 @@ class NsblTasks(object):
         frkl_format = generate_nsbl_tasks_format(int_task_descs)
         frkl_obj = Frkl(temp_tasks, [
             FrklProcessor(frkl_format),
-            nsbl_task_processor, nsbl_dynrole_processor, id_processor])
+            nsbl_task_processor, nsbl_dynrole_processor])
 
 
         self.tasks = frkl_obj.process()
+        for idx, task in enumerate(self.tasks):
+            task_id = idx
+            task[TASKS_META_KEY][TASK_ID_KEY] = task_id
+            task[TASKS_META_KEY][ENV_ID_KEY] = self.env_id
 
+    def get_lookup_dict(self):
+
+        result = {}
+        for task in self.tasks:
+            id = task[TASKS_META_KEY][TASK_ID_KEY]
+            task_type = task[TASKS_META_KEY][TASK_TYPE_KEY]
+            if task_type != DYN_ROLE_TYPE:
+                if not TASK_DESC_KEY in task[TASKS_META_KEY].keys():
+                    temp = {}
+                    temp[TASK_NAME_KEY] = task[TASKS_META_KEY][TASK_NAME_KEY]
+                    temp[TASK_DESC_KEY] = task[TASKS_META_KEY].get(TASK_DESC_KEY, "applying role: '{}'".format(task[TASKS_META_KEY][TASK_NAME_KEY]))
+                    temp[VARS_KEY] = task.get(VARS_KEY, {})
+                    result[id] = temp
+            else:
+                result[id] = {}
+                for t in task[TASKS_META_KEY][TASK_DYN_ROLE_DETAILS]:
+                    temp = {}
+                    temp[TASK_NAME_KEY] = t[TASKS_META_KEY][TASK_NAME_KEY]
+                    temp[TASK_DESC_KEY] = t[TASKS_META_KEY].get(TASK_DESC_KEY, t[TASKS_META_KEY][TASK_NAME_KEY])
+                    temp[VARS_KEY] = t.get(VARS_KEY, {})
+                    result[id][t[TASKS_META_KEY][DYN_TASK_ID_KEY]] = temp
+
+        return result
 
     def __repr__(self):
 
-        return "NsblTasks(env_name='{}', no_tasks='{}')".format(self.env_name, len(self.tasks))
+        return "NsblTasks(env_id='{}', env_name='{}')".format(self.env_id, self.env_name)
 
     def get_dict(self):
 

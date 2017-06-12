@@ -9,7 +9,7 @@ from .env_creator import AnsibleEnvironment, NsblCreateException
 from . import __version__ as VERSION
 import yaml
 import json
-
+import frkl
 import click_log
 
 @click.group(invoke_without_command=True)
@@ -44,7 +44,7 @@ def list_groups(ctx, config, format, pager):
 def output(python_object, format="raw", pager=False):
 
     if format == 'yaml':
-        output = yaml.dump(python_object, default_flow_style=False)
+        output = yaml.safe_dump(python_object, default_flow_style=False, encoding='utf-8', allow_unicode=True)
     elif format == 'json':
         output = json.dumps(python_object, sort_keys=4, indent=4)
     elif format == 'raw':
@@ -84,7 +84,7 @@ def list_tasks(ctx, config, format, pager):
 
 @cli.command('create-inventory')
 @click.argument('config', required=True, nargs=-1)
-@click.option('--target', '-t', nargs=1, required=False, help="the target inventory dir, defaults to nsbl_inv in the current directory", default="nsb_inv")
+@click.option('--target', '-t', nargs=1, required=False, help="the target inventory dir, defaults to 'inventory' in the current directory", default="inventory")
 @click.option('--static/--dynamic', default=True, help="whether to render a dynamic inventory script using the provided config files instead of a plain ini-type config file and group_vars and host_vars folders, default: static")
 @click.option('--relative/--absolute', default=True, help="only applicable for dynamic inventory script, determine to use relative or absolute paths to config files and role repos in the script. default: relative (to the target dir the script is in)")
 @click.pass_context
@@ -119,6 +119,30 @@ def print_available_tasks(ctx, pager, format):
     int_tasks = nsbl.int_task_descs
     output(int_tasks, format, pager)
 
+
+@cli.command('expand-packages')
+@click.argument('config', required=True, nargs=-1)
+@click.option('--pager', '-p', required=False, default=False, help='output via pager')
+@click.option('--format', '-f', required=False, default='yaml', help='output format, either json or yaml (default)')
+@click.pass_context
+def print_available_tasks(ctx, config, pager, format):
+
+    # nsbl = Nsbl([], ctx.obj['task-desc'], ctx.obj['role-repos'])
+    # int_tasks = nsbl.int_task_descs
+    # output(int_tasks, format, pager)
+
+    format = {"child_marker": "packages",
+              "default_leaf": "vars",
+              "default_leaf_key": "name",
+              "key_move_map": {'*': "vars"}
+              }
+    chain = [frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor(), frkl.FrklProcessor(format)]
+
+    frkl_obj = frkl.Frkl("/vagrant/examples/install.yml", chain)
+    output = frkl_obj.process()
+
+    pprint.pprint(output)
+
 @cli.command('create-environment')
 @click.argument('config', required=True, nargs=-1)
 @click.option('--target', '-t', help="target output directory of created ansible environment, defaults to 'nsbl_env' in the current directory", default="nsbl_env")
@@ -129,7 +153,7 @@ def create(ctx, config, target, static, force):
 
     nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
 
-    nsbl.render_environment(target, extract_vars=static, force=force)
+    nsbl.render_environment(target, extract_vars=static, force=force, ansible_verbose="")
 
 
 

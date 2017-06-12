@@ -3,9 +3,9 @@
       type: host
     vars:
       dotfile_repo:
-        - repo: https://github.com/makkus/dotfiles-new.git
-          dest: ~/dotfiles
-          paths: ["minimal", "dev", "no-x", "x"]
+        repo: https://github.com/makkus/dotfiles-new.git
+        dest: ~/dotfiles
+        paths: ["minimal", "dev", "no-x", "x"]
     tasks:
       - freckles
 

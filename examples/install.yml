@@ -1,0 +1,36 @@
+- vars:
+    pkg_mgr: nix
+  packages:
+    - zile:
+        pkg:
+          Debian: zile
+          other: omit
+    - gawk
+- vars:
+    pkg_mgr: auto
+  packages:
+    - emacs
+    - whatever
+
+      # - install:
+      #     - meta:
+      #         become: no
+      #       vars:
+      #         pkg_mgr: nix
+      #         name: zile
+      # - install:
+      #     - vars:
+      #         pkg_mgr: nix
+      #       packages:
+      #         - zile
+      #         - gawk
+      #     - vars:
+      #         pkg_mgr: auto
+      #       packages:
+      #           - aptitude:
+      #               pkgs:
+      #                 Debian: aptitude
+      #                 other: omit
+      #           - emacs-nox
+      # - install:
+      #     - zile
