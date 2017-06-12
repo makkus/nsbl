@@ -1,0 +1,44 @@
+---
+# tasks file for ansible-nix-single
+
+- name: Check whether nix-installer line is already present in .profile
+  command: grep -q "# added by Nix installer" "{{ ansible_env.HOME }}/.profile"
+  register: nix_line
+  check_mode: False
+  ignore_errors: True
+  changed_when: False
+  when: nix_env_binary.stat.exists == False
+
+- name: create /nix directory
+  file: path=/nix state=directory owner="{{ ansible_env.USER }}"
+  become: yes
+  when: nix_env_binary.stat.exists == False
+
+- name: install nix dependencies for Debian-based systems
+  apt: pkg={{item}} state=installed
+  with_items:
+    - wget
+    - curl
+    - bzip2
+    - ca-certificates
+  become: yes
+  when: nix_env_binary.stat.exists == False and ansible_os_family == "Debian"
+
+- name: Install nix
+  command: "{{ role_path }}/files/nix-single.sh"
+  args:
+    creates: "{{ ansible_env.HOME  }}/.nix-profile/bin/nix-env"
+  become: no
+
+- name: remove nix-added line in .profile
+  lineinfile: dest="{{ ansible_env.HOME }}/.profile" regexp='# added by Nix installer' state=absent
+  when: nix_line.rc == 1
+
+- name: add nix path to path in .profile
+  become: no
+  lineinfile:
+    dest: "{{ ansible_env.HOME }}/.profile"
+    line: "if [ -e \"$HOME/.nix-profile/etc/profile.d/nix.sh\" ]; then source \"$HOME/.nix-profile/etc/profile.d/nix.sh\"; fi  # added by freckles"
+    create: yes
+  when: add_path | default(true)
+  ignore_errors: true

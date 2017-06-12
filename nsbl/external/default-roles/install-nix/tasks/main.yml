@@ -1,0 +1,9 @@
+---
+# tasks file for ansible-nix-pkg-mgr
+
+- stat: path="{{ ansible_env.HOME }}/.nix-profile/bin/nix-env"
+  become: no
+  register: nix_env_binary
+
+- include: nix-single.yml
+  when: nix_env_binary.stat.exists == False

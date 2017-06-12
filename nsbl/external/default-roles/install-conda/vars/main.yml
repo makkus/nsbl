@@ -1,0 +1,6 @@
+---
+# vars file for ansible-nix-single
+ssl_cert_file: /etc/ssl/certs/ca-certificates.crt
+
+macos_miniconda_installer_url: 'https://repo.continuum.io/miniconda/Miniconda2-latest-MacOSX-x86_64.sh'
+linux_miniconda_installer_url: 'https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh'

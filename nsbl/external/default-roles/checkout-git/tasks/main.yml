@@ -1,0 +1,10 @@
+---
+# tasks file for checkout-git
+
+- name: checkout repo
+  git:
+    repo: "{{ item.repo }}"
+    dest: "{{ item.dest }}"
+    update: "{{ update | default(omit) }}"
+  with_items:
+    - "{{ repos }}"

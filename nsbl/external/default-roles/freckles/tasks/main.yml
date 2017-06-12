@@ -1,0 +1,77 @@
+---
+# tasks file for dotfiles
+
+# need to use the default package manager for this, since we can't rely on anything else being installed
+- name: install nix
+  include_role:
+    name: install-nix
+  when: pkg_mgr is defined and pkg_mgr == nix
+
+- name: install conda
+  include_role:
+    name: install-conda
+  when: pkg_mgr is defined and pkg_mgr == conda
+
+- name: install git
+  install:
+    packages: git
+    pkg_mgr: "{{ pkg_mgr | default(omit) }}"
+
+- name: checkout dotfiles
+  git:
+    dest: "{{ item.dest }}"
+    repo: "{{ item.repo }}"
+  with_items:
+    - "{{ freckles_repo | git_repo_filter }}"
+
+# this doesn't work, bug in ansible, for now installing roles manually one by one
+# - name: ensure all package managers are installed
+#   include_role:
+#     name: "{{ item }}"
+#   with_items:
+#     - "{{ freckles_repo | pkg_mgr_filter('install-') }}"
+
+- name: install nix
+  include_role:
+    name: install-nix
+  when: '"nix" in freckles_repo | pkg_mgr_filter'
+
+- name: install conda
+  include_role:
+    name: install-conda
+  when: '"conda" in freckles_repo | pkg_mgr_filter'
+
+- name: check whether stow exists
+  shell: type stow >/dev/null 2>&1
+  register: stow_exists
+  ignore_errors: True
+
+- name: install stow
+  install:
+    packages: "{{ stow_package_name | default('stow') }}"
+    pkg_mgr: "{{ pkg_mgr | default(omit) }}"
+  when: stow_exists.rc != 0
+
+- name: stow folders
+  stow:
+    name: "{{ item.vars.folder_name }}"
+    state: present
+    source_dir: "{{ item.vars.dotfile_parent_path }}"
+    target_dir: "{{ item.vars.stow_target_dir | default(stow_target_dir) }}"
+  when: item.vars.no_stow|default(false)|bool == false
+  with_items:
+    - "{{ freckles_repo | dotfile_repo_filter }}"
+
+- name: install packages from dotfile folders
+  install:
+    packages: "{{ item }}"
+    pkg_mgr: "{{ pkg_mgr | default(omit) }}"
+  with_items:
+    - "{{ freckles_repo | dotfile_repo_filter }}"
+
+- name: install additional packages
+  install:
+    packages: "{{ item }}"
+    pkg_mgr: "{{ pkg_mgr | default(omit) }}"
+  with_items:
+    - "{{ freckles_repo | additional_packages_filter }}"

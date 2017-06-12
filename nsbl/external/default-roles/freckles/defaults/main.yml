@@ -1,0 +1,4 @@
+---
+# defaults file for dotfiles
+
+stow_target_dir: "{{ ansible_env.HOME }}"

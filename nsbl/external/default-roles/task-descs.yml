@@ -1,0 +1,109 @@
+tasks:
+  - apt:
+      meta:
+        task-name: apt
+        become: yes
+        var_keys:
+          - name
+          - state
+      vars:
+        state: present
+  - yum:
+      meta:
+        become: yes
+  - freckles:
+      meta:
+        task-roles:
+           - install-nix
+           - install-conda
+  - install:
+      meta:
+        task-name: install
+        task-desc: installing package(s)
+        with_items: packages
+        default-key: vars/packages
+        var_keys:
+          - packages
+          - pkg_mgr
+
+  - checkout-git:
+      meta:
+        default-key: vars/repos
+  - delete:
+      meta:
+         default-key: vars/path
+         with_items: vars/path
+         task-name: file
+      vars:
+         state: absent
+  - create-folder:
+      meta:
+         default-key: vars/path
+         with_items: path
+         task-desc: creating folder(s)
+         task-name: file
+         var-keys:
+           - attributes
+           - group
+           - mode
+           - owner
+           - recurse
+           - selevel
+           - serole
+           - setype
+           - seuser
+      vars:
+         state: directory
+  - copy:
+      meta:
+         var-keys:
+           - src
+           - dest
+           - owner
+           - group
+           - mode
+           - attributes
+           - backup
+           - content
+           - directory_mode
+           - follow
+           - force
+           - remote_src
+           - selevel
+           - serole
+           - setype
+           - seuser
+  - shell:
+      meta:
+         default-key: vars/free_form
+         task-name: shell
+         var-keys:
+           - free_form
+           - chdir
+           - creates
+           - executable
+           - removes
+  - add-user:
+      meta:
+         default-key: vars/name
+         become: yes
+         var-keys:
+           - comment
+           - createhome
+           - expires
+           - generate_ssh_key
+           - groups
+           - home
+           - login_class
+           - name
+           - password
+           - seuser
+           - skeleton
+           - ssh_key_comment
+           - ssh_key_file
+           - ssh_key_passphrase
+           - ssh_key_type
+           - system
+           - uid
+
+
