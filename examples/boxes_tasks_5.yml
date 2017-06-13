@@ -2,6 +2,8 @@
     meta:
       type: host
     tasks:
+      - install-conda
+      - install-nix
       - install:
          - zile:
              pkg_mgr: nix
@@ -16,5 +18,3 @@
                  # docker: angstwad.docker_ubuntu
            # vars:
               # docker_apt_cache_valid_time: 1200
-      # - install-conda
-      # - install-nix

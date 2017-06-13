@@ -59,7 +59,7 @@ class CallbackModule(CallbackBase):
 
     def get_task_id(self):
 
-        #pprint.pprint(self.task.serialize())
+        # pprint.pprint(self.task.serialize())
         # pprint.pprint(self.play.serialize())
 
         id = self.get_task_detail("role._role_params._task_id")
@@ -78,7 +78,6 @@ class CallbackModule(CallbackBase):
 
 
     def print_output(self, category, result, item=None):
-
 
         output = {}
         output["category"] = category
@@ -102,6 +101,10 @@ class CallbackModule(CallbackBase):
             action = "n/a"
         output["action"] = action
 
+        name = self.get_task_detail("name")
+        if name:
+            output["name"] = name
+
         output["ignore_errors"] = self.get_task_detail("ignore_errors")
 
         # output["task"] = self.task.serialize()
@@ -113,6 +116,10 @@ class CallbackModule(CallbackBase):
             msg = output["result"].get("msg", None)
             if msg:
                 output["msg"] = msg
+            else:
+                msg = output["result"].get("stderr", None)
+                if msg:
+                    output["msg"] = msg
             if result._result.get('changed', False):
                 status = 'changed'
             else:
@@ -165,12 +172,12 @@ class CallbackModule(CallbackBase):
         self.print_output("item_ok", result, item)
 
     def v2_runner_item_on_failed(self, result):
-
-        self.print_output("item_failed", result)
+        item = self._get_item(result._result)
+        self.print_output("item_failed", result, item)
 
     def v2_runner_item_on_skipped(self, result):
-
-        self.print_output("item_skipped", result)
+        item = self._get_item(result._result)
+        self.print_output("item_skipped", result, item)
 
     def v2_on_any(self, *args, **kwargs):
 

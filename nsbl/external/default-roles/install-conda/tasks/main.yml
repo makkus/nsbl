@@ -1,7 +1,8 @@
 ---
 # tasks to install the conda package manager
 
-- stat: path="{{ conda_parent_dir }}/conda/bin/conda"
+- name: check whether conda executable exists
+  stat: path="{{ conda_parent_dir }}/conda/bin/conda"
   become: no
   register: conda_binary
 

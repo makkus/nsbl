@@ -274,7 +274,10 @@ class ActionModule(ActionBase):
                     output["category"] = "nsbl_item_failed"
                 else:
                     output["category"] = "nsbl_item_ok"
-                    output["changed"] = changed
+                    if changed:
+                        output["status"] = "changed"
+                    else:
+                        output["status"] = "ok"
 
                 display.display(json.dumps(output))
 

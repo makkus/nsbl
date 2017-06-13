@@ -1,7 +1,7 @@
 ---
 # tasks file for ansible-nix-single
 
-- name: Check whether nix-installer line is already present in .profile
+- name: check whether nix-installer line is already present in .profile
   command: grep -q "# added by Nix installer" "{{ ansible_env.HOME }}/.profile"
   register: nix_line
   check_mode: False
@@ -24,7 +24,7 @@
   become: yes
   when: nix_env_binary.stat.exists == False and ansible_os_family == "Debian"
 
-- name: Install nix
+- name: install nix
   command: "{{ role_path }}/files/nix-single.sh"
   args:
     creates: "{{ ansible_env.HOME  }}/.nix-profile/bin/nix-env"
