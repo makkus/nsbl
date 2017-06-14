@@ -2,8 +2,8 @@
     meta:
       type: host
     tasks:
-      - install-conda
-      - install-nix
+      #- install-conda
+      #- install-nix
       - install:
          - zile:
              pkg_mgr: nix

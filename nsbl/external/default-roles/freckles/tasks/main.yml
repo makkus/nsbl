@@ -31,15 +31,28 @@
 #   with_items:
 #     - "{{ freckles_repo | pkg_mgr_filter('install-') }}"
 
+# those debug tasks are only a workaround because 'include_role' tasks don't register in a callback
+- name: nsbl_started=installing nix
+  debug: msg="installing nix (if applicable)..."
+
 - name: install nix
   include_role:
     name: install-nix
   when: '"nix" in freckles_repo | pkg_mgr_filter'
 
+- name: nsbl_finished=installing nix
+  debug: msg="installed nix"
+
+- name: nsbl_started=installing conda
+  debug: msg="installing conda (if applicable)..."
+
 - name: install conda
   include_role:
     name: install-conda
   when: '"conda" in freckles_repo | pkg_mgr_filter'
+
+- name: nsbl_finished=installing conda
+  debug: msg="installed conda"
 
 - name: check whether stow exists
   shell: type stow >/dev/null 2>&1
@@ -48,7 +61,7 @@
 
 - name: install stow
   install:
-    packages: "{{ stow_package_name | default('stow') }}"
+    packages: stow
     pkg_mgr: "{{ pkg_mgr | default(omit) }}"
   when: stow_exists.rc != 0
 

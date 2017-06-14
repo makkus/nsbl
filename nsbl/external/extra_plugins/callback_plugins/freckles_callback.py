@@ -13,6 +13,13 @@ from ansible.plugins.callback import CallbackBase
 from ansible.playbook.task_include import TaskInclude
 from ansible import constants as C
 
+try:
+    from __main__ import display
+except ImportError:
+    from ansible.utils.display import Display
+    display = Display()
+
+
 __metaclass__ = type
 
 class CallbackModule(CallbackBase):
@@ -79,6 +86,8 @@ class CallbackModule(CallbackBase):
 
     def print_output(self, category, result, item=None):
 
+        # if self.task:
+            # pprint.pprint(self.task.serialize())
         output = {}
         output["category"] = category
         temp = self.get_task_id()
@@ -112,12 +121,12 @@ class CallbackModule(CallbackBase):
         if category == "play_start" or category == "task_start":
             output["result"] = {}
         else:
-            output["result"] = result._result
-            msg = output["result"].get("msg", None)
+            # output["result"] = result._result
+            msg = result._result.get("msg", None)
             if msg:
                 output["msg"] = msg
             else:
-                msg = output["result"].get("stderr", None)
+                msg = result._result.get("stderr", None)
                 if msg:
                     output["msg"] = msg
             if result._result.get('changed', False):
@@ -129,7 +138,7 @@ class CallbackModule(CallbackBase):
             skipped = result._result.get('skipped', False)
             output["skipped"] = skipped
 
-        print(json.dumps(output))
+        display.display(json.dumps(output, encoding='utf-8'))
 
 
     def v2_runner_on_ok(self, result, **kwargs):

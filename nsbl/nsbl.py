@@ -91,7 +91,6 @@ DYN_TASK_ID_KEY = "_dyn_task_id"
 DEFAULT_KEY_KEY = "default-key"
 SPLIT_KEY_KEY = "split-key"
 WITH_ITEMS_KEY = "with_items"
-
 # indicator for task type internal role
 INT_TASK_TYPE = "internal_role"
 # indicator for task type external role
@@ -117,7 +116,7 @@ def generate_nsbl_tasks_format(task_descs):
 
     for task_desc in task_descs:
         if DEFAULT_KEY_KEY in task_desc[TASKS_META_KEY].keys():
-            result[KEY_MOVE_MAP_NAME][task_desc[TASKS_META_KEY][TASK_META_NAME_KEY]] = task_desc[TASKS_META_KEY][DEFAULT_KEY_KEY]
+            result[KEY_MOVE_MAP_NAME][task_desc[TASKS_META_KEY][TASK_META_NAME_KEY]] = "vars/{}".format(task_desc[TASKS_META_KEY][DEFAULT_KEY_KEY])
 
     return result
 
@@ -140,12 +139,21 @@ DEFAULT_ENV_TYPE = ENV_TYPE_GROUP
 # UrlAbbrevProcessor(), EnsureUrlProcessor(), Jinja2TemplateProcessor(NSBL_TASKS_TEMPLATE_INIT), EnsurePythonObjectProcessor(), FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT), IdProcessor(NSBL_TASKS_ID_INIT)
 # ]
 
+NSBLIZED_TASKS = ["install"]
+
 DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
     FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
 ]
 
 # ------------------------------
 # util functions
+class CursorOff(object):
+    def __enter__(self):
+        os.system('setterm -cursor off')
+
+    def __exit__(self, *args):
+        os.system('setterm -cursor on')
+
 def get_pkg_mgr_sudo(mgr):
     """Simple function to determine whether a given package manager needs sudo rights or not.
     """
@@ -566,135 +574,24 @@ class NsblRunner(object):
         script = parameters['run_playbooks_script']
         proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env)
 
-        click.echo("")
-        for line in iter(proc.stdout.readline, ''):
-            callback_adapter.add_log_message(line)
+        with CursorOff():
+            click.echo("")
+            for line in iter(proc.stdout.readline, ''):
+                # try:
+                    callback_adapter.add_log_message(line)
+                # except Exception as e:
+                    # proc.kill()
+                    # print("Current line:")
+                    # print("")
+                    # print(line)
+                    # print("")
+                    # raise e
 
-        callback_adapter.finish_up()
+            callback_adapter.finish_up()
 
-        click.echo("")
+            click.echo("")
         return
 
-
-        # current_env_id = None
-        # current_task_id = None
-        # current_dyn_task_id = None
-        # current_task = None
-        # current_task_output = []
-        # nsbl_item_details = False
-        # task_item_details = False
-
-
-        #     details = json.loads(line)
-        #     category = details['category']
-
-        #     # print(line)
-
-        #     if not category.startswith("nsbl"):
-
-        #         env_id = details[ENV_ID_KEY]
-        #         task_id = details[TASK_ID_KEY]
-
-        #         if env_id == None or task_id == None:
-        #             continue
-
-        #         task_changed = False
-        #         if env_id != current_env_id:
-        #             task_changed = True
-
-        #         if current_task_id != task_id:
-        #             task_changed = True
-
-        #         dyn_task_id = details.get(DYN_TASK_ID_KEY, None)
-
-        #         if dyn_task_id != None and current_dyn_task_id != dyn_task_id:
-        #             task_changed = True
-
-        #         if task_changed:
-        #             if current_env_id != None:
-        #                 self.process_task_finished(current_task_output, nsbl_item_details, task_item_details, current_env_id, current_task_id, current_dyn_task_id)
-        #             current_env_id = env_id
-        #             current_task_id = task_id
-        #             current_dyn_task_id = dyn_task_id
-        #             nsbl_item_details = False
-        #             task_item_details = False
-
-        #             if current_dyn_task_id == None:
-        #                 current_task = lookup_dict[current_env_id][current_task_id]
-        #             else:
-        #                 current_task = lookup_dict[current_env_id][current_task_id][current_dyn_task_id]
-
-        #         item = details.get('item', None)
-        #         task_desc = current_task[TASK_DESC_KEY]
-
-        #         msg = details.get("result", {}).get("msg", None)
-        #         if category == "task_start":
-        #             if task_changed:
-        #                 msg = " * {}...".format(task_desc)
-        #                 click.echo(msg)
-        #         elif category == "failed":
-        #             if details.get("ignore_errors", False):
-        #                 continue
-        #             else:
-        #                 msg = "        => failed: {}".format(msg)
-        #                 click.echo(msg)
-        #         elif category == "item_ok":
-        #             task_item_details = True
-        #             if not nsbl_item_details:
-        #                 msg = "    - {} =>\tok".format(details["item"])
-        #                 click.echo(msg)
-        #         elif category == "task_ok":
-        #             # if not nsbl_item_details and not task_item_details:
-        #             current_task_output.append(details)
-        #         elif category == "skipped":
-        #             current_task_output.append(details)
-
-
-        #         # print("env: {}, task: {}, dyn_task: {}".format(current_env_id, current_task_id, current_dyn_task_id))
-        #     else:
-        #         if current_env_id == None or current_task_id == None:
-        #             raise Exception("Item information before task information. This is a bug, needs fixing. Please contact developer.")
-        #         nsbl_item_details = True
-        #         if category == "nsbl_item_started":
-        #             msg = "    - {} =>".format(details["item"])
-        #         elif category == "nsbl_item_ok":
-        #             msg = "\tok\n"
-        #         elif category == "nsbl_item_failed":
-        #             msg = "\tfailed: {}\n".format(details["msg"])
-
-        #         click.echo(msg, nl=False)
-
-        # if current_task_output:
-        #     self.process_task_finished(current_task_output, nsbl_item_details, task_item_details, current_task_id, current_dyn_task_id)
-
-
-    def process_task_finished(self, current_task_output, nsbl_item_details, task_item_details, current_env_id, current_task_id, current_dyn_task_id=None):
-
-        # we don't need to print out anything if item_details are used as it is done while the item is being processed
-        # which makes for a nicer user experience
-        if not nsbl_item_details:
-            if current_task_output:
-                self.process_task_output(current_task_output)
-
-        del current_task_output[:]
-
-    def process_task_output(self, task_output):
-
-        non_skipped = False
-        changed = False
-        for t in task_output:
-            if  t['result']['changed']:
-                changed = True
-            if t['category'] != 'skipped':
-                non_skipped = True
-
-        if not changed:
-            click.echo("        => no change")
-        elif non_skipped:
-            click.echo("        => ok")
-        else:
-            # will probably never apply...
-            click.echo("        => skipped")
 
 class NsblLogCallbackAdapter(object):
 
@@ -708,271 +605,261 @@ class NsblLogCallbackAdapter(object):
         self.current_task_is_dyn_role = False
         self.current_task = None
 
-        self.current_task_started = False
-        self.current_task_has_nsbl_items = False
-        self.current_task_has_items = False
-        self.current_task_has_sub_tasks = False
-
-        self.current_task_saved_events = []
+        self.new_line = False
+        self.task_has_items = False
+        self.task_has_nsbl_items = False
+        self.current_ansible_task_name = None
+        self.saved_item = None
+        self.last_action = None
 
     def add_log_message(self, line):
 
-        details = json.loads(line)
 
-        # pprint.pprint(details)
+        # try:
+            # details = json.loads(line.encode(sys.stdout.encoding, errors='replace'))
+        # except:
+            # print("Error: Could not interprete log line:")
+            # print("")
+            # print(line)
+            # print("")
+            # return
+
+        details = json.loads(line)
 
         category = details["category"]
 
-        if not category.startswith("nsbl"):
+        task_changed = False
+
+        if category.startswith("nsbl"):
+            env_id = self.current_env_id
+            task_id = self.current_task_id
+        else:
             env_id = details[ENV_ID_KEY]
             task_id = details[TASK_ID_KEY]
-            if env_id == None or task_id == None:
-                return
 
-            task_changed = False
-            if env_id != self.current_env_id:
-                task_changed = True
+        if env_id == None or task_id == None:
+            return
 
-            if task_id != self.current_task_id:
-                task_changed = True
+        if env_id != self.current_env_id:
+            task_changed = True
 
-            dyn_task_id = details.get(DYN_TASK_ID_KEY, None)
-            if dyn_task_id != None and self.current_dyn_task_id != dyn_task_id:
-                task_changed = True
+        if task_id != self.current_task_id:
+            task_changed = True
 
-            if task_changed:
-                if self.current_env_id != None:
-                    self.process_task_changed()
+        dyn_task_id = details.get(DYN_TASK_ID_KEY, None)
+        if dyn_task_id != None and self.current_dyn_task_id != dyn_task_id:
+            task_changed = True
 
-                self.current_env_id = env_id
-                self.current_task_id = task_id
-                self.current_dyn_task_id = dyn_task_id
-                self.nsbl_item_details = False
-                self.task_item_details = False
+        if task_changed:
+            if self.current_env_id != None:
+                self.process_task_changed()
 
-                if self.current_dyn_task_id == None:
-                    # print("NEW TASK")
-                    self.current_task = self.lookup_dict[self.current_env_id][self.current_task_id]
-                    # pprint.pprint(self.current_task)
-                    self.current_task_is_dyn_role = False
-                else:
-                    # print("NEW DYN TASK")
-                    self.current_task = self.lookup_dict[self.current_env_id][self.current_task_id][self.current_dyn_task_id]
-                    self.current_task_is_dyn_role = True
-                    # pprint.pprint(self.current_task)
+            self.current_env_id = env_id
+            self.current_task_id = task_id
+            self.current_dyn_task_id = dyn_task_id
+            self.task_has_items = False
+            self.task_has_nsbl_items = False
+            self.saved_item = None
 
-            task_desc = self.current_task[TASK_DESC_KEY]
-            task_name = self.current_task[TASK_NAME_KEY]
-        else:
-            task_desc = None
-            task_name = None
+            if self.current_dyn_task_id == None:
+                self.current_task = self.lookup_dict[self.current_env_id][self.current_task_id]
+                self.current_task_is_dyn_role = False
+            else:
+                self.current_task = self.lookup_dict[self.current_env_id][self.current_task_id][self.current_dyn_task_id]
+                self.current_task_is_dyn_role = True
+
+            output = " * {}...".format(self.current_task[TASK_DESC_KEY])
+            click.echo(output)
+            self.new_line = True
+
+            self.failed = False
+            self.skipped = True
+            self.changed = False
+
+        task_desc = self.current_task[TASK_DESC_KEY]
+        task_name = self.current_task[TASK_NAME_KEY]
 
         msg = details.get('msg', None)
+        if msg:
+            msg = msg.encode(sys.stdout.encoding, errors='replace').strip()
         item = details.get('item', None)
         status = details.get('status', None)
         skipped = details.get('skipped', None)
         ignore_errors = details.get('ignore_errors', False)
-        result = details.get('result', None)
+        action = details.get('action', self.last_action)
         ansible_task_name = details.get('name', None)
-        # self.add_event(category, task_name, task_desc, status, item, msg, skipped, ignore_errors, ansible_task_name, result)
-        event = {"category": category, "task_name": task_name, "task_desc":task_desc, "status": status, "item": item, "msg": msg, "skipped": skipped, "ignore_errors": ignore_errors, "ansible_task_name": ansible_task_name}
+        event = {"category": category, "task_name": task_name, "task_desc":task_desc, "status": status, "item": item, "msg": msg, "skipped": skipped, "ignore_errors": ignore_errors, "ansible_task_name": ansible_task_name, "action": action}
 
-        if category == "task_start":
-            if not self.current_task_started:
-                self.current_task_started = True
-                output = " * {}...".format(event["task_desc"])
-                click.echo(output)
-
-        self.process_event(event)
-
-    def add_event(self, category, task_name, task_desc, status, item, msg, skipped, ignore_errors, ansible_task_name, result):
-
-        output = None
-        # print("\n     ....{} = {} -- {}".format(category, ansible_task_name, task_desc))
-        # if category.startswith("nsbl"):
-        #     if category == "nsbl_item_started":
-        #         self.current_task_has_nsbl_items = True
-        #         output = "    - {} => ".format(item)
-        #     elif category == "nsbl_item_ok":
-        #         if status == "changed":
-        #             output = "ok (changed)\n"
-        #         else:
-        #             output = "ok (no change)\n"
-        #     elif category == "nsbl_item_failed":
-        #         if not ignore_errors:
-        #             output = "failed: {}\n".format(msg)
-        #         else:
-        #             log.debug("Ignoring failed task: {}".format(task_desc))
-        # else:
-
-        #     if category == "task_start":
-        #         if not self.current_task_started:
-        #             self.process_task(event)
-        #     elif category == "item_ok":
-        #         # print(self.current_task_has_nsbl_items)
-        #         self.current_task_has_items = True
-        #         if not self.current_task_has_nsbl_items:
-        #             if self.display_sub_tasks:
-        #                 output = "        "
-        #             else:
-        #                 output = ""
-        #             if status == "changed":
-        #                 output += "    - {} => ok (changed)\n".format(item)
-        #             else:
-        #                 output += "    - {} => ok (no change)\n".format(item)
-        #         else:
-        #             self.current_task_saved_events.append(event)
-        #     elif category == "item_failed":
-        #         if not self.current_task_has_nsbl_items:
-        #             if self.display_sub_tasks:
-        #                 output = "        "
-        #             else:
-        #                 output = ""
-        #             if not self.current_task_is_dyn_role:
-        #                 output += "    - {} => failed: {}\n".format(item, msg)
-        #             else:
-        #                 self.current_task_saved_events.append(event)
-        #     elif category == "failed":
-        #         if not self.current_task_has_nsbl_items and not self.current_task_has_items:
-        #             if self.display_sub_tasks:
-        #                 output = "failed: {}\n".format(msg)
-        #             self.current_task_saved_events.append(event)
-        #     elif category == "ok":
-        #         if not self.current_task_has_nsbl_items and not self.current_task_has_items:
-        #             if self.display_sub_tasks:
-        #                 if status == "changed":
-        #                     output = "ok (changed)\n"
-        #                 else:
-        #                     output = "ok (no change)\n"
-        #     elif category == "skipped":
-        #         if not self.current_task_has_nsbl_items and not self.current_task_has_items:
-        #             if self.display_sub_tasks:
-        #                 output = "skipped\n"
-        #             self.current_task_saved_events.append(event)
-
-        #             self.current_task_saved_events.append(event)
-
-        # if output:
-        #     click.echo(output, nl=False)
-
-    def finish_up(self):
-
-        self.process_task_changed()
-
-
-    def process_event(self, event):
-
-        self.failed = False
-        self.skipped = True
-        self.changed = False
-
-        category = event["category"]
-        status = event["status"]
-        ignore_errors = event["ignore_errors"]
-        item = event["item"]
-        ansible_task_name = event["ansible_task_name"]
-        msg = event["msg"]
-
-
-        # print(category)
-        # print(self.current_task_is_dyn_role)
-        # print(self.current_task_has_items)
-
-        if event["skipped"] != None and not event["skipped"]:
+        if skipped != None and not skipped:
             self.skipped = False
-        if category == "failed":
+        if category == "failed" and not ignore_errors:
             self.failed = True
-        if event["status"] and event["status"] == "changed":
+        if status and status == "changed":
             self.changed = True
 
-        if category.startswith("nsbl"):
-            self.current_task_has_nsbl_items = True
-            if category == "nsbl_item_started":
-                output = "     - {} => ".format(item)
-                click.echo(output, nl=False)
-            elif category == "nsbl_item_ok":
-                if status == "changed":
-                    output = "ok (changed)"
-                else:
-                    output = "ok (no change)"
-                click.echo(output)
-            elif category == "nsbl_item_failed":
-                if not ignore_errors:
-                    output = "failed: {}".format(msg)
-                    click.echo(output)
-                else:
-                    log.debug("Ignoring failed task: {}".format(task_desc))
-        elif self.current_task_has_items:
-            self.print_sub_task_item(event)
+        sub_task_changed = self.current_ansible_task_name != ansible_task_name
 
-        if not self.current_task_is_dyn_role:
-            if category == "task_start":
-                self.current_task_has_sub_tasks = True
-                if self.display_sub_tasks:
-                    output = "     - {} => ".format(ansible_task_name)
-                    click.echo(output, nl=False)
-            elif category == "ok":
-                output = "ok"
+        if sub_task_changed and self.saved_item and not self.task_has_items and not self.task_has_nsbl_items:
+            if not self.saved_item["action"] in NSBLIZED_TASKS:
+                self.display_result(self.saved_item)
+            elif self.saved_item["category"] == "skipped" and not self.new_line:
+                self.display_result(self.saved_item)
+
+        if sub_task_changed:
+            self.task_has_items = False
+            self.saved_item = None
+            self.task_has_nsbl_items = False
+            self.last_action = None
+
+        current_task_is_nsblized = action in NSBLIZED_TASKS
+
+
+        if category.startswith("nsbl") and current_task_is_nsblized:
+            self.saved_item = None
+            if category == "nsbl_item_started":
+                if not self.new_line:
+                    click.echo("")
+                output = "       - {} => ".format(item)
+                click.echo(output, nl=False)
+                self.new_line = False
+            else:
+                self.display_nsbl_item(event)
+        elif category.startswith("item") and not current_task_is_nsblized:
+            self.saved_item = None
+            self.task_has_items = True
+            self.display_item(event)
+        elif category == "task_start":
+            if self.current_task_is_dyn_role:
+                return
+            elif ansible_task_name.startswith("nsbl_finished"):
+                return
+
+            if not self.new_line:
+                click.echo("")
+            if ansible_task_name.startswith("nsbl_started="):
+                name = ansible_task_name[13:]
+            else:
+                name = ansible_task_name
+            output = "    - {} => ".format(name)
+            click.echo(output, nl=False)
+            self.new_line = False
+        elif category in ["ok", "failed", "skipped"]:
+
+            if not self.task_has_items and not self.task_has_nsbl_items and sub_task_changed and not current_task_is_nsblized:
+                self.display_result(event)
+            else:
+                self.saved_item = event
+        else:
+            pass
+            # print("NO CATEGORY: {}".format(category))
+
+        self.current_ansible_task_name = ansible_task_name
+        self.last_action = action
+
+    def pretty_print_item(self, item):
+
+        if isinstance(item, string_types):
+            try:
+                item = json.loads(item)
+            except Exception as e:
+                return item
+
+        if isinstance(item, dict):
+            if item.get("name", None):
+                return item["name"]
+            elif item.get("repo", None):
+                return item["repo"]
+            elif item.get("vars", {}).get("name", None):
+                return item["vars"]["name"]
+            elif item.get("vars", {}).get("repo", None):
+                return item["vars"]["name"]
+
+        return item
+
+    def display_nsbl_item(self, ev):
+
+        item = self.pretty_print_item(ev["item"])
+
+        if ev["category"] == "nsbl_item_ok":
+            skipped = ev["skipped"]
+            if skipped:
+                msg = "skipped"
+            else:
+                if ev["status"] == "changed":
+                    msg = "changed"
+                else:
+                    msg = "no change"
+            output = "ok ({})".format(msg)
+            self.new_line = True
+            click.echo(output)
+        elif ev["category"] == "nsbl_item_failed":
+            output = "failed: {}".format(ev["msg"])
+            click.echo(output)
+            self.new_line = True
+
+    def display_item(self, ev):
+
+        item = self.pretty_print_item(ev["item"])
+        if not self.new_line:
+            click.echo("")
+
+        if ev["category"] == "item_ok":
+            skipped = ev["skipped"]
+            if skipped:
+                msg = "skipped"
+            else:
+                if ev["status"] == "changed":
+                    msg = "changed"
+                else:
+                    msg = "no change"
+            output = "      - {} => ok ({})".format(item, msg)
+            click.echo(output)
+            self.new_line = True
+        elif ev["category"] == "item_failed":
+            output = "      - {} => failed: {}".format(item, ev["msg"])
+            click.echo(output)
+            self.new_line = True
+        elif ev["category"] == "item_skipped":
+            output = "      - {} => skipped".format(item)
+            click.echo(output)
+            self.new_line = True
+
+    def display_result(self, ev):
+
+        if ev["ansible_task_name"].startswith("nsbl_started="):
+            return
+        if ev["ansible_task_name"].startswith("nsbl_finished="):
+            output = "no task information available"
+            click.echo(output)
+            self.new_line = True
+        else:
+            if ev["category"] == "ok":
+                skipped = ev["skipped"]
+                if skipped:
+                    msg = "skipped"
+                else:
+                    if ev["status"] == "changed":
+                        msg = "changed"
+                    else:
+                        msg = "no change"
+                output = "ok ({})".format(msg)
                 click.echo(output)
-            elif category == "failed":
-                if not ignore_errors:
-                    output = "failed: {}".format(msg)
-                    click.echo(output)
-            elif category == "skipped":
+                self.new_line = True
+            elif ev["category"] == "failed":
+                output = "failed: {}".format(ev["msg"])
+                click.echo(output)
+                self.new_line = True
+            elif ev["category"] == "skipped":
                 output = "skipped"
                 click.echo(output)
-
-        self.current_task_saved_events.append(event)
-        if not self.current_task_has_items:
-            self.process_sub_tasks()
-
-    def process_sub_tasks(self):
-
-        for ev in self.current_task_saved_events:
-            if ev["category"].startswith("item"):
-                self.current_task_has_items = True
-                self.print_sub_task_item(ev)
-
-        # print("----------------------------------------------------------------------")
-        # pprint.pprint(self.current_task_saved_events)
-        # print("----------------------------------------------------------------------")
-
-    def print_sub_task_item(self, event):
-
-        if self.current_task_has_nsbl_items:
-            return
-        category = event['category']
-        item = event['item']
-        msg = event['msg']
-        status = event['status']
-
-        if category == "item_ok":
-            if self.current_task_has_sub_tasks:
-                output = "        "
-            else:
-                output = ""
-            if status == "changed":
-                output += "      - {} => ok (changed)".format(item)
-            else:
-                output += "      - {} => ok (no change)".format(item)
-            click.echo(output)
-        elif category == "item_failed":
-            if self.current_task_has_sub_tasks:
-                output = "        "
-            else:
-                output = ""
-            output += "     - {} => failed: {}".format(item, msg)
-            click.echo(output)
-        elif category == "item_skipped":
-            if self.current_task_has_sub_tasks:
-                output = "        "
-            else:
-                output = ""
-            output += "     - {} => skipped".format(item)
-            click.echo(output)
+                self.new_line = True
 
     def process_task_changed(self):
 
+        msg = "n/a"
+
+        if not self.new_line:
+            click.echo("")
         if self.failed:
             output = "   => failed: {}".format(", ".join(msg))
         elif self.changed:
@@ -981,15 +868,13 @@ class NsblLogCallbackAdapter(object):
             output = "   => ok (no change)"
 
         click.echo(output)
-
-        # print("TASK_CHANGED")
-        # pprint.pprint(self.current_task_saved_events)
-        self.current_task_started = False
-        self.current_task_has_nsbl_items = False
-        self.current_task_has_items = False
-        self.current_task_saved_events = []
-        self.current_task_has_sub_tasks = False
         click.echo("")
+        self.new_line = True
+
+    def finish_up(self):
+
+        self.process_task_changed()
+
 
 class NsblInventory(object):
 
@@ -1461,12 +1346,11 @@ class NsblTasks(object):
             id = task[TASKS_META_KEY][TASK_ID_KEY]
             task_type = task[TASKS_META_KEY][TASK_TYPE_KEY]
             if task_type != DYN_ROLE_TYPE:
-                if not TASK_DESC_KEY in task[TASKS_META_KEY].keys():
-                    temp = {}
-                    temp[TASK_NAME_KEY] = task[TASKS_META_KEY][TASK_NAME_KEY]
-                    temp[TASK_DESC_KEY] = task[TASKS_META_KEY].get(TASK_DESC_KEY, "applying role: '{}'".format(task[TASKS_META_KEY][TASK_NAME_KEY]))
-                    temp[VARS_KEY] = task.get(VARS_KEY, {})
-                    result[id] = temp
+                temp = {}
+                temp[TASK_NAME_KEY] = task[TASKS_META_KEY][TASK_NAME_KEY]
+                temp[TASK_DESC_KEY] = task[TASKS_META_KEY].get(TASK_DESC_KEY, "applying role: '{}'".format(task[TASKS_META_KEY][TASK_NAME_KEY]))
+                temp[VARS_KEY] = task.get(VARS_KEY, {})
+                result[id] = temp
             else:
                 result[id] = {}
                 for t in task[TASKS_META_KEY][TASK_DYN_ROLE_DETAILS]:

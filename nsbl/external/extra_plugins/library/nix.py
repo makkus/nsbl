@@ -17,10 +17,10 @@ import os
 
 from ansible.module_utils.basic import *
 
-NIX_PATH = os.path.join(os.environ['HOME'], ".nix-profile/bin")
+NIX_PATH = os.path.join(os.environ['HOME'], ".nix-profile")
 NIX_SOURCE_PATH = os.path.join(NIX_PATH, 'etc', 'profile.d', 'nix.sh')
-NIX_ENV_PATH = os.path.join(NIX_PATH, "nix-env")
-NIX_CHANNEL_PATH = os.path.join(NIX_PATH, "nix-channel")
+NIX_ENV_PATH = os.path.join(NIX_PATH, "bin", "nix-env")
+NIX_CHANNEL_PATH = os.path.join(NIX_PATH, "bin", "nix-channel")
 
 # this creates the nix env in case the run was started without that environment set
 WRAP = True
@@ -90,7 +90,7 @@ def install_packages(module, packages):
         rc, stdout, stderr = module.run_command(cmd, check_rc=False)
 
         if rc != 0:
-            module.fail_json(msg="failed to install %s: %s" % (package, stderr))
+            module.fail_json(msg="failed to install {}: {}".format(package, stderr))
 
         install_c += 1
 

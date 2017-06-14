@@ -6,4 +6,5 @@ cd {{cookiecutter.playbook_dir}}
 
 {{cookiecutter.extra_script_commands}}
 
+
 ansible-playbook {{cookiecutter.ansible_playbook_args}} {{cookiecutter.ask_sudo}} {{cookiecutter.playbook}}
