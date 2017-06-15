@@ -1,21 +1,27 @@
 ---
 # tasks file for dotfiles
 
-# need to use the default package manager for this, since we can't rely on anything else being installed
-- name: install nix
-  include_role:
-    name: install-nix
-  when: pkg_mgr is defined and pkg_mgr == nix
+# # install the default package manager now in case git is missing
+# - name: install nix
+#   include_role:
+#     name: install-nix
+#   when: "pkg_mgr is defined and pkg_mgr == nix and 'git' | missing_from_path"
 
-- name: install conda
-  include_role:
-    name: install-conda
-  when: pkg_mgr is defined and pkg_mgr == conda
+# - name: install conda
+#   include_role:
+#     name: install-conda
+#   when: "pkg_mgr is defined and pkg_mgr == conda and 'git' | missing_from_path"
+
+# - name: install homebrew
+#   include_role:
+#     name: install-conda
+#   when: "pkg_mgr is defined and pkg_mgr == homebrew and 'git' | missing_from_path"
 
 - name: install git
   install:
     packages: git
-    pkg_mgr: "{{ pkg_mgr | default(omit) }}"
+    pkg_mgr: "{{ pkg_mgr | default('auto') }}"
+  when: "'git' | missing_from_path"
 
 - name: checkout dotfiles
   git:
@@ -32,38 +38,46 @@
 #     - "{{ freckles_repo | pkg_mgr_filter('install-') }}"
 
 # those debug tasks are only a workaround because 'include_role' tasks don't register in a callback
-- name: nsbl_started=installing nix
-  debug: msg="installing nix (if applicable)..."
+- name: nsbl_started=installing nix (if necessary)
+  debug: msg="installing nix (if necessary)..."
 
 - name: install nix
   include_role:
     name: install-nix
-  when: '"nix" in freckles_repo | pkg_mgr_filter'
+  when: '("nix" in freckles_repo | pkg_mgr_filter) and ( "nix-env" | missing_from_path )'
 
-- name: nsbl_finished=installing nix
+- name: nsbl_finished=installing nix (if necessary)
   debug: msg="installed nix"
 
-- name: nsbl_started=installing conda
-  debug: msg="installing conda (if applicable)..."
+- name: nsbl_started=installing conda (if necessary)
+  debug: msg="installing conda (if necessary)..."
 
 - name: install conda
   include_role:
     name: install-conda
-  when: '"conda" in freckles_repo | pkg_mgr_filter'
+  when: '("conda" in freckles_repo | pkg_mgr_filter) and ( "conda" | missing_from_path )'
 
-- name: nsbl_finished=installing conda
+- name: nsbl_finished=installing conda (if necessary)
   debug: msg="installed conda"
 
-- name: check whether stow exists
-  shell: type stow >/dev/null 2>&1
-  register: stow_exists
-  ignore_errors: True
+- name: nsbl_started=installing homebrew (if necessary)
+  debug: msg="installing homebrew (if necessary)..."
+
+- name: install homebrew
+  include_role:
+    name: geerlingguy.homebrew
+  vars:
+    homebrew_cask_apps: []
+  when: '("brew" | missing_from_path) and (("homebrew" in freckles_repo | pkg_mgr_filter) or (ansible_os_family == "Darwin" and pkg_mgr is not defined) )'
+
+- name: nsbl_finished=installing homebrew (if necessary)
+  debug: msg="installed homebrew"
 
 - name: install stow
   install:
     packages: stow
     pkg_mgr: "{{ pkg_mgr | default(omit) }}"
-  when: stow_exists.rc != 0
+  when: '"stow" | missing_from_path'
 
 - name: stow folders
   stow:
@@ -71,6 +85,7 @@
     state: present
     source_dir: "{{ item.vars.dotfile_parent_path }}"
     target_dir: "{{ item.vars.stow_target_dir | default(stow_target_dir) }}"
+  ignore_errors: "{{ ignore_errors | default(true) }}"
   when: item.vars.no_stow|default(false)|bool == false
   with_items:
     - "{{ freckles_repo | dotfile_repo_filter }}"
@@ -79,6 +94,7 @@
   install:
     packages: "{{ item }}"
     pkg_mgr: "{{ pkg_mgr | default(omit) }}"
+  ignore_errors: "{{ ignore_errors | default(true) }}"
   with_items:
     - "{{ freckles_repo | dotfile_repo_filter }}"
 
@@ -86,5 +102,6 @@
   install:
     packages: "{{ item }}"
     pkg_mgr: "{{ pkg_mgr | default(omit) }}"
+  ignore_errors: "{{ ignore_errors | default(true) }}"
   with_items:
     - "{{ freckles_repo | additional_packages_filter }}"

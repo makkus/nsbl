@@ -12,7 +12,7 @@
     {% endif -%}{% endif -%}
     {% endfor -%}{% endif %}
 {% if "become" in details['meta'].keys() %}  become: {{ details['meta']['become'] }}{% endif %}
-  ignore_errors: "{{ details['meta']['ignore_errors'] | default('yes') }}"
+  ignore_errors: "{{ details['meta']['ignore_errors'] | default('no') }}"
   {% if "with_items" in details['meta'].keys() %}with_items:
     - {{ "\"{{" }} {{ task_name }}_{{ details['meta']['with_items'] }} | default({{details['meta']['with_items']}}) {{ "}}\"" }} {% endif %}
 {% endfor %}

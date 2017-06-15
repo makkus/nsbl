@@ -14,6 +14,16 @@ tasks:
   - install-conda:
         meta:
           task-desc: installing 'conda' package manager
+  - install-homebrew:
+        meta:
+          task-type: ansible-role
+          task-desc: installing 'homebrew' package manager
+          task-name: geerlingguy.homebrew
+          task-roles:
+             - geerlingguy.homebrew
+             - elliotweiser.osx-command-line-tools
+        vars:
+          homebrew_cask_apps: []
   - yum:
       meta:
         become: yes
@@ -23,6 +33,8 @@ tasks:
         task-roles:
            - install-nix
            - install-conda
+           - geerlingguy.homebrew
+           - elliotweiser.osx-command-line-tools
   - install:
       meta:
         task-name: install

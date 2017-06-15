@@ -7,6 +7,7 @@ import json
 import shutil
 import subprocess
 import sys
+import cursor
 
 import os
 import yaml
@@ -149,10 +150,12 @@ DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
 # util functions
 class CursorOff(object):
     def __enter__(self):
-        os.system('setterm -cursor off')
+        # os.system('setterm -cursor off')
+        cursor.hide()
 
     def __exit__(self, *args):
-        os.system('setterm -cursor on')
+        # os.system('setterm -cursor on')
+        cursor.show()
 
 def get_pkg_mgr_sudo(mgr):
     """Simple function to determine whether a given package manager needs sudo rights or not.
@@ -342,12 +345,15 @@ class Nsbl(object):
         self.inventory = NsblInventory(self.configs, self.int_task_descs, self.role_repos, default_env_type)
         self.tasks = self.inventory.tasks
 
-    def render_environment(self, env_dir, extract_vars=False, force=False, ansible_verbose=""):
+    def render_environment(self, env_dir, extract_vars=False, force=False, ansible_verbose="", callback=None):
         """Creates the ansible environment in the folder provided.
 
         Args:
           env_dir (str): the folder where the environment should be created
           extract_vars (bool): whether to extract a hostvars and groupvars directory for the inventory (True), or render a dynamic inventory script for the environment (default, False)
+          force (bool): overwrite environment if already present at the specified location
+          ansible_verbose (str): parameters to give to ansible-playbook (like: "-vvv")
+          callback (str): name of the callback to use, default: nsbl_internal
         """
 
         result = {}
@@ -412,7 +418,7 @@ class Nsbl(object):
             "playbook": all_plays_name,
             "nsbl_roles": all_ext_roles,
             "callback_plugins": "callback_plugins",
-            "callback_plugin_name": ""
+            "callback_plugin_name": callback
         }
 
         log.debug("Creating build environment from template...")
@@ -432,14 +438,16 @@ class Nsbl(object):
         action_plugins_path = os.path.join(os.path.dirname(__file__), "external", "extra_plugins", "action_plugins")
         callback_plugins_path = os.path.join(os.path.dirname(__file__), "external", "extra_plugins", "callback_plugins")
         result["library_path"] = library_path
-        result["callback_plugins_pagh"] = callback_plugins_path
+        result["callback_plugins_path"] = callback_plugins_path
         result["action_plugins_path"] = action_plugins_path
 
         target_dir = os.path.join(env_dir, "plays")
 
         shutil.copytree(library_path, os.path.join(target_dir, "library"))
         shutil.copytree(action_plugins_path, os.path.join(target_dir, "action_plugins"))
-        shutil.copytree(callback_plugins_path, os.path.join(target_dir, "callback_plugins"))
+        os.makedirs(os.path.join(target_dir, "callback_plugins"))
+        if callback == "nsbl_internal":
+            shutil.copy(os.path.join(callback_plugins_path, "nsbl_internal.py"), os.path.join(target_dir, "callback_plugins"))
 
         # copy internal roles
         for role_name, role in all_int_roles.items():
@@ -562,17 +570,23 @@ class NsblRunner(object):
 
         self.nsbl = nsbl
 
-    def run(self, target, extract_vars, force=True, ansible_verbose=""):
+    def run(self, target, extract_vars, force=True, ansible_verbose="", callback=None):
 
-        parameters = self.nsbl.render_environment(target, extract_vars=extract_vars, force=force, ansible_verbose=ansible_verbose )
+        if callback == None:
+            callback = "nsbl_internal"
+
+        parameters = self.nsbl.render_environment(target, extract_vars=extract_vars, force=force, ansible_verbose=ansible_verbose, callback=callback)
         lookup_dict = parameters['lookup_dict']
-
-        callback_adapter = NsblLogCallbackAdapter(lookup_dict)
 
         run_env = os.environ.copy()
         run_env['NSBL_ENVIRONMENT'] = "true"
         script = parameters['run_playbooks_script']
         proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env)
+
+        if callback == "nsbl_internal":
+            callback_adapter = NsblLogCallbackAdapter(lookup_dict)
+        else:
+            callback_adapter = NsblPrintCallbackAdapter()
 
         with CursorOff():
             click.echo("")
@@ -593,6 +607,16 @@ class NsblRunner(object):
         return
 
 
+class NsblPrintCallbackAdapter(object):
+
+    def add_log_message(self, line):
+
+        click.echo(line, nl=False)
+
+    def finish_up(self):
+
+        pass
+
 class NsblLogCallbackAdapter(object):
 
     def __init__(self, lookup_dict, display_sub_tasks=True):
@@ -611,6 +635,7 @@ class NsblLogCallbackAdapter(object):
         self.current_ansible_task_name = None
         self.saved_item = None
         self.last_action = None
+        self.msgs = []
 
     def add_log_message(self, line):
 
@@ -660,6 +685,7 @@ class NsblLogCallbackAdapter(object):
             self.task_has_items = False
             self.task_has_nsbl_items = False
             self.saved_item = None
+            self.msgs = []
 
             if self.current_dyn_task_id == None:
                 self.current_task = self.lookup_dict[self.current_env_id][self.current_task_id]
@@ -694,6 +720,9 @@ class NsblLogCallbackAdapter(object):
             self.skipped = False
         if category == "failed" and not ignore_errors:
             self.failed = True
+            if msg:
+                self.msgs.append(msg)
+
         if status and status == "changed":
             self.changed = True
 
@@ -793,7 +822,15 @@ class NsblLogCallbackAdapter(object):
             self.new_line = True
             click.echo(output)
         elif ev["category"] == "nsbl_item_failed":
-            output = "failed: {}".format(ev["msg"])
+            msg = ev.get('msg', None)
+            if not msg:
+                if ev.get("ignore_errors", False):
+                    msg = "(but errors ignored)"
+                else:
+                    msg = "(no error details)"
+                    output = "failed: {}".format(msg)
+
+            output = "failed: {}".format(msg)
             click.echo(output)
             self.new_line = True
 
@@ -816,7 +853,14 @@ class NsblLogCallbackAdapter(object):
             click.echo(output)
             self.new_line = True
         elif ev["category"] == "item_failed":
-            output = "      - {} => failed: {}".format(item, ev["msg"])
+            msg = ev.get('msg', None)
+            if not msg:
+                if ev.get("ignore_errors", False):
+                    msg = "(but errors ignored)"
+                else:
+                    msg = "(no error details)"
+                    output = "failed: {}".format(msg)
+            output = "      - {} => failed: {}".format(item, msg)
             click.echo(output)
             self.new_line = True
         elif ev["category"] == "item_skipped":
@@ -846,7 +890,14 @@ class NsblLogCallbackAdapter(object):
                 click.echo(output)
                 self.new_line = True
             elif ev["category"] == "failed":
-                output = "failed: {}".format(ev["msg"])
+                if ev["msg"]:
+                    output = "failed: {}".format(ev["msg"])
+                else:
+                    if ev.get("ignore_errors", False):
+                        msg = "(but errors ignored)"
+                    else:
+                        msg = "(no error details)"
+                    output = "failed: {}".format(msg)
                 click.echo(output)
                 self.new_line = True
             elif ev["category"] == "skipped":
@@ -856,12 +907,19 @@ class NsblLogCallbackAdapter(object):
 
     def process_task_changed(self):
 
-        msg = "n/a"
-
+        msg = ["n/a"]
         if not self.new_line:
             click.echo("")
         if self.failed:
-            output = "   => failed: {}".format(", ".join(msg))
+
+            if self.msgs:
+                if len(self.msgs) < 2:
+                    output = "   => failed: {}".format("".join(self.msgs))
+                else:
+                    output = "   => failed:\t{}".format("\n         -> ".join(self.msgs))
+            else:
+                output = "   => failed (no details available)"
+
         elif self.changed:
             output = "   => ok (changed)"
         else:

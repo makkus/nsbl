@@ -7,6 +7,8 @@ import os
 import yaml
 import frkl
 
+from distutils import spawn
+
 try:
     set
 except NameError:
@@ -17,9 +19,28 @@ from nsbl.nsbl import ensure_git_repo_format
 
 FRECKLE_METADATA_FILENAME = ".freckle"
 NO_INSTALL_MARKER_FILENAME = ".no_install.freckle"
-NO_STOW_MARKER_FILENAME = ".no-stow.freckle"
+NO_STOW_MARKER_FILENAME = ".no_stow.freckle"
 
 PACKAGES_METADATA_FILENAME = ".packages.freckle"
+
+
+
+def which(program):
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
 
 class FilterModule(object):
     def filters(self):
@@ -28,9 +49,13 @@ class FilterModule(object):
             'dotfile_repo_filter': self.dotfile_repo_filter,
             'git_repo_filter': self.git_repo_filter,
             'pkg_mgr_filter': self.pkg_mgr_filter,
-            'additional_packages_filter': self.additional_packages_filter
+            'additional_packages_filter': self.additional_packages_filter,
+            'missing_from_path': self.missing_from_path_filter
+
         }
 
+    def missing_from_path_filter(self, exe):
+        return which(exe) is None
 
     def pkg_mgr_filter(self, dotfile_repos, prefix=None):
 

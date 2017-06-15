@@ -1,3 +1,0 @@
-- name: install package manager
-  include_role:
-    name: "{{ pkg_mgr_name }}"

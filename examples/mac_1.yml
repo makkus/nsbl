@@ -4,9 +4,10 @@
     tasks:
       #- install-conda
       #- install-nix
+      #- install-homebrew
       - install:
-         - zile:
-             pkg_mgr: nix
+#         - zile:
+#             pkg_mgr: homebrew
          - gawk
       - create-folder:
          - /tmp/test1

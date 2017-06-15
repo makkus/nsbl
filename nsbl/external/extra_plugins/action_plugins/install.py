@@ -81,77 +81,83 @@ class ActionModule(ActionBase):
             except Exception as e:
                 pass  # could not get it from template!
 
-        auto = False
-        if pkg_mgr == 'auto':
-            auto = True
-            facts = self._execute_module(module_name='setup', module_args=dict(gather_subset='!all'), task_vars=task_vars)
-            pkg_mgr = facts['ansible_facts']['ansible_pkg_mgr']
-            os_family = facts['ansible_facts']['ansible_os_family']
-            distribution = facts['ansible_facts']['ansible_distribution']
-            distribution_major_version = facts['ansible_facts']['ansible_distribution_major_version']
-            distribution_version = facts['ansible_facts']['ansible_distribution_version']
-            distribution_release = facts['ansible_facts']['ansible_distribution_release']
-            # figure out actual package name
+        auto = pkg_mgr == 'auto'
+
+        facts = self._execute_module(module_name='setup', module_args=dict(gather_subset='!all'), task_vars=task_vars)
+        if auto:
+            pkg_mgr = facts['ansible_facts'].get('ansible_pkg_mgr', None)
+        os_family = facts['ansible_facts'].get('ansible_os_family', None)
+        distribution = facts['ansible_facts'].get('ansible_distribution', None)
+        distribution_major_version = facts['ansible_facts'].get('ansible_distribution_major_version', None)
+        distribution_version = facts['ansible_facts'].get('ansible_distribution_version', None)
+        distribution_release = facts['ansible_facts'].get('ansible_distribution_release', None)
+        # figure out actual package name
+        if distribution_version:
             full_version_string = "{}-{}".format(distribution, distribution_version).lower()
-            full_release_string = "{}-{}".format(distribution, distribution_release).lower()
-            distribution_major_string = "{}-{}".format(distribution, distribution_major_version).lower()
-
-            distribution_string = distribution.lower()
-            os_string = os_family.lower()
         else:
-            os_family = None
-            distribution = None
-            distribution_major_version = None
-            distribution_version = None
-            distribution_release = None
-            full_version_string = None
-            full_release_string = None
-            distribution_major_string = None
-            distribution_string = None
-            os_string = None
+            full_version_string = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
-        # TODO: error
-        if pkg_mgr == 'auto':
+        if distribution_release:
+            full_release_string = "{}-{}".format(distribution, distribution_release).lower()
+        else:
+            full_release_string = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+        if distribution_major_version:
+            distribution_major_string = "{}-{}".format(distribution, distribution_major_version).lower()
+        else:
+            distribution_major_string = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+        distribution_string = distribution.lower()
+        os_string = os_family.lower()
+
+        if pkg_mgr == 'unknown' and os_family == "Darwin":
+            pkg_mgr = "homebrew"
+
+        if pkg_mgr in ['auto', 'unknown']:
             result['failed'] = True
             result['msg'] = 'Could not detect which package manager to use. Try gathering facts or setting the "use" option.'
             return result
 
         if pkg_mgr not in self._shared_loader_obj.module_loader:
             result['failed'] = True
-            result['msg'] = 'Could not find a module for %s.' % pkg_mgr
+            result['msg'] = "Could not find an ansible module for package manager '{}'.".format(pkg_mgr)
             return result
 
         # calculate package name, just in case
         pkg_dict = CaseInsensitiveDict(package[VARS_KEY].get("pkgs"))
-        if not auto:
-            if pkg_mgr.lower() in (name.lower() for name in pkg_dict.keys()):
-                calculated_package = pkg_dict[pkg_mgr.lower()]
-            elif 'other' in (name.lower() for name in pkg_dict.keys()):
-                calculated_package = pkg_dict['other']
-            else:
-                calculated_package = None
+        if pkg_mgr.lower() in (name.lower() for name in pkg_dict.keys()):
+            calculated_package_pkg_mgr = pkg_dict[pkg_mgr.lower()]
+        elif 'other' in (name.lower() for name in pkg_dict.keys()):
+            calculated_package_pkg_mgr = pkg_dict['other']
         else:
-            if full_version_string in (name.lower() for name in pkg_dict.keys()):
-                calculated_package = pkg_dict[full_version_string]
-            elif full_release_string in (name.lower() for name in pkg_dict.keys()):
-                calculated_package = pkg_dict[full_release_string]
-            elif distribution_major_string in (name.lower() for name in pkg_dict.keys()):
-                calculated_package = pkg_dict[distribution_major_string]
-            elif distribution_string in (name.lower() for name in pkg_dict.keys()):
-                calculated_package = pkg_dict[distribution_string]
-            elif os_string in (name.lower() for name in pkg_dict.keys()):
-                calculated_package = pkg_dict[os_string]
-            elif 'other' in (name.lower() for name in pkg_dict.keys()):
-                calculated_package = pkg_dict['other']
-            else:
-                calculated_package = None
+            calculated_package_pkg_mgr = None
 
-        if calculated_package in ['ignore', 'omit']:
+        if full_version_string in (name.lower() for name in pkg_dict.keys()):
+            calculated_package_platform = pkg_dict[full_version_string]
+        elif full_release_string in (name.lower() for name in pkg_dict.keys()):
+            calculated_package_platform = pkg_dict[full_release_string]
+        elif distribution_major_string in (name.lower() for name in pkg_dict.keys()):
+            calculated_package_platform = pkg_dict[distribution_major_string]
+        elif distribution_string in (name.lower() for name in pkg_dict.keys()):
+            calculated_package_platform = pkg_dict[distribution_string]
+        elif os_string in (name.lower() for name in pkg_dict.keys()):
+            calculated_package_platform = pkg_dict[os_string]
+        elif 'other' in (name.lower() for name in pkg_dict.keys()):
+            calculated_package_platform = pkg_dict['other']
+        else:
+            calculated_package_platform = None
+
+        if calculated_package_platform in ['ignore', 'omit']:
             result['msg'] = "Ignoring package {}".format(package[VARS_KEY]["name"])
             result['skipped'] = True
             return result
 
-        module_result = self.execute_package_module_new(package, calculated_package, auto, pkg_mgr, task_vars, result)
+        if not auto:
+            calculated_package = calculated_package_pkg_mgr
+        else:
+            calculated_package = calculated_package_platform
+
+        module_result = self.execute_package_module(package, calculated_package, auto, pkg_mgr, task_vars, result)
 
         if module_result:
             result.update(module_result)
@@ -185,7 +191,7 @@ class ActionModule(ActionBase):
 
         return result
 
-    def execute_package_module_new(self, package, calculated_package, auto, pkg_mgr, task_vars, result):
+    def execute_package_module(self, package, calculated_package, auto, pkg_mgr, task_vars, result):
 
         if pkg_mgr == 'git':
             pkg_vars = self.prepare_git(package[VARS_KEY], calculated_package, task_vars, result)
@@ -292,105 +298,3 @@ class ActionModule(ActionBase):
 
 
 
-    def execute_package_module(self, name, auto, pkg_mgr, task_vars, result, full_version_string, full_release_string, distribution_major_string, distribution_string, os_string):
-
-        if isinstance(name, string_types) and pkg_mgr != 'git':
-            pkg_name = name
-
-        else:
-
-            if not auto:
-
-                if pkg_mgr == 'git':
-                    pkg_name = ensure_git_repo_format(name, self._task.args.get("dest", None))
-                else:
-                    if not isinstance(name, dict):
-                        result['failed'] = True
-                        result['msg'] = "Wrong value for 'name', only string or dict allowed: {}".format(name)
-                        return result
-
-                    if not len(name) == 1:
-                        result['failed'] = True
-                        result['msg'] = "Only dicts of length 1 allowed for package name hierarchy: {}".format(name)
-                        return result
-
-                    meta_name = next(iter(name))
-
-                    pkg_dict = CaseInsensitiveDict(name[meta_name])
-
-                    if pkg_mgr.lower() in (name.lower() for name in pkg_dict.keys()):
-                        pkg_name = pkg_dict[pkg_mgr.lower()]
-                    elif 'default' in (name.lower() for name in pkg_dict.keys()):
-                        pkg_name = pkg_dict['default']
-                    else:
-                        pkg_name = None
-
-            else:
-                if not isinstance(name, dict):
-                    result['failed'] = True
-                    result['msg'] = "Wrong value for 'name', only string or dict allowed: {}".format(name)
-                    return result
-
-                if not len(name) == 1:
-                    result['failed'] = True
-                    result['msg'] = "Only dicts of length 1 allowed for package name hierarchy: {}".format(name)
-                    return result
-
-                meta_name = next(iter(name))
-
-                pkg_dict = CaseInsensitiveDict(name[meta_name])
-
-                if full_version_string in (name.lower() for name in pkg_dict.keys()):
-                    pkg_name = pkg_dict[full_version_string]
-                elif full_release_string in (name.lower() for name in pkg_dict.keys()):
-                    pkg_name = pkg_dict[full_release_string]
-                elif distribution_major_string in (name.lower() for name in pkg_dict.keys()):
-                    pkg_name = pkg_dict[distribution_major_string]
-                elif distribution_string in (name.lower() for name in pkg_dict.keys()):
-                    pkg_name = pkg_dict[distribution_string]
-                elif os_string in (name.lower() for name in pkg_dict.keys()):
-                    pkg_name = pkg_dict[os_string]
-                elif 'default' in (name.lower() for name in pkg_dict.keys()):
-                    pkg_name = pkg_dict['default']
-                else:
-                    pkg_name = None
-
-        if pkg_mgr != 'git' and pkg_name is None:
-            if USE_TOP_LEVEL_AS_PKG_NAME:
-                pkg_name = meta_name
-            else:
-                result['msg'] = "Ignoring package {} for package manager {}, no entry in package hierarchy found.".format(meta_name, pkg_mgr)
-                return result
-
-        if self._task.args.get('no_install', False):
-            result['changed'] = False
-            result['failed'] = False
-            result['msg'] = "Package {} tagged as 'no_install', doing nothing...".format(pkg_name)
-            return result
-
-        # run the 'package' pkg_mgr
-        new_module_args = {}
-        keys = PKG_MGR_VARS.get(pkg_mgr, None)
-        if not keys:
-            keys = DEFAULT_PKG_MGR_VARS
-
-        for key in keys:
-            if key in self._task.args.keys():
-                new_module_args[key] = self._task.args[key]
-
-        if pkg_mgr != 'git':
-            if pkg_mgr == 'apt' and pkg_name.endswith(".deb"):
-                new_module_args.pop('name', None)
-                new_module_args["deb"] = pkg_name
-            else:
-                new_module_args["name"] = pkg_name
-        else:
-            new_module_args.update(pkg_name)
-            if "repo" in new_module_args.keys():
-                new_module_args.pop('name', None)
-
-        display.vvvv("Running %s" % pkg_mgr)
-        self._play_context.become = get_pkg_mgr_sudo(pkg_mgr)
-        result.update(self._execute_module(module_name=pkg_mgr, module_args=new_module_args, task_vars=task_vars, wrap_async=self._task.async))
-
-        return result

@@ -1,21 +1,11 @@
 - localhost:
     meta:
       type: host
+    vars:
+      freckles_repo:
+        - repo: https://github.com/makkus/dotfiles-new.git
+          #dest: ~/dotfiles
+          #paths: ["minimal", "dev", "no-x", "x"]
+          paths: ["no-x"]
     tasks:
-      #- install-conda
-      #- install-nix
-      #- install-homebrew
-      - install:
-#         - zile:
-#             pkg_mgr: homebrew
-         - gawk
-      - create-folder:
-         - /tmp/test1
-         - /tmp/test2
-      # - docker:
-           # meta:
-             # become: yes
-             # task-roles:
-                 # docker: angstwad.docker_ubuntu
-           # vars:
-              # docker_apt_cache_valid_time: 1200
+      - freckles
