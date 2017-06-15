@@ -1,0 +1,21 @@
+- localhost:
+    meta:
+      type: host
+    tasks:
+      #- install-conda
+      #- install-nix
+      #- install-homebrew
+      - install:
+#         - zile:
+#             pkg_mgr: homebrew
+         - gawk
+      - create-folder:
+         - /tmp/test1
+         - /tmp/test2
+      # - docker:
+           # meta:
+             # become: yes
+             # task-roles:
+                 # docker: angstwad.docker_ubuntu
+           # vars:
+              # docker_apt_cache_valid_time: 1200
