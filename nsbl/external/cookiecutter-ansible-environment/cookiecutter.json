@@ -8,7 +8,6 @@
     "ansible_playbook_args": "",
     "ask_sudo": "",
     "playbook": "all_plays.yml",
-    "nsbl_roles": {},
     "callback_plugins": "",
     "callback_plugin_name": "",
     "_extensions": ["nsbl.ansible_extensions.utils"]

@@ -1,6 +1,7 @@
 - localhost:
     meta:
       type: host
+      become: yes
       task-roles:
             docker: angstwad.docker_ubuntu
     vars:
@@ -17,6 +18,9 @@
       - install:
            packages:
              - fortunes
-      - docker:
+      - docker_ubuntu:
+          meta:
+            task-roles: angstwad.docker_ubuntu
+          vars:
             docker_apt_cache_valid_time: 1200
 

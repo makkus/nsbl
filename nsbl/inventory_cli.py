@@ -3,7 +3,10 @@
 import pprint
 import click
 import sys
-from .nsbl import NsblInventory
+import json
+from .inventory import NsblInventory
+from frkl import Frkl
+from .defaults import NSBL_INVENTORY_BOOTSTRAP_CHAIN
 
 @click.command()
 @click.option('--list', help='list of all groups', required=False, is_flag=True)
@@ -16,17 +19,18 @@ def main(list, host, config):
         click.echo("Using both '--list' and '--host' options not allowd")
         sys.exit(1)
 
-    nsbl_obj = NsblInventory(config)
+    inventory = NsblInventory()
+    inv_obj = Frkl(config, NSBL_INVENTORY_BOOTSTRAP_CHAIN)
+    inv_obj.process(inventory)
 
-    # print(nsbl_obj.config)
     if list:
-        result = nsbl_obj.list()
-        print(result)
+        result = inventory.list()
+        result_json = json.dumps(result, sort_keys=4, indent=4)
+        print(result_json)
     elif host:
-        result = nsbl_obj.host(host)
-        print(result)
-
-
+        result = inventory.host(host)
+        result_json = json.dumps(result, sort_keys=4, indent=4)
+        print(result_json)
 
 if __name__ == "__main__":
     main()

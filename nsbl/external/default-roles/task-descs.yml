@@ -3,7 +3,7 @@ tasks:
       meta:
         task-name: apt
         become: yes
-        var_keys:
+        var-keys:
           - name
           - state
       vars:
@@ -41,7 +41,7 @@ tasks:
         task-desc: installing package(s)
         with_items: packages
         default-key: packages
-        var_keys:
+        var-keys:
           - packages
           - pkg_mgr
 

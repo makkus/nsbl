@@ -5,12 +5,14 @@ import pprint
 import click
 import sys
 from .nsbl import NsblInventory, Nsbl
+from .tasks import NsblTasks, NsblTaskProcessor, NsblDynamicRoleProcessor
 from .env_creator import AnsibleEnvironment, NsblCreateException
 from . import __version__ as VERSION
 import yaml
 import json
 import frkl
 import click_log
+from .defaults import *
 
 @click.group(invoke_without_command=True)
 @click.option('--version', help='the version of frkl you are using', is_flag=True)
@@ -27,8 +29,8 @@ def cli(ctx, version, role_repo, task_desc):
         sys.exit(0)
 
     ctx.obj = {}
-    ctx.obj['role-repos'] = role_repo
-    ctx.obj['task-desc'] = task_desc
+    ctx.obj['role-repos'] = calculate_role_repos(role_repo, use_default_roles=True)
+    ctx.obj['task-desc'] = calculate_task_descs(task_desc, ctx.obj['role-repos'])
 
 
 @cli.command('list-groups')
@@ -73,6 +75,7 @@ def list_hosts(ctx, config, format, pager):
 @click.option('--pager', '-p', required=False, default=False, is_flag=True, help='output via pager')
 @click.pass_context
 def list_tasks(ctx, config, format, pager):
+
     nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
 
     result = []
@@ -81,6 +84,29 @@ def list_tasks(ctx, config, format, pager):
         result.append(tasks)
 
     output(result, format, pager)
+
+@cli.command('describe-tasks')
+@click.argument('config', required=True, nargs=-1)
+@click.option('--format', '-f', required=False, default='yaml', help='output format, either json or yaml (default)')
+@click.option('--pager', '-p', required=False, default=False, is_flag=True, help='output via pager')
+@click.pass_context
+def describe_tasks(ctx, config, format, pager):
+
+    init_params = {"role_repos": ctx.obj['role-repos'], "task_descs": ctx.obj['task-desc'], "meta": {}, "vars": {}}
+    tasks = NsblTasks(init_params)
+
+    task_format = generate_nsbl_tasks_format(tasks.task_descs)
+    # pprint.pprint(task_format)
+    chain = [frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor(), frkl.FrklProcessor(task_format), NsblTaskProcessor(init_params), NsblDynamicRoleProcessor(init_params)]
+    # chain = [frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor(), frkl.FrklProcessor(task_format), NsblTaskProcessor(init_params)]
+    frkl_obj = frkl.Frkl(config, chain)
+    # print(config)
+    result = frkl_obj.process(tasks)
+    pprint.pprint(result)
+    # result.render_roles("/tmp/role_test")
+    # result.render_playbook("/tmp/plays")
+
+
 
 @cli.command('create-inventory')
 @click.argument('config', required=True, nargs=-1)
@@ -151,9 +177,18 @@ def print_available_tasks(ctx, config, pager, format):
 @click.pass_context
 def create(ctx, config, target, static, force):
 
-    nsbl = Nsbl(config, ctx.obj['task-desc'], ctx.obj['role-repos'])
+    init_params = {"task_descs": ctx.obj['task-desc'], "role_repos": ctx.obj["role-repos"]}
+    nsbl = Nsbl(init_params)
 
-    nsbl.render_environment(target, extract_vars=static, force=force, ansible_verbose="")
+    nsbl_frkl = frkl.Frkl(config, NSBL_INVENTORY_BOOTSTRAP_CHAIN)
+    result = nsbl_frkl.process(nsbl)
+
+    nsbl.render("/tmp/test_env", extract_vars=static, force=force, ansible_args="", callback='default')
+    # for play, tasks in result["plays"].items():
+        # pprint.pprint(play)
+        # pprint.pprint(tasks.roles)
+
+    # nsbl.render_environment(target, extract_vars=static, force=force, ansible_verbose="")
 
 
 

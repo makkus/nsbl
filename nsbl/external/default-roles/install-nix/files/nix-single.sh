@@ -1,5 +1,8 @@
 #! /usr/bin/env bash
 
+set -e
+set -x
+
 TEMP_DIR=/tmp/freckles_install
 
 function command_exists {
@@ -8,9 +11,9 @@ function command_exists {
 
 function download {
     if command_exists wget; then
-        wget -O $2 $1
+        wget -nv -O $2 $1
     elif command_exists curl; then
-        curl -o $2 $1
+        curl -s -o $2 $1
     else
         echo "Could not find 'wget' nor 'curl' to download files. Exiting..."
         exit 1

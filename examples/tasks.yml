@@ -1,0 +1,22 @@
+# vars:
+  # test_var: test_val1
+# meta:
+  # become: true
+tasks:
+    - install-nix:
+        testvar: val
+    - docker:
+        meta:
+          task-roles:
+            - src: angstwad.docker
+              version: 0.1
+    - apt:
+        meta:
+          become: yes
+          role-name: install_stuff
+        vars:
+          name:
+             zile
+    - create-folder:
+        - /tmp/test1
+        - /tmp/test2

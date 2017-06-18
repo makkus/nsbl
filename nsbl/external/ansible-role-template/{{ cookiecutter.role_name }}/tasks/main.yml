@@ -3,16 +3,18 @@
 {% for task_name, details in cookiecutter.tasks | dictsort -%}
 - name: {{ task_name }}
   {{ details['meta']['task-name'] }}: {% if 'free_form' in details['vars'].keys() -%} {{ "\"{{" }} {{ task_name}}_free_form {{ "}}\"" }} {% endif %}
-  {% if 'var_keys' in details['meta'].keys() and details['meta']['var_keys'] != ['free_form'] -%}args:
-    {% for arg in details['meta']['var_keys'] -%}{% if arg != 'free_form' -%}
-    {% if arg != details['meta'].get('with_items', None) %}
+  {% if 'var-keys' in details['meta'].keys() and details['meta']['var-keys'] != ['free_form'] -%}args:
+    {% for arg in details['meta']['var-keys'] -%}{% if arg != 'free_form' -%}
+    {% if arg != details['meta'].get('with_items', None) -%}
     {{ arg }}: {{ "\"{{" }} {{ task_name }}_{{ arg }} | default({{ arg }}) | default(omit) }}"
     {% else -%}
     {{ arg }}: {{ "\"{{" }} item {{ "}}\"" }}
     {% endif -%}{% endif -%}
     {% endfor -%}{% endif %}
-{% if "become" in details['meta'].keys() %}  become: {{ details['meta']['become'] }}{% endif %}
-  ignore_errors: "{{ details['meta']['ignore_errors'] | default('no') }}"
-  {% if "with_items" in details['meta'].keys() %}with_items:
+{% if "become" in details['meta'].keys() %}  become: {{ details['meta']['become'] }}
+{% endif -%}
+{% if "ignore_errors" in details['meta'].keys() %}  ignore_errors: "{{ details['meta']['ignore_errors'] }}"
+{% endif -%}
+{% if "with_items" in details['meta'].keys() %}  with_items:
     - {{ "\"{{" }} {{ task_name }}_{{ details['meta']['with_items'] }} | default({{details['meta']['with_items']}}) {{ "}}\"" }} {% endif %}
 {% endfor %}

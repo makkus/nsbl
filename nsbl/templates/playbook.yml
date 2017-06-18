@@ -1,11 +1,12 @@
 ---
 - name: name
   hosts: {{ groups }}
-{% if "become" in env['meta'].keys() %}  become: {{ env['meta']['become'] }}{% endif %}
+{% if "become" in meta.keys() %}  become: {{ meta['become'] }}{% endif %}
   roles:
-{% for task in tasks %}    - role: {{ task['meta']['task-name'] }}
-      _task_id: {{ task['meta']['_task_id'] }}
-      _env_id: {{ task['meta']['_env_id'] }}
-{% for key, var in task.get('vars', {}).items() %}      {{ key }}: {{ var }}
-{% endfor %}      {% if 'become' in task['meta'].keys() %}become: {{ task['meta']['become'] }}{% endif %}
+{% for role in roles %}    - role: {{ role.role_name }}
+{% if add_role_ids %}      _role_id: {{ role.role_id }}
+{% endif -%}
+{% if env_id %}      _env_id: {{ env_id }}{% endif -%}
+{% for key, var in role.get_vars().items() %}      {{ key }}: {{ var }}
+{% endfor %}      {% if 'become' in role.get_meta().keys() %}become: {{ role.get_meta()['become'] }}{% endif %}
 {% endfor %}

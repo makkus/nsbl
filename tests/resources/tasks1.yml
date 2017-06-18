@@ -1,0 +1,3 @@
+- create-folder:
+   - /tmp/tests/folder1
+   - /tmp/tests/folder2

@@ -38,30 +38,30 @@
 #     - "{{ freckles_repo | pkg_mgr_filter('install-') }}"
 
 # those debug tasks are only a workaround because 'include_role' tasks don't register in a callback
-- name: nsbl_started=installing nix (if necessary)
-  debug: msg="installing nix (if necessary)..."
+- name: nsbl_started=installing nix (if required)
+  debug: msg="installing nix (if required)..."
 
 - name: install nix
   include_role:
     name: install-nix
   when: '("nix" in freckles_repo | pkg_mgr_filter) and ( "nix-env" | missing_from_path )'
 
-- name: nsbl_finished=installing nix (if necessary)
+- name: nsbl_finished=installing nix (if required)
   debug: msg="installed nix"
 
-- name: nsbl_started=installing conda (if necessary)
-  debug: msg="installing conda (if necessary)..."
+- name: nsbl_started=installing conda (if required)
+  debug: msg="installing conda (if required)..."
 
 - name: install conda
   include_role:
     name: install-conda
   when: '("conda" in freckles_repo | pkg_mgr_filter) and ( "conda" | missing_from_path )'
 
-- name: nsbl_finished=installing conda (if necessary)
+- name: nsbl_finished=installing conda (if required)
   debug: msg="installed conda"
 
-- name: nsbl_started=installing homebrew (if necessary)
-  debug: msg="installing homebrew (if necessary)..."
+- name: nsbl_started=installing homebrew (if required)
+  debug: msg="installing homebrew (if required)..."
 
 - name: install homebrew
   include_role:
@@ -70,7 +70,7 @@
     homebrew_cask_apps: []
   when: '("brew" | missing_from_path) and (("homebrew" in freckles_repo | pkg_mgr_filter) or (ansible_os_family == "Darwin" and pkg_mgr is not defined) )'
 
-- name: nsbl_finished=installing homebrew (if necessary)
+- name: nsbl_finished=installing homebrew (if required)
   debug: msg="installed homebrew"
 
 - name: install stow

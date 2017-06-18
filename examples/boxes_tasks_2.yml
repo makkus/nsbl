@@ -10,10 +10,6 @@
     tasks:
       - install-nix
       - install-conda
-      - install:
-           pkg_mgr: nix
-           packages:
-             - zile
       - checkout-git:
           - dest: ~/.emacs.d
             repo: https://github.com/syl20bnr/spacemacs
@@ -22,4 +18,12 @@
       - dotfiles:
            install: yes
            stow: yes
+      - install:
+           pkg_mgr: nix
+           packages:
+             - zile
+      - create-folders:
+           - /tmp/_xxx1
+           - /tmp/_xxx2
+
 

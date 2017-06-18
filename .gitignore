@@ -61,3 +61,5 @@ target/
 # pyenv python configuration file
 .python-version
 /.vagrant/machines/default/virtualbox/action_provision
+
+**/.vagrant

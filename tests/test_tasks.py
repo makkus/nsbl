@@ -17,8 +17,7 @@ import frkl
 from nsbl import nsbl
 
 @pytest.mark.parametrize("test_name", [
-    "localhost_inventory",
-    "groups_inventory"
+    "tasks_1"
 ])
 def test_files(test_name):
 
@@ -41,8 +40,8 @@ def test_files(test_name):
     result_obj = frkl.FrklCallback.init(init_file, input_files)
     result = result_obj.result()
 
-    pprint.pprint(expected_obj)
-    print("XXX")
-    pprint.pprint(result)
+    # pprint.pprint(expected_obj)
+    # print("XXX")
+    # pprint.pprint(result)
 
     assert expected_obj == result

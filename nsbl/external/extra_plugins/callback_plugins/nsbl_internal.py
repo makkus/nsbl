@@ -125,10 +125,11 @@ class CallbackModule(CallbackBase):
             msg = result._result.get("msg", None)
             if msg:
                 output["msg"] = msg
-            else:
-                msg = result._result.get("stderr", None)
-                if msg:
-                    output["msg"] = msg
+            stderr = result._result.get("stderr", None)
+            if stderr:
+                output["stderr"] = stderr
+                output["stderr_lines"] = result._result.get("stderr_lines")
+
             if result._result.get('changed', False):
                 status = 'changed'
             else:
