@@ -1,0 +1,6 @@
+- localhost:
+    meta:
+      type: host
+    vars:
+      var1: value1
+      var2: value2

@@ -1,0 +1,4 @@
+- name: {{ role.name }}
+  src: {{ role.src }}
+{% if "version" in role.keys() %}  version: {{ role.version }}
+{% endif %}

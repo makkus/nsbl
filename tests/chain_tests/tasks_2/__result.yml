@@ -1,0 +1,27 @@
+- meta:
+    become: False
+    default-key: free_form
+    name: shell
+    task-name: shell
+    task-roles: {}
+    task-type: task
+    var-keys:
+      - free_form
+      - chdir
+      - creates
+      - executable
+      - removes
+  vars:
+    free_form: ls -lah
+- meta:
+    become: False
+    default-key: free_form
+    name: shell
+    task-name: shell
+    task-roles: {}
+    task-type: task
+    var-keys:
+      - free_form
+  vars:
+    free_form: ls -lah /tmp
+

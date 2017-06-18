@@ -1,0 +1,15 @@
+processor_chain:
+  - expand_url
+  - read
+  - deserialize
+  - frklize:
+      child_marker: envs
+      default_leaf: meta
+      default_leaf_key: name
+      other_keys: 
+        - vars
+        - tasks
+      key_move_map:
+        '*': vars
+collector: inventory
+

@@ -1,0 +1,14 @@
+processor_chain:
+  - expand_url
+  - read
+  - deserialize
+  - frklize:
+      child_marker: tasks
+      default_leaf: meta
+      default_leaf_key: name
+      key_move_map:
+        '*': vars
+  - augment_tasks
+  - create_dynamic_roles
+collector: tasks
+

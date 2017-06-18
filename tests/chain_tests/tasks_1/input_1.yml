@@ -1,0 +1,13 @@
+tasks:
+  - shell:
+      meta:
+        become: no
+      vars:
+        free_form: ls -lah
+  - shell:
+      meta:
+        become: no
+        var-keys:
+          - free_form
+      vars:
+        free_form: ls -lah /tmp

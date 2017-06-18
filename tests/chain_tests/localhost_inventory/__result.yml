@@ -1,0 +1,8 @@
+_meta:
+  hostvars:
+     localhost:
+        vars:
+           ansible_connection: local
+           var1: value1
+           var2: value2
+
