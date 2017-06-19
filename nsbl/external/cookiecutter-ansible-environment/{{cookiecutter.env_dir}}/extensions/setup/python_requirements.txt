@@ -1,6 +1,6 @@
 # Required python packages for ansible
 PyYAML==3.12
-Jinja2
+Jinja2==2.9.6
 httplib2
 
 # Ansible
