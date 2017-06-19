@@ -7,4 +7,4 @@ httplib2==0.10.3
 ansible==2.3.1.0
 
 #Other packages
-boto
+boto==2.47.0
