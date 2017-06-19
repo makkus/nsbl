@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
 
+import json
 import os
 import pprint
-import click
 import sys
-from .nsbl import NsblInventory, Nsbl, NsblRunner
-from .env_creator import AnsibleEnvironment, NsblCreateException
-from . import __version__ as VERSION
-import yaml
-import json
-import frkl
+
+import click
+
 import click_log
+import frkl
+import yaml
+
+from . import __version__ as VERSION
+from .env_creator import AnsibleEnvironment, NsblCreateException
+from .nsbl import Nsbl, NsblRunner
+
 
 @click.command()
 @click.option('--version', help='the version of frkl you are using', is_flag=True)
@@ -18,23 +22,22 @@ import click_log
 @click.option('--task-desc', '-t', help='path to a local task description yaml file', multiple=True)
 @click.option('--stdout-callback', '-c', help='name of or path to callback plugin to be used as default stdout plugin', default="nsbl_internal")
 @click.option('--target', '-t', help="target output directory of created ansible environment, defaults to 'nsbl_env' in the current directory", default="nsbl_env")
-@click.option('--static/--dynamic', default=True, help="whether to render a dynamic inventory script using the provided config files instead of a plain ini-type config file and group_vars and host_vars folders, default: static")
+# @click.option('--static/--dynamic', default=True, help="whether to render a dynamic inventory script using the provided config files instead of a plain ini-type config file and group_vars and host_vars folders, default: static")
 @click.option('--force/--no-force', help="delete potentially existing target directory", default=True)
 @click.argument('config', required=True, nargs=-1)
 @click_log.simple_verbosity_option()
 @click_log.init("nsbl")
-def cli(version, role_repo, task_desc, stdout_callback, target, static, force, config):
+def cli(version, role_repo, task_desc, stdout_callback, target, force, config):
     """Console script for nsbl"""
 
     if version:
         click.echo(VERSION)
         sys.exit(0)
 
-    nsbl_obj = Nsbl(config, task_desc, role_repo)
+    nsbl_obj = Nsbl.create(config, role_repo, task_desc)
 
     runner = NsblRunner(nsbl_obj)
-
-    runner.run(target, static, force, "", stdout_callback)
+    runner.run(target, force, "", stdout_callback)
 
 
 def output(python_object, format="raw", pager=False):
@@ -52,4 +55,3 @@ def output(python_object, format="raw", pager=False):
         click.echo_via_pager(output)
     else:
         click.echo(output)
-

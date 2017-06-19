@@ -1,0 +1,55 @@
+envs:
+  - meta:
+      type: group
+      hosts:
+        - host_1
+        - host_2
+    envs:
+      - group_1:
+          meta:
+            groups:
+              - group_2
+          vars:
+            var_group_1_1: val1
+            var_group_1_2: val2
+          tasks:
+            - docker:
+                meta:
+                  become: yes
+                  roles:
+                    docker: angstwad.docker_ubuntu
+                vars:
+                  docker_apt_cache_valid_time: 1200
+            - shell:
+                free_form: shell_whatever
+            - apt
+            - shell:
+                meta:
+                  become: no
+                  var_keys:
+                    - free_form
+                vars:
+                  free_form: ls -lah /tmp
+      - group_2:
+          var_group_2_1: val1
+          var_group_2_2: val2
+  - meta:
+      type: host
+      groups:
+        - group_2
+    envs:
+      - host_1:
+          var_host_1_1: val_host_1_1
+          var_host_1_2: val_host_1_2
+      - host_2:
+          vars:
+            var_host_2_1: val_host_2_1
+            var_host_2_2: val_host_2_2
+          tasks:
+            - install:
+                - zile
+                - gawk
+            - create-folders:
+                - /tmp/test1
+                - /tmp/test2
+

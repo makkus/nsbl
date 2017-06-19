@@ -1,0 +1,15 @@
+- localhost:
+    meta:
+      type: host
+
+    tasks:
+      - install-nix
+      - install:
+          vars:
+            pkg_mgr: auto
+            packages:
+             - zile
+             - gawk
+      - create-folder:
+           - /tmp/_xxx1
+           - /tmp/_xxx2
