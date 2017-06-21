@@ -19,10 +19,7 @@ def main(list, host, config):
         click.echo("Using both '--list' and '--host' options not allowd")
         sys.exit(1)
 
-    inventory = NsblInventory()
-    inv_obj = Frkl(config, NSBL_INVENTORY_BOOTSTRAP_CHAIN)
-    inv_obj.process(inventory)
-
+    inventory = NsblInventory.create(config)
     if list:
         result = inventory.list()
         result_json = json.dumps(result, sort_keys=4, indent=4)

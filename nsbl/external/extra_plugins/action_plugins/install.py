@@ -26,6 +26,7 @@ import sys
 from nsbl.nsbl import get_pkg_mgr_sudo, ensure_git_repo_format
 boolean = C.mk_boolean
 
+IGNORE_KEY = "IGNORE_THIS_KEY"
 VARS_KEY = "vars"
 
 PKG_MGR_VARS = {
@@ -177,6 +178,26 @@ class ActionModule(ActionBase):
 
             return {temp["repo"]: temp}
 
+    def prepare_apt(self, package, calculated_package, pkg_mgr, task_vars, result):
+
+        result = {}
+        if calculated_package:
+            if not isinstance(calculated_package, (list, tuple)):
+                calculated_package = [calculated_package]
+            for pkg in calculated_package:
+                if pkg.endswith(".deb"):
+                    result[pkg] = {"deb": pkg, "name": IGNORE_KEY, "update_cache": IGNORE_KEY, "package": IGNORE_KEY}
+                else:
+                    result[pkg] = {"name": pkg, "deb": IGNORE_KEY}
+        else:
+            temp = package["name"]
+            if temp.endswith(".deb"):
+                result[temp] = {"deb": temp, "name": IGNORE_KEY, "update_cache": IGNORE_KEY, "package": IGNORE_KEY}
+            else:
+                result[temp] = {"name": temp, "deb": IGNORE_KEY}
+
+        return result
+
     def prepare_generic(self, package, calculated_package, pkg_mgr, task_vars, result):
 
         result = {}
@@ -194,9 +215,11 @@ class ActionModule(ActionBase):
     def execute_package_module(self, package, calculated_package, auto, pkg_mgr, task_vars, result):
 
         if pkg_mgr == 'git':
-            pkg_vars = self.prepare_git(package[VARS_KEY], calculated_package, task_vars, result)
+            all_pkg_vars = self.prepare_git(package[VARS_KEY], calculated_package, task_vars, result)
+        elif pkg_mgr == 'apt':
+            all_pkg_vars = self.prepare_apt(package[VARS_KEY], calculated_package, pkg_mgr, task_vars, result)
         else:
-            pkg_vars = self.prepare_generic(package[VARS_KEY], calculated_package, pkg_mgr, task_vars, result)
+            all_pkg_vars = self.prepare_generic(package[VARS_KEY], calculated_package, pkg_mgr, task_vars, result)
 
         msgs = []
         overall_changed = False
@@ -207,7 +230,7 @@ class ActionModule(ActionBase):
         failed = []
 
         runs = []
-        for pkg_id, pkg_vars in pkg_vars.items():
+        for pkg_id, pkg_vars in all_pkg_vars.items():
             if package[VARS_KEY].get("no_install", False):
                 skipped.append(pkg_id)
                 run = {"skipped": True, "msg": "Package '{}' tagged with 'no_install', ignoring".format(pkg_id)}
@@ -229,8 +252,11 @@ class ActionModule(ActionBase):
                         new_module_args[key] = self._task.args[key]
 
             new_module_args.update(pkg_vars)
+            # removing all ignore keys
+            new_module_args = {k: v for k, v in new_module_args.items() if v != IGNORE_KEY}
 
             display.vvvv("Running %s" % pkg_mgr)
+            display.vvvv("Args: {}".format(new_module_args))
             if self.nsbl_env:
                 output = {"category": "nsbl_item_started", "action": "install", "item": "{} (using: {})".format(pkg_id, pkg_mgr)}
                 # env_id = task_vars['vars'].get('_env_id', None)

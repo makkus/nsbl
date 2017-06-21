@@ -26,9 +26,9 @@
 
 
     tasks:
-#      - delete:
-#          - ~/.profile
-#          - ~/.bashrc
+      - delete:
+          - ~/.profile
+          - ~/.bashrc
       #- install-nix
       #- install:
       #    pkg_mgr: nix

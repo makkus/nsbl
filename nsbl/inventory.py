@@ -1,22 +1,37 @@
 # -*- coding: utf-8 -*-
 
-from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, \
-    UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, \
-    IdProcessor, dict_merge, Frkl, FrklCallback
-
+import copy
+import json
+import os
+import pprint
 from exceptions import NsblException
 
 from jinja2 import Environment, PackageLoader
-import os
+
 import yaml
-import json
-import copy
-import pprint
+from frkl import (CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME,
+                  KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME,
+                  EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
+                  FrklCallback, FrklProcessor, IdProcessor, UrlAbbrevProcessor,
+                  dict_merge)
 
 from .defaults import *
 
 
 class NsblInventory(FrklCallback):
+
+    def create(config, default_env_type=DEFAULT_ENV_TYPE, pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()]):
+
+        chain = pre_chain + [FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
+        inv_frkl = Frkl(config, chain)
+
+        init_params = {"default_env_type": default_env_type}
+        inventory = NsblInventory(init_params)
+
+        inv_frkl.process(inventory)
+
+        return inventory
+    create = staticmethod(create)
 
     def __init__(self, init_params=None):
         """Class to be used to create a dynamic ansible inventory from (elastic) yaml config files.
@@ -71,15 +86,16 @@ class NsblInventory(FrklCallback):
 
     def write_inventory_file_or_script(self, inventory_dir, extract_vars=False, relative_paths=True):
 
-        # if extract_vars:
-        pprint.pprint(self.hosts)
-        inventory_string = self.get_inventory_config_string()
-        inventory_name = "hosts"
-        inventory_file = os.path.join(inventory_dir, inventory_name)
+        if extract_vars:
+            inventory_string = self.get_inventory_config_string()
+            inventory_name = "hosts"
+            inventory_file = os.path.join(inventory_dir, inventory_name)
 
-        with open(inventory_file, "w") as text_file:
-            text_file.write(inventory_string)
+            with open(inventory_file, "w") as text_file:
+                text_file.write(inventory_string)
 
+        else:
+            raise Exception("Dynamic inventory script creation not implemented yet.")
         # else:
             # # write dynamic inventory script
             # jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))

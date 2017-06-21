@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 
-from .defaults import *
-from .exceptions import NsblException
-from frkl import FrklCallback, ConfigProcessor, dict_merge
 import os
-import yaml
 import pprint
 import shutil
-from jinja2 import Environment, PackageLoader
+
 from cookiecutter.main import cookiecutter
+from jinja2 import Environment, PackageLoader
+
+import yaml
+from frkl import ConfigProcessor, Frkl, FrklCallback, FrklProcessor, dict_merge
+
+from .defaults import *
+from .exceptions import NsblException
+
+DEFAULT_TASKS_PRE_CHAIN = [frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor()]
 
 def check_role_desc(role_name, role_repos=[]):
     """Utility function to return the local path of a provided role name.
@@ -203,6 +208,33 @@ def get_internal_role_path(role, role_repos=[]):
 
 class NsblTasks(FrklCallback):
 
+    def create(config, role_repos, task_descs, env_name=None, env_id=None, meta={}, pre_chain=DEFAULT_TASKS_PRE_CHAIN):
+
+        role_repos, task_descs = get_default_role_repos_and_task_descs(role_repos, task_descs)
+
+        init_params = {}
+        if role_repos:
+            init_params["role_repos"] = role_repos
+        if task_descs:
+            init_params["task_descs"] = task_descs
+
+        if env_name:
+            init_params["env_name"] = env_name
+        if env_id:
+            init_params["env_id"] = env_id
+        if meta:
+            init_params["meta"] = meta
+
+        task_format = generate_nsbl_tasks_format(task_descs)
+        chain = pre_chain + [FrklProcessor(task_format), NsblTaskProcessor(init_params), NsblDynamicRoleProcessor(init_params)]
+        tasks = NsblTasks(init_params)
+
+        tasks_frkl = Frkl(config, chain)
+        tasks_frkl.process(tasks)
+
+        return tasks
+    create = staticmethod(create)
+
     def __init__(self, init_params=None):
         super(NsblTasks, self).__init__(init_params)
 
@@ -216,18 +248,10 @@ class NsblTasks(FrklCallback):
         role_repos = self.init_params.get("role_repos", None)
         task_descs = self.init_params.get("task_descs", None)
 
-        if role_repos:
-            self.role_repos = role_repos
-        else:
-            self.role_repos = calculate_role_repos([], use_default_roles=True)
-
-        if task_descs:
-            self.task_descs = task_descs
-        else:
-            self.task_descs = calculate_task_descs(None, self.role_repos)
+        role_repos, task_descs = get_default_role_repos_and_task_descs(role_repos, task_descs)
 
         self.env_name = self.init_params.get("env_name", "localhost")
-        self.env_id = self.init_params.get("env_id", None)
+        self.env_id = self.init_params["env_id"]
 
         self.meta = self.init_params.get("meta", {})
         # self.vars = self.init_params.get("vars", {})
@@ -242,7 +266,12 @@ class NsblTasks(FrklCallback):
 
         return None
 
-    def render_playbook(self, playbook_dir, playbook_name=None, add_role_ids=True):
+    def get_role_names(self):
+
+        names = [role.role_name for role in self.roles]
+        return names
+
+    def render_playbook(self, playbook_dir, playbook_name=None, add_ids=True):
 
         if not os.path.exists(playbook_dir):
             os.makedirs(playbook_dir)
@@ -250,13 +279,12 @@ class NsblTasks(FrklCallback):
         jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
 
         template = jinja_env.get_template('playbook.yml')
-        output_text = template.render(groups=self.env_name, roles=self.roles, meta=self.meta, env_id=self.env_id, add_role_ids=add_role_ids)
+        output_text = template.render(groups=self.env_name, roles=self.roles, meta=self.meta, env_id=self.env_id, add_ids=add_ids)
 
         if not playbook_name:
-            if self.env_id:
-                playbook_name = "play_{}_{}.yml".format(self.env_name, self.env_id)
-            else:
-                playbook_name = "play_{}.yml".format(self.env_name)
+            playbook_name = "play_{}_{}.yml".format(self.env_name, self.env_id)
+            # else:
+                # playbook_name = "play_{}.yml".format(self.env_name)
             playbook_file = os.path.join(playbook_dir, playbook_name)
 
         with open(playbook_file, "w") as text_file:
@@ -311,38 +339,17 @@ class NsblTasks(FrklCallback):
     def get_lookup_dict(self):
 
         result = {}
-        for task in self.tasks:
-            id = task[TASKS_META_KEY][TASK_ID_KEY]
-            task_type = task[TASKS_META_KEY][TASK_TYPE_KEY]
-            if task_type != DYN_ROLE_TYPE:
-                temp = {}
-                temp[TASK_NAME_KEY] = task[TASKS_META_KEY][TASK_NAME_KEY]
-                temp[TASK_DESC_KEY] = task[TASKS_META_KEY].get(TASK_DESC_KEY, "applying role: '{}'".format(task[TASKS_META_KEY][TASK_NAME_KEY]))
-                temp[VARS_KEY] = task.get(VARS_KEY, {})
-                result[id] = temp
-            else:
-                result[id] = {}
-                for t in task[TASKS_META_KEY][TASK_DYN_ROLE_DETAILS]:
-                    temp = {}
-                    temp[TASK_NAME_KEY] = t[TASKS_META_KEY][TASK_NAME_KEY]
-                    temp[TASK_DESC_KEY] = t[TASKS_META_KEY].get(TASK_DESC_KEY, t[TASKS_META_KEY][TASK_NAME_KEY])
-                    temp[VARS_KEY] = t.get(VARS_KEY, {})
-                    result[id][t[TASKS_META_KEY][DYN_TASK_ID_KEY]] = temp
+        for role in self.roles:
+
+            id = role.role_id
+            result[id] = role.get_lookup_dict()
 
         return result
 
     def __repr__(self):
 
-        return "NsblTasks(env_id='{}', env_name='{}')".format(self.env_id, self.env_name)
+        return "NsblTasks(env_id='{}', env_name='{}', role_names={})".format(self.env_id, self.env_name, self.get_role_names())
 
-    def get_dict(self):
-
-        temp = {}
-        temp["env_name"] = self.env_name
-        temp["tasks"] = self.tasks
-        # temp["env"] = self.env
-
-        return temp
 
 
 class NsblTaskProcessor(ConfigProcessor):
@@ -461,6 +468,7 @@ class NsblRole(object):
         self.meta_dict = meta_dict
         self.vars_dict = vars_dict
         self.role_id = role_id
+        self.tasks = []
 
         self.name = self.meta_dict[TASK_META_NAME_KEY]
         self.role_name = self.meta_dict[TASK_NAME_KEY]
@@ -469,6 +477,22 @@ class NsblRole(object):
     def get_vars(self):
 
         return self.vars_dict
+
+    def get_lookup_dict(self):
+
+        return self.details()
+
+    def details(self):
+
+        return {
+            TASK_META_NAME_KEY: self.name,
+            TASK_NAME_KEY: self.role_name,
+            "role_type": self.role_type,
+            "role_id": self.role_id,
+            TASK_ROLES_KEY: self.roles,
+            TASKS_META_KEY: self.meta_dict,
+            VARS_KEY: self.vars_dict
+        }
 
     def get_meta(self):
 
@@ -506,19 +530,32 @@ class NsblDynRole(NsblRole):
         self.roles = []
         self.meta_dict = {}
         self.vars_dict = {}
+        self.task_names = []
         self.parse_tasks()
         self.name = self.role_name
         add_roles(self.roles, {"src": "{}_{}".format(DYN_ROLE_TYPE, self.role_id), "name": self.role_name})
 
+    def __repr__(self):
+        return "NsblRole(name={}, role_name={}, type={}, role_id={}, task_names={})".format(self.name, self.role_name, self.role_type, self.role_id, self.task_names)
+
+
+    def get_lookup_dict(self):
+
+        result = self.details()
+        result[TASKS_KEY] = {}
+        for task in self.tasks:
+            id = task[TASKS_META_KEY][DYN_TASK_ID_KEY]
+            result[TASKS_KEY][id] = task
+
+        return result
+
 
     def parse_tasks(self):
-
-        gen_role_name = []
 
         for idx, t in enumerate(self.tasks):
             task_id = "{}_{}".format(self.role_name, idx)
             t[TASKS_META_KEY][DYN_TASK_ID_KEY] = task_id
-            gen_role_name.append(t[TASKS_META_KEY][TASK_META_NAME_KEY])
+            self.task_names.append(t[TASKS_META_KEY][TASK_META_NAME_KEY])
             add_roles(self.roles, t[TASKS_META_KEY].get(TASK_ROLES_KEY, self.role_repos))
             for key, value in t.get(VARS_KEY, {}).items():
                 self.vars_dict["{}_{}".format(task_id, key)] = value
@@ -591,6 +628,7 @@ class NsblDynamicRoleProcessor(ConfigProcessor):
 
         if not self.last_call:
             new_config = self.current_input_config
+
 
             if new_config[TASKS_META_KEY][TASK_TYPE_KEY] == TASK_TASK_TYPE:
 

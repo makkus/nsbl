@@ -6,12 +6,12 @@ import json
 import pprint
 import uuid
 
-from six import string_types
 import ansible
-from ansible.executor.task_result import TaskResult
-from ansible.plugins.callback import CallbackBase
-from ansible.playbook.task_include import TaskInclude
 from ansible import constants as C
+from ansible.executor.task_result import TaskResult
+from ansible.playbook.task_include import TaskInclude
+from ansible.plugins.callback import CallbackBase
+from six import string_types
 
 try:
     from __main__ import display
@@ -64,12 +64,12 @@ class CallbackModule(CallbackBase):
             return None
 
 
-    def get_task_id(self):
+    def get_role_id(self):
 
         # pprint.pprint(self.task.serialize())
         # pprint.pprint(self.play.serialize())
 
-        id = self.get_task_detail("role._role_params._task_id")
+        id = self.get_task_detail("role._role_params._role_id")
 
         if isinstance(id, int):
             return id
@@ -90,17 +90,21 @@ class CallbackModule(CallbackBase):
             # pprint.pprint(self.task.serialize())
         output = {}
         output["category"] = category
-        temp = self.get_task_id()
-        output["_task_id"] = temp
+        temp = self.get_role_id()
+        output["_role_id"] = temp
         temp = self.get_env_id()
         output["_env_id"] = temp
 
         temp = self.get_task_name()
-        if isinstance(temp, string_types) and temp.startswith("_dyn_task"):
+        if isinstance(temp, string_types) and temp.startswith("dyn_role"):
+            task_id, task_name = temp.split(" -- ")
             output["dyn_task"] = True
-            output["_dyn_task_id"] = temp
+            output["_dyn_task_id"] = task_id
+            output["name"] = task_name
         else:
             output["dyn_task"] = False
+            output["_dyn_task_id"] = None
+            output["name"] = temp
 
         if item:
             output["item"] = item
@@ -109,10 +113,6 @@ class CallbackModule(CallbackBase):
         if not action:
             action = "n/a"
         output["action"] = action
-
-        name = self.get_task_detail("name")
-        if name:
-            output["name"] = name
 
         output["ignore_errors"] = self.get_task_detail("ignore_errors")
 

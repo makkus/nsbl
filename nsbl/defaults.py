@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from six import string_types
-import os
 import copy
+import os
+
+from six import string_types
+
 import frkl
+
 # from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, \
     # UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, \
     # IdProcessor, dict_merge, Frkl
@@ -50,6 +53,8 @@ TASK_DESC_KEY = "task-desc"
 TASK_WITH_ITEMS_KEY = "with_items"
 # id of the task within the task group
 TASK_ID_KEY = "_task_id"
+# id of the roles of the current task
+ROLE_ID_KEY = "_role_id"
 # id of the environment tasks are run in
 ENV_ID_KEY = "_env_id"
 # id of the task within a dynamic role
@@ -119,10 +124,10 @@ NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
     frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor(),
     frkl.FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
 
-def generate_nsbl_tasks_format(task_descs):
+def generate_nsbl_tasks_format(task_descs, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT):
     """Utility method to populate the KEY_MOVE_MAP key for the tasks frkl."""
 
-    result = copy.deepcopy(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
+    result = copy.deepcopy(tasks_format)
 
     for task_desc in task_descs:
         if DEFAULT_KEY_KEY in task_desc[TASKS_META_KEY].keys():
@@ -130,6 +135,20 @@ def generate_nsbl_tasks_format(task_descs):
             result[frkl.KEY_MOVE_MAP_NAME][task_desc[TASKS_META_KEY][TASK_META_NAME_KEY]] = "vars/{}".format(task_desc[TASKS_META_KEY][DEFAULT_KEY_KEY])
 
     return result
+
+def get_default_role_repos_and_task_descs(role_repos, task_descs):
+
+    if role_repos:
+        role_repos = role_repos
+    else:
+        role_repos = calculate_role_repos([], use_default_roles=True)
+
+    if task_descs:
+        task_descs = task_descs
+    else:
+        task_descs = calculate_task_descs(None, self.role_repos)
+
+    return (role_repos, task_descs)
 
 
 def calculate_role_repos(role_repos, use_default_roles=True):
