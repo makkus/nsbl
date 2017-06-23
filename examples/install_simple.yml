@@ -4,9 +4,10 @@
 
     tasks:
       - install-nix
+      - install-conda
       - install:
           vars:
-            pkg_mgr: auto
+            pkg_mgr: nix
             packages:
              - zile
              - gawk

@@ -25,7 +25,7 @@ test_requirements = [
 
 setup(
     name='nsbl',
-    version='0.1.0',
+    version='0.0.9',
     description="elastic ansible configuration",
     long_description=readme + '\n\n' + history,
     author="Markus Binsteiner",
@@ -40,7 +40,8 @@ setup(
         'console_scripts': [
             'nsbl=nsbl.cli:cli',
             'nsbl-inventory=nsbl.inventory_cli:main',
-            'nsbl-playbook=nsbl.playbook_cli:cli'
+            'nsbl-playbook=nsbl.playbook_cli:cli',
+            'nsbl-tasks=nsbl.tasks_cli:cli'
         ],
         'frkl.frk': [
             'augment_tasks=nsbl:NsblTaskProcessor',
@@ -62,12 +63,7 @@ setup(
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Natural Language :: English',
         "Programming Language :: Python :: 2",
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 2.7'
     ],
     test_suite='tests',
     tests_require=test_requirements

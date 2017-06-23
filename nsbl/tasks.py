@@ -15,6 +15,10 @@ from .exceptions import NsblException
 
 DEFAULT_TASKS_PRE_CHAIN = [frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor()]
 
+def to_nice_yaml(var):
+    """util function to convert to yaml in a jinja template"""
+    return yaml.safe_dump(var, default_flow_style=False)
+
 def check_role_desc(role_name, role_repos=[]):
     """Utility function to return the local path of a provided role name.
 
@@ -277,6 +281,8 @@ class NsblTasks(FrklCallback):
             os.makedirs(playbook_dir)
 
         jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
+        jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
+        jinja_env.filters['to_nice_yaml'] = to_nice_yaml
 
         template = jinja_env.get_template('playbook.yml')
         output_text = template.render(groups=self.env_name, roles=self.roles, meta=self.meta, env_id=self.env_id, add_ids=add_ids)
@@ -301,7 +307,6 @@ class NsblTasks(FrklCallback):
             os.makedirs(role_base_dir)
 
         for role in self.all_ansible_roles:
-
             role_type = role["type"]
             src = role["src"]
             name = role["name"]
@@ -349,7 +354,6 @@ class NsblTasks(FrklCallback):
     def __repr__(self):
 
         return "NsblTasks(env_id='{}', env_name='{}', role_names={})".format(self.env_id, self.env_name, self.get_role_names())
-
 
 
 class NsblTaskProcessor(ConfigProcessor):
@@ -557,8 +561,11 @@ class NsblDynRole(NsblRole):
             t[TASKS_META_KEY][DYN_TASK_ID_KEY] = task_id
             self.task_names.append(t[TASKS_META_KEY][TASK_META_NAME_KEY])
             add_roles(self.roles, t[TASKS_META_KEY].get(TASK_ROLES_KEY, self.role_repos))
+            if TASK_DESC_KEY not in t[TASKS_META_KEY].keys():
+                t[TASKS_META_KEY][TASK_DESC_KEY] = t[TASKS_META_KEY][TASK_META_NAME_KEY]
             for key, value in t.get(VARS_KEY, {}).items():
                 self.vars_dict["{}_{}".format(task_id, key)] = value
+
 
     def create_role(self, target_folder):
 

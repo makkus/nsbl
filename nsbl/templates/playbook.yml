@@ -6,7 +6,7 @@
 {% for role in roles %}    - role: {{ role.role_name }}
 {% if add_ids %}      _role_id: {{ role.role_id }}
       _env_id: {{ env_id }}
-{% endif -%}
-{% for key, var in role.get_vars().items() %}      {{ key }}: {{ var }}
-{% endfor %}      {% if 'become' in role.get_meta().keys() %}become: {{ role.get_meta()['become'] }}{% endif %}
+{% endif %}
+      {% if role.get_vars() %}{{ role.get_vars() | to_nice_yaml | indent(6) }}{% endif %}
+      {% if 'become' in role.get_meta().keys() %}become: {{ role.get_meta()['become'] }}{% endif %}
 {% endfor %}

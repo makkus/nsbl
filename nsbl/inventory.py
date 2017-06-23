@@ -10,7 +10,7 @@ from jinja2 import Environment, PackageLoader
 
 import yaml
 from frkl import (CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME,
-                  KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME,
+                  KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, ConfigProcessor,
                   EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
                   FrklCallback, FrklProcessor, IdProcessor, UrlAbbrevProcessor,
                   dict_merge)
@@ -301,3 +301,35 @@ class NsblInventory(FrklCallback):
             return self.hosts[env_name].get(VARS_KEY, {})
         else:
             raise NsblException("Neither group or host with name '{}' exists".format(env_name))
+
+
+class WrapTasksIntoLocalhostEnvProcessor(ConfigProcessor):
+    """Wraps a list of tasks into a localhost environment.
+
+    Convenience processor to not have to add this manually.
+    """
+
+    def __init__(self, init_params=None):
+        super(WrapTasksIntoLocalhostEnvProcessor, self).__init__(init_params)
+
+        self.task_configs = []
+
+    def validate_init(self):
+
+        self.task_vars = self.init_params.get(VARS_KEY, {})
+
+        return True
+
+    def handles_last_call(self):
+
+        return True
+
+    def process_current_config(self):
+
+
+        config = self.current_input_config
+
+        if not self.last_call:
+            self.task_configs.append(config)
+        else:
+            return {"localhost": {TASKS_KEY: self.task_configs, TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST}, VARS_KEY: self.task_vars}}

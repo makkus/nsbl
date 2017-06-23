@@ -1,11 +1,12 @@
 - localhost:
     meta:
       type: host
-    vars:
-      freckles_repo:
-        - repo: https://github.com/makkus/dotfiles-new.git
-          #dest: ~/dotfiles
-          #paths: ["minimal", "dev", "no-x", "x"]
-          paths: ["no-x"]
     tasks:
-      - freckles
+      vars:
+        freckles_repo:
+          - repo: https://github.com/makkus/dotfiles-new.git
+            #dest: ~/dotfiles
+            #paths: ["minimal", "dev", "no-x", "x"]
+            paths: ["no-x"]
+      tasks:
+        - freckles

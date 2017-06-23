@@ -5,10 +5,10 @@ export DEBIAN_FRONTEND=noninteractive
 set -x
 set -e
 
-if [ -d "/pip" ]; then
-   rm -f .pip
-   ln -s /pip "$HOME/.pip"
-fi
+# if [ -d "/pip" ]; then
+#    rm -f .pip
+#    ln -s /pip "$HOME/.pip"
+# fi
 
 # create freckles virtualenv
 BASE_DIR="$HOME/.local/opt"

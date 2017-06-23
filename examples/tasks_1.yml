@@ -1,0 +1,4 @@
+meta:
+   task-roles:
+     - src: https://github.com/geerlingguy/ansible-role-docker.git
+       name: docker

@@ -90,6 +90,16 @@ class CallbackModule(CallbackBase):
             # pprint.pprint(self.task.serialize())
         output = {}
         output["category"] = category
+        if category == "play_start":
+            roles = self.play.serialize().get("roles", {})
+            env_id = None
+            if roles and len(roles) >= 1:
+                env_id = roles[0].get("_role_params", {}).get("_env_id", None)
+
+            output["_env_id"] = env_id
+            display.display(json.dumps(output, encoding='utf-8'))
+            return
+
         temp = self.get_role_id()
         output["_role_id"] = temp
         temp = self.get_env_id()

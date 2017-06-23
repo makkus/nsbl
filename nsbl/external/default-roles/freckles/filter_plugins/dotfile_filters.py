@@ -1,13 +1,15 @@
 #!/usr/bin/python
 
-from requests.structures import CaseInsensitiveDict
-
-import pprint
 import os
-import yaml
-import frkl
-
+import pprint
 from distutils import spawn
+
+from requests.structures import CaseInsensitiveDict
+from six import string_types
+
+import frkl
+import yaml
+from nsbl.nsbl import ensure_git_repo_format
 
 try:
     set
@@ -15,7 +17,6 @@ except NameError:
     from sets import Set as set
 
 
-from nsbl.nsbl import ensure_git_repo_format
 
 FRECKLE_METADATA_FILENAME = ".freckle"
 NO_INSTALL_MARKER_FILENAME = ".no_install.freckle"
@@ -124,12 +125,15 @@ class FilterModule(object):
 
     def dotfile_repo_filter(self, dotfile_repos):
 
-        if isinstance(dotfile_repos, dict):
+        if isinstance(dotfile_repos, (dict, string_types)):
             dotfile_repos = [dotfile_repos]
-        elif not isinstance(dotfile_repos, (list, tuple)):
-            raise Exception("Not a valid type for dotfile_repo, can only be dict or list of dicts")
 
-        return self.create_dotfiles_dict(dotfile_repos)
+        temp_repos = []
+        for r in dotfile_repos:
+            full_repo = ensure_git_repo_format(r)
+            temp_repos.append(full_repo)
+
+        return self.create_dotfiles_dict(temp_repos)
 
 
 

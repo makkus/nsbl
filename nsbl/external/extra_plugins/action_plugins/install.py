@@ -1,8 +1,24 @@
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
+
+import json
+import os
+import pprint
+import sys
+
+from ansible import constants as C
+from ansible.errors import AnsibleError, AnsibleFileNotFound
+from ansible.module_utils._text import to_bytes, to_native, to_text
+from ansible.plugins.action import ActionBase
+from ansible.template import generate_ansible_template_vars
+from ansible.utils.hashing import checksum_s
+from requests.structures import CaseInsensitiveDict
+from six import string_types
+
+import frkl
+from nsbl.nsbl import ensure_git_repo_format, get_pkg_mgr_sudo
+
 __metaclass__ = type
 
-from ansible.plugins.action import ActionBase
-from requests.structures import CaseInsensitiveDict
 
 try:
     from __main__ import display
@@ -10,20 +26,7 @@ except ImportError:
     from ansible.utils.display import Display
     display = Display()
 
-import os
-import json
-import pprint
-from six import string_types
-import frkl
-from ansible import constants as C
-from ansible.errors import AnsibleError, AnsibleFileNotFound
-from ansible.module_utils._text import to_bytes, to_native, to_text
-from ansible.plugins.action import ActionBase
-from ansible.template import generate_ansible_template_vars
-from ansible.utils.hashing import checksum_s
-import sys
 
-from nsbl.nsbl import get_pkg_mgr_sudo, ensure_git_repo_format
 boolean = C.mk_boolean
 
 IGNORE_KEY = "IGNORE_THIS_KEY"
@@ -133,6 +136,7 @@ class ActionModule(ActionBase):
         else:
             calculated_package_pkg_mgr = None
 
+
         if full_version_string in (name.lower() for name in pkg_dict.keys()):
             calculated_package_platform = pkg_dict[full_version_string]
         elif full_release_string in (name.lower() for name in pkg_dict.keys()):
@@ -153,7 +157,7 @@ class ActionModule(ActionBase):
             result['skipped'] = True
             return result
 
-        if not auto:
+        if not auto or not calculated_package_platform:
             calculated_package = calculated_package_pkg_mgr
         else:
             calculated_package = calculated_package_platform
@@ -231,6 +235,7 @@ class ActionModule(ActionBase):
 
         runs = []
         for pkg_id, pkg_vars in all_pkg_vars.items():
+
             if package[VARS_KEY].get("no_install", False):
                 skipped.append(pkg_id)
                 run = {"skipped": True, "msg": "Package '{}' tagged with 'no_install', ignoring".format(pkg_id)}
@@ -321,6 +326,3 @@ class ActionModule(ActionBase):
             msg = "Installed: {}, Skipped: {}, Failed: {}".format(installed, skipped, failed)
             runs_result = {"changed": overall_changed, "msg": msg, "failed": overall_failed, "runs": runs}
             return runs_result
-
-
-

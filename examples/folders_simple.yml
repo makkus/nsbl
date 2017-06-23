@@ -1,0 +1,12 @@
+- localhost:
+    meta:
+      type: host
+
+    tasks:
+      - create-folder:
+           - /tmp/_xxx1
+           - /tmp/_xxx2
+      - delete:
+           - /tmp/_xxx1
+           - /tmp/_xxx2
+
