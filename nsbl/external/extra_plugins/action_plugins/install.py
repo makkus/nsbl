@@ -14,7 +14,7 @@ from ansible.utils.hashing import checksum_s
 from requests.structures import CaseInsensitiveDict
 from six import string_types
 
-import frkl
+from frkl import frkl
 from nsbl.nsbl import ensure_git_repo_format, get_pkg_mgr_sudo
 
 __metaclass__ = type

@@ -7,8 +7,8 @@ from distutils import spawn
 from requests.structures import CaseInsensitiveDict
 from six import string_types
 
-import frkl
 import yaml
+from frkl import frkl
 from nsbl.nsbl import ensure_git_repo_format
 
 try:
@@ -187,7 +187,7 @@ class FilterModule(object):
                         freckles_metadata_file = os.path.join(dotfile_dir, FRECKLE_METADATA_FILENAME)
                         if os.path.exists(freckles_metadata_file):
                             stream = open(freckles_metadata_file, 'r')
-                            temp = yaml.load(stream)
+                            temp = yaml.safe_load(stream)
                             app.update(temp)
 
                         no_install_file = os.path.join(dotfile_dir, NO_INSTALL_MARKER_FILENAME)

@@ -64,7 +64,7 @@ class NsblInventory(FrklCallback):
                 continue
             group_dir = os.path.join(inventory_dir, "group_vars", group)
             var_file = os.path.join(group_dir, "{}.yml".format(group))
-            content = yaml.dump(vars, default_flow_style=False)
+            content = yaml.safe_dump(vars, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode('utf-8')
 
             os.makedirs(group_dir)
             with open(var_file, "w") as text_file:
@@ -76,7 +76,7 @@ class NsblInventory(FrklCallback):
                 continue
             host_dir = os.path.join(inventory_dir, "host_vars", host)
             var_file = os.path.join(host_dir, "{}.yml".format(host))
-            content = yaml.dump(vars, default_flow_style=False)
+            content = yaml.safe_dump(vars, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode('utf-8')
 
             os.makedirs(host_dir)
             with open(var_file, "w") as text_file:

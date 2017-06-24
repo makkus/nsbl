@@ -13,9 +13,7 @@ from cookiecutter.main import cookiecutter
 from future.builtins.disabled import *
 from jinja2 import Environment, PackageLoader
 
-#import frkl
 import yaml
-#from frkl import ConfigProcessor, Frkl, FrklCallback, FrklProcessor, dict_merge
 from frkl import frkl
 
 from .defaults import *
@@ -397,7 +395,7 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
             if not task_desc_name == meta_task_name:
                 continue
 
-            new_config = dict_merge(task_desc, new_config, copy_dct=True)
+            new_config = frkl.dict_merge(task_desc, new_config, copy_dct=True)
 
         task_name = new_config.get(TASKS_META_KEY, {}).get(TASK_NAME_KEY, None)
         if not task_name:

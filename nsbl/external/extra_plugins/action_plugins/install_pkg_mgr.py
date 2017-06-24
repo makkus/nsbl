@@ -1,8 +1,22 @@
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
+
+import os
+import pprint
+import sys
+
+from ansible import constants as C
+from ansible.errors import AnsibleError, AnsibleFileNotFound
+from ansible.module_utils._text import to_bytes, to_native, to_text
+from ansible.plugins.action import ActionBase
+from ansible.template import generate_ansible_template_vars
+from ansible.utils.hashing import checksum_s
+from requests.structures import CaseInsensitiveDict
+from six import string_types
+
+from nsbl.nsbl import ensure_git_repo_format, get_pkg_mgr_sudo
+
 __metaclass__ = type
 
-from ansible.plugins.action import ActionBase
-from requests.structures import CaseInsensitiveDict
 
 try:
     from __main__ import display
@@ -10,19 +24,8 @@ except ImportError:
     from ansible.utils.display import Display
     display = Display()
 
-import os
-import pprint
-from six import string_types
-import frkl
-from ansible import constants as C
-from ansible.errors import AnsibleError, AnsibleFileNotFound
-from ansible.module_utils._text import to_bytes, to_native, to_text
-from ansible.plugins.action import ActionBase
-from ansible.template import generate_ansible_template_vars
-from ansible.utils.hashing import checksum_s
-import sys
 
-from nsbl.nsbl import get_pkg_mgr_sudo, ensure_git_repo_format
+
 boolean = C.mk_boolean
 
 VARS_KEY = "vars"

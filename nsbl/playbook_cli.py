@@ -8,7 +8,6 @@ import sys
 import click
 
 import click_log
-import frkl
 import yaml
 
 from . import __version__ as VERSION

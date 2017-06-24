@@ -1,9 +1,11 @@
-from jinja2.ext import Extension
-import yaml
 from ansible.plugins.filter.core import FilterModule
+from jinja2.ext import Extension
+
+import yaml
+
 
 def to_yaml(var):
-    return yaml.dump(var, default_flow_style=False)
+    return yaml.safe_dump(var, default_flow_style=False)
 
 class AnsibleFilterExtension(Extension):
 

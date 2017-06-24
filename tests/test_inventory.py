@@ -37,7 +37,7 @@ def test_files(test_name):
     with open(result_file) as f:
         content = f.read()
 
-    expected_obj = yaml.load(content)
+    expected_obj = yaml.safe_load(content)
 
     init_file = os.path.join(folder, "_init.yml")
     result_obj = frkl.FrklCallback.init(init_file, input_files)
