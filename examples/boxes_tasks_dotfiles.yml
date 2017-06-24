@@ -5,7 +5,7 @@
       dotfile_repo:
         repo: https://github.com/makkus/dotfiles-new.git
         dest: ~/dotfiles
-        paths: ["minimal", "dev", "no-x", "x"]
+        profiles: ["minimal", "dev", "no-x", "x"]
     tasks:
       - freckles
 

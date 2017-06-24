@@ -1,27 +1,33 @@
 ---
 # tasks file for dotfiles
 
-# # install the default package manager now in case git is missing
-# - name: install nix
-#   include_role:
-#     name: install-nix
-#   when: "pkg_mgr is defined and pkg_mgr == nix and 'git' | missing_from_path"
+# install the default package manager now in case git is missing
+- name: install nix package manager if needed for installing 'git'
+  include_role:
+    name: install-nix
+  when: "pkg_mgr is defined and pkg_mgr == nix and 'git' | missing_from_path"
 
-# - name: install conda
-#   include_role:
-#     name: install-conda
-#   when: "pkg_mgr is defined and pkg_mgr == conda and 'git' | missing_from_path"
+- name: install conda package manager if needed for installing 'git'
+  include_role:
+    name: install-conda
+  when: "pkg_mgr is defined and pkg_mgr == conda and 'git' | missing_from_path"
 
-# - name: install homebrew
-#   include_role:
-#     name: install-conda
-#   when: "pkg_mgr is defined and pkg_mgr == homebrew and 'git' | missing_from_path"
+- name: install homebrew package manager if needed for installing 'git'
+  include_role:
+    name: install-conda
+  when: "pkg_mgr is defined and pkg_mgr == homebrew and 'git' | missing_from_path"
 
 - name: install git
   install:
     packages: git
     pkg_mgr: "{{ pkg_mgr | default('auto') }}"
   when: "'git' | missing_from_path"
+
+- name: debug
+  debug: var=item
+  with_items:
+    - "{{ freckles_repo }}"
+
 
 - name: checkout dotfiles
   git:
@@ -54,9 +60,17 @@
     homebrew_cask_apps: []
   when: '("brew" | missing_from_path) and (("homebrew" in freckles_repo | pkg_mgr_filter) or (ansible_os_family == "Darwin" and pkg_mgr is not defined) )'
 
+- name: install epel-release
+  install:
+    packages:
+      - epel-release:
+          pkgs:
+            other: ignore
+
 - name: install stow
   install:
-    packages: stow
+    packages:
+      - stow
     pkg_mgr: "{{ pkg_mgr | default(omit) }}"
   when: '"stow" | missing_from_path'
 

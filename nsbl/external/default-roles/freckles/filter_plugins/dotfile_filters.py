@@ -19,12 +19,12 @@ except NameError:
 
 
 
-FRECKLE_METADATA_FILENAME = ".freckle"
-NO_INSTALL_MARKER_FILENAME = ".no_install.freckle"
-NO_STOW_MARKER_FILENAME = ".no_stow.freckle"
+FRECKLE_METADATA_FILENAME = ".freckles"
+NO_INSTALL_MARKER_FILENAME = ".no_install.freckles"
+NO_STOW_MARKER_FILENAME = ".no_stow.freckles"
 
-PACKAGES_METADATA_FILENAME = ".packages.freckle"
-
+PACKAGES_METADATA_FILENAME = ".packages.freckles"
+PROFILE_MARKER_FILENAME = ".profile.freckles"
 
 
 def which(program):
@@ -106,9 +106,19 @@ class FilterModule(object):
         for dr in dotfile_repos:
             temp = ensure_git_repo_format(dr)
             dest = temp["dest"]
-            packages_metadata = os.path.expanduser(os.path.join(dest, PACKAGES_METADATA_FILENAME))
-            if os.path.exists(packages_metadata):
-                pkgs.append(packages_metadata)
+            profiles = temp.get("profiles", [])
+            if not profiles:
+                for root, dirnames, filenames in os.walk(os.path.expanduser(dest)):
+                    for filename in fnmatch.filter(filenames, PROFILE_MARKER_FILENAME):
+                        profiles.append(os.path.relpath(root, os.path.expanduser(dest)))
+
+            if not profiles:
+                profiles = [""]
+
+            for p in profiles:
+                packages_metadata = os.path.expanduser(os.path.join(dest, p, PROFILE_MARKER_FILENAME))
+                if os.path.exists(packages_metadata):
+                    pkgs.append(packages_metadata)
 
         format = {"child_marker": "packages",
                   "default_leaf": "vars",
@@ -150,7 +160,7 @@ class FilterModule(object):
         for dir in dotfile_repos:
             dest = dir.get("dest", False)
             repo = dir.get("repo", "")
-            paths = dir.get("paths", [])
+            paths = dir.get("profiles", [])
 
             if not dest:
                 if not repo:
@@ -162,7 +172,7 @@ class FilterModule(object):
             if not paths:
                 paths = []
                 for root, dirnames, filenames in os.walk(os.path.expanduser(dest)):
-                    for filename in fnmatch.filter(filenames, '.profile.freckles'):
+                    for filename in fnmatch.filter(filenames, PROFILE_MARKER_FILENAME):
                         paths.append(root)
 
             if not paths:

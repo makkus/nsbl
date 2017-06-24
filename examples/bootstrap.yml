@@ -6,11 +6,11 @@
         - repo: https://github.com/makkus/dotfiles-new.git
           #dest: ~/dotfiles
           #paths: ["minimal", "dev", "no-x", "x"]
-          paths: ["no-x"]
+          profiles: ["no-x"]
         #- repo: https://github.com/makkus/dotfiles-new.git
 #          #dest: ~/dotfiles
 #          #paths: ["minimal", "dev", "no-x", "x"]
-#          paths: ["no-x"]
+#          profiles: ["no-x"]
 
       packages:
         - vars:

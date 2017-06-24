@@ -1,0 +1,296 @@
+containers:
+
+    postgresql:
+      proxmox_host: "ja.ilmark.us"
+      vmid: 150
+      ip: "10.0.1.150"
+      bridge: "vmbr1"
+      hostname: "postgresql.ilmark.us"
+      template: 'debian-8.0-minimal_8.5-0_amd64.tar.gz'
+      memory: 1024
+      cpus: 2
+      cpuunits: 1024
+      disk: 8
+      onboot: true
+      swap: 512
+      gateway: 10.0.1.1
+      use_systemd: true
+      disable_firewall: false
+      incoming_tcp_ports:
+        - 5432
+      groups:
+        - common
+        - postgresql
+
+    mariadb:
+      proxmox_host: "ja.ilmark.us"
+      vmid: 152
+      ip: "10.0.1.152"
+      bridge: "vmbr1"
+      hostname: "mariadb.ilmark.us"
+      template: 'debian-8.0-minimal_8.5-0_amd64.tar.gz'
+      memory: 1024
+      cpus: 2
+      cpuunits: 2048
+      disk: 8
+      onboot: true
+      swap: 512
+      gateway: 10.0.1.1
+      use_systemd: true
+      disable_firewall: false
+      incoming_tcp_ports:
+        - 3306
+      groups:
+        - common
+        - mariadb
+
+    gogs:
+      proxmox_host: "ja.ilmark.us"
+      vmid: 161
+      ip: "10.0.1.161"
+      bridge: "vmbr1"
+      hostname: "gogs.ilmark.us"
+      template: 'debian-8.0-minimal_8.5-0_amd64.tar.gz'
+      memory: 512
+      cpus: 2
+      cpuunits: 1024
+      disk: 8
+      onboot: true
+      swap: 512
+      gateway: 10.0.1.1
+      use_systemd: false
+      extra_user_groups:
+        - { name: 'git', id: 1000 }
+      extra_users:
+        - { name: 'git', group: 'git', home: '/home/git', id: 1000 }
+      nfs_mounts:
+        - { local: '/home/git', remote: '10.0.1.2:/export/config/gogs', owner: 'git', group: 'git' }
+      disable_firewall: false
+      incoming_tcp_ports:
+        - 3000
+      groups:
+        - common
+        - ansible-gogs
+
+    seafile:
+      proxmox_host: "ja.ilmark.us"
+      vmid: 162
+      ip: "10.0.1.162"
+      bridge: "vmbr1"
+      hostname: "seafile.ilmark.us"
+      template: 'debian-8.0-minimal_8.5-0_amd64.tar.gz'
+      memory: 2048
+      cpus: 4
+      cpuunits: 2048
+      disk: 30
+      onboot: true
+      swap: 512
+      gateway: 10.0.1.1
+      use_systemd: true
+      extra_user_groups:
+        - { name: 'seafile', id: 1000 }
+      extra_users:
+        - { name: 'seafile', id: 1000, group: 'seafile', home: '/home/seafile' }
+      disable_firewall: false
+      incoming_tcp_ports:
+        - 80
+        - 443
+      groups:
+        - common
+        - nginx
+        - seafile
+        - fail2ban
+
+    news:
+      proxmox_host: "ja.ilmark.us"
+      vmid: 163
+      ip: "10.0.1.163"
+      bridge: "vmbr1"
+      hostname: "news.ilmark.us"
+      template: 'debian-8.0-minimal_8.5-0_amd64.tar.gz'
+      memory: 2048
+      cpus: 2
+      cpuunits: 2048
+      disk: 10
+      onboot: true
+      swap: 512
+      gateway: 10.0.1.1
+      use_systemd: true
+      nfs_mounts:
+        - { local: '/var/lib/config', remote: '10.0.1.2:/export/config/news', owner: 'root', group: 'root' }
+        - { local: '/mnt/downloads', remote: '10.0.1.2:/export/downloads', owner: 'root', group: 'download' }
+        - { local: '/mnt/tv_ongoing', remote: '10.0.1.2:/export/tv_ongoing', owner: 'root', group: 'download' }
+        - { local: '/mnt/ebooks', remote: '10.0.1.2:/export/ebooks', owner: 'root', group: 'download' }
+        - { local: '/mnt/comics', remote: '10.0.1.2:/export/comics', owner: 'root', group: 'download' }
+        - { local: '/mnt/music', remote: '10.0.1.2:/export/music', owner: 'root', group: 'download' }
+      extra_repos:
+        - "deb http://ftp.debian.org/debian jessie main contrib non-free"
+        - "deb http://ftp.debian.org/debian jessie-updates main contrib non-free"
+        - "deb http://security.debian.org jessie/updates main contrib non-free"
+      disable_firewall: false
+      incoming_tcp_ports:
+        - 8181
+        - 8989
+        - 5050
+        - 8090
+        - 5299
+        - 3000
+      groups:
+        - common
+        - gitapp
+        - sonarr
+
+    torrent:
+      proxmox_host: "ja.ilmark.us"
+      vmid: 170
+      ip: "10.0.1.170"
+      bridge: "vmbr1"
+      hostname: "torrent.ilmark.us"
+      template: 'debian-8.0-minimal_8.5-0_amd64.tar.gz'
+      memory: 2048
+      cpus: 2
+      cpuunits: 2048
+      disk: 10
+      onboot: true
+      swap: 512
+      gateway: 10.0.1.1
+      use_systemd: true
+      nfs_mounts:
+        - { local: '/var/lib/config', remote: '10.0.1.2:/export/config/torrent', owner: 'root', group: 'root' }
+        - { local: '/mnt/downloads', remote: '10.0.1.2:/export/downloads', owner: 'root', group: 'download' }
+        # - { local: '/mnt/tv_ongoing', remote: '10.0.1.2:/export/tv_ongoing', owner: 'root', group: 'download' }
+        # - { local: '/mnt/ebooks', remote: '10.0.1.2:/export/ebooks', owner: 'root', group: 'download' }
+        # - { local: '/mnt/comics', remote: '10.0.1.2:/export/comics', owner: 'root', group: 'download' }
+        # - { local: '/mnt/music', remote: '10.0.1.2:/export/music', owner: 'root', group: 'download' }
+      extra_repos:
+        - "deb http://ftp.debian.org/debian jessie main contrib non-free"
+        - "deb http://ftp.debian.org/debian jessie-updates main contrib non-free"
+        - "deb http://security.debian.org jessie/updates main contrib non-free"
+      disable_firewall: true
+      incoming_tcp_ports: []
+      groups:
+        - common
+        - torrent
+
+
+    plex:
+      proxmox_host: "ja.ilmark.us"
+      vmid: 164
+      ip: "10.0.1.164"
+      bridge: "vmbr1"
+      hostname: "plex.ilmark.us"
+      template: 'debian-8.0-minimal_8.5-0_amd64.tar.gz'
+      memory: 2048
+      cpus: 4
+      cpuunits: 4096
+      disk: 8
+      onboot: true
+      swap: 512
+      gateway: 10.0.1.1
+      extra_user_groups:
+        - { name: 'plex', id: 4001 }
+        - { name: 'plexpy', id: 4002 }
+      extra_users:
+        - { name: 'plex', id: 4001, group: 'plex', home: '/var/lib/plexmediaserver' }
+        - { name: 'plexpy', id: 4002, group: 'plexpy', home: '/home/plexpy' }
+      nfs_mounts:
+        - { local: '/home/plexpy/.plexpy', remote: '10.0.1.2:/export/config/plexpy', owner: 'plexpy', group: 'plexpy' }
+        - { local: '/downloads', remote: '10.0.1.2:/export/downloads', owner: 'plex', group: 'plex' }
+        - { local: '/music', remote: '10.0.1.2:/export/music', owner: 'plex', group: 'plex' }
+        - { local: '/tv_ongoing', remote: '10.0.1.2:/export/tv_ongoing', owner: 'plex', group: 'plex' }
+        - { local: '/tv_finished', remote: '10.0.1.2:/export/tv_finished', owner: 'plex', group: 'plex' }
+        - { local: '/tv_to_watch', remote: '10.0.1.2:/export/tv_to_watch', owner: 'plex', group: 'plex' }
+        - { local: '/external/sterling', remote: '10.0.1.2:/mnt/external/sterling', owner: 'plex', group: 'plex' }
+        - { local: '/external/comrades', remote: '10.0.1.2:/mnt/external/comrades', owner: 'plex', group: 'plex' }
+        - { local: '/external/backup', remote: '10.0.1.2:/mnt/external/cupboard', owner: 'plex', group: 'plex' }
+      use_systemd: true
+      disable_firewall: false
+      incoming_tcp_ports:
+        - 8181
+        - 32400
+      groups:
+        - common
+        - plex
+        - gitapp
+
+    nginx:
+      proxmox_host: "ja.ilmark.us"
+      vmid: 160
+      ip: "10.0.1.160"
+      bridge: "vmbr1"
+      hostname: "nginx.ilmark.us"
+      template: 'debian-8.0-minimal_8.5-0_amd64.tar.gz'
+      memory: 1024
+      cpus: 2
+      cpuunits: 1024
+      disk: 4
+      onboot: true
+      swap: 512
+      gateway: 10.0.1.1
+      use_systemd: true
+      disable_firewall: false
+      files:
+        - { dest: '/etc/nginx/auth_basic', src: 'central', group: 'www-data', owner: 'www-data', mode: '0775' }
+      incoming_tcp_ports:
+        - 80
+        - 443
+      groups:
+        - common
+        - certbot
+        - fail2ban
+        - nginx
+
+    test:
+      proxmox_host: "swallowtail.rkusiminter.net"
+      vmid: 151
+      ip: "192.168.178.151"
+      bridge: "vmbr0"
+      hostname: "test.rkusiminter.net"
+      template: 'debian-8.0-minimal_8.5-0_amd64.tar.gz'
+      memory: 2048
+      cpus: 2
+      cpuunits: 2048
+      disk: 8
+      onboot: true
+      swap: 512
+      gateway: 192.168.178.1
+      use_systemd: true
+      disable_firewall: true
+      extra_repos:
+        - "deb http://ftp.debian.org/debian jessie main contrib non-free"
+        - "deb http://ftp.debian.org/debian jessie-updates main contrib non-free"
+        - "deb http://security.debian.org jessie/updates main contrib non-free"
+
+      # smb_mounts:
+        # - { local: '/mnt/storage', remote: '//u130916.your-storagebox.de/backup', opts: 'iocharset=utf8,rw,credentials=/etc/storage-creds.txt,uid=1000,gid=1000,file_mode=0660,dir_mode=0770' }
+
+      extra_user_groups:
+        - { name: 'markus', id: 1000 }
+      extra_users:
+        - { name: 'markus', id: 1000, group: 'markus', home: '/home/markus' }
+      nfs_mounts:
+        - { local: '/home/markus/mount', remote: '192.168.178.22:/export/config/markus', owner: 'markus', group: 'markus' }
+      incoming_tcp_ports:
+        - 8384
+        - 8080
+      groups:
+        - common
+        - fail2ban
+        - gitapp
+
+
+vms: []
+
+    # pritunl:
+    #   proxmox_host: "ja.ilmark.us"
+    #   vmid: 107
+    #   ip: "10.0.2.60"
+    #   bridge: "vmbr2"
+    #   hostname: "pritunl.ilmark.us"
+    #   onboot: true
+    #   gateway: 10.0.2.1
+    #   use_systemd: true
+    #   disable_firewall: true
+    #   groups:
+    #     - common
+    #     - pritunl

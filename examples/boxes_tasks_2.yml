@@ -4,7 +4,7 @@
     vars:
       dotfiles:
           - dest: ~/dotfiles
-            paths: ["minimal", "dev", "no-x", "x"]
+            profiles: ["minimal", "dev", "no-x", "x"]
             repo: https://github.com/makkus/dotfiles-new.git
 
     tasks:

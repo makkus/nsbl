@@ -9,9 +9,10 @@ short_description: Manage links to dotfiles
 
 import json
 import os
+
 from ansible.module_utils.basic import AnsibleModule
 
-IGNORE_STRING="freckle"
+IGNORE_STRING="freckles"
 
 def stow(module, stow_version):
 
