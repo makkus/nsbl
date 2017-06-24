@@ -62,7 +62,8 @@ def check_role_desc(role_name, role_repos=[]):
                 if "." in role_name and "/" in role_name:
                     name = role_name.split("/")[-1]
                 else:
-                    name = role_name.split(".")[-1]
+                    # name = role_name.split(".")[-1]
+                    name = src
 
     elif not isinstance(role_name, dict):
         raise NsblException("Type for role needs to be either string or dict: {}".format(role_name))
@@ -82,7 +83,8 @@ def check_role_desc(role_name, role_repos=[]):
                 if "." in src and "/" in src:
                     name = src.split("/")[-1]
                 else:
-                    name = src.split(".")[-1]
+                    # name = src.split(".")[-1]
+                    name = src
         elif not src:
             if os.path.exists(name):
                 src = name
@@ -94,7 +96,8 @@ def check_role_desc(role_name, role_repos=[]):
                 if "." in src and "/" in src:
                     name = src.split("/")[-1]
                 else:
-                    name = src.split(".")[-1]
+                    # name = src.split(".")[-1]
+                    name = src
         else:
             if os.path.exists(src):
                 role_type = LOCAL_ROLE_TYPE
