@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import fnmatch
 import os
 import pprint
 from distutils import spawn
@@ -158,6 +159,11 @@ class FilterModule(object):
                 temp = ensure_git_repo_format(repo)
                 dest = temp['dest']
 
+            if not paths:
+                paths = []
+                for root, dirnames, filenames in os.walk(os.path.expanduser(dest)):
+                    for filename in fnmatch.filter(filenames, '.profile.freckles'):
+                        paths.append(root)
 
             if not paths:
                 paths = [""]
