@@ -238,7 +238,7 @@ class ActionModule(ActionBase):
 
             if package[VARS_KEY].get("no_install", False):
                 skipped.append(pkg_id)
-                run = {"skipped": True, "msg": "Package '{}' tagged with 'no_install', ignoring".format(pkg_id)}
+                run = {"changed": False, "skipped": True, "msg": "Package '{}' tagged with 'no_install', ignoring".format(pkg_id)}
                 runs.append(run)
                 continue
 
@@ -320,7 +320,7 @@ class ActionModule(ActionBase):
                 display.display(json.dumps(output, encoding='utf-8'))
 
 
-        if len(pkg_vars) == 1:
+        if len(runs) == 1:
             return runs[0]
         else:
             msg = "Installed: {}, Skipped: {}, Failed: {}".format(installed, skipped, failed)

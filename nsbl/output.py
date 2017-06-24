@@ -38,6 +38,7 @@ class NsblLogCallbackAdapter(object):
 
         self.display_utility_tasks = False
         self.display_sub_tasks = display_sub_tasks
+        self.display_skipped_tasks = False
 
         self.lookup_dict = lookup_dict
         self.new_line = True
@@ -315,6 +316,7 @@ class NsblLogCallbackAdapter(object):
             if ev["category"] == "ok":
                 skipped = ev["skipped"]
                 if skipped:
+                    print("XXXX")
                     msg = "skipped"
                 else:
                     if ev["status"] == "changed":
@@ -336,13 +338,16 @@ class NsblLogCallbackAdapter(object):
                 click.echo(output)
                 self.new_line = True
             elif ev["category"] == "skipped":
+                if not self.display_skipped_tasks:
+                    click.echo(u"\u001b[2K\r", nl=False)
+                    self.new_line = True
+                    return
                 output = "skipped"
                 click.echo(output)
                 self.new_line = True
 
     def process_task_changed(self):
 
-        #print("XXX")
         if  self.task_has_items or self.task_has_nsbl_items:
             return
 
