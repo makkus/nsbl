@@ -147,7 +147,7 @@ def get_default_role_repos_and_task_descs(role_repos, task_descs):
     if task_descs:
         task_descs = task_descs
     else:
-        task_descs = calculate_task_descs(None, self.role_repos)
+        task_descs = calculate_task_descs(None, role_repos)
 
     return (role_repos, task_descs)
 

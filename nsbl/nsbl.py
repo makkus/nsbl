@@ -15,11 +15,12 @@ from jinja2 import Environment, PackageLoader
 from six import string_types
 
 import yaml
-from frkl import (CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME,
-                  KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, ConfigProcessor,
-                  EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
-                  FrklCallback, FrklProcessor, IdProcessor, UrlAbbrevProcessor,
-                  dict_merge)
+from frkl.frkl import (CHILD_MARKER_NAME, DEFAULT_LEAF_NAME,
+                       DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME,
+                       OTHER_KEYS_NAME, ConfigProcessor,
+                       EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
+                       FrklCallback, FrklProcessor, IdProcessor,
+                       UrlAbbrevProcessor, dict_merge)
 
 from .defaults import *
 from .exceptions import NsblException
