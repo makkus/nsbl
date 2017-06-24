@@ -23,12 +23,6 @@
     pkg_mgr: "{{ pkg_mgr | default('auto') }}"
   when: "'git' | missing_from_path"
 
-- name: debug
-  debug: var=item
-  with_items:
-    - "{{ freckles_repo }}"
-
-
 - name: checkout dotfiles
   git:
     dest: "{{ item.dest }}"
