@@ -8,11 +8,8 @@ test_nsbl
 Tests for `nsbl` module.
 """
 
-import pytest
 import pprint
 
+import pytest
+
 from nsbl import nsbl
-
-
-
-

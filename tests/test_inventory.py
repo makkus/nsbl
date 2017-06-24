@@ -8,13 +8,15 @@ test_nsbl
 Tests for `nsbl` module.
 """
 
-import pytest
-import pprint
 import os
-import yaml
-import frkl
+import pprint
 
+import pytest
+
+import yaml
+from frkl import frkl
 from nsbl import nsbl
+
 
 @pytest.mark.parametrize("test_name", [
     "localhost_inventory",

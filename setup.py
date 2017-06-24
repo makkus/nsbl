@@ -38,18 +38,18 @@ setup(
                  'nsbl'},
     entry_points={
         'console_scripts': [
-            'nsbl=nsbl.cli:cli',
-            'nsbl-inventory=nsbl.inventory_cli:main',
-            'nsbl-playbook=nsbl.playbook_cli:cli',
-            'nsbl-tasks=nsbl.tasks_cli:cli'
+            'nsbl=nsbl.nsbl.cli:cli',
+            'nsbl-inventory=nsbl.nsbl.inventory_cli:main',
+            'nsbl-playbook=nsbl.nsbl.playbook_cli:cli',
+            'nsbl-tasks=nsbl.nsbl.tasks_cli:cli'
         ],
         'frkl.frk': [
-            'augment_tasks=nsbl:NsblTaskProcessor',
-            'create_dynamic_roles=nsbl:NsblDynamicRoleProcessor'
+            'augment_tasks=nsbl.nsbl:NsblTaskProcessor',
+            'create_dynamic_roles=nsbl.nsbl:NsblDynamicRoleProcessor'
         ],
         'frkl.collector': [
-            'inventory=nsbl:NsblInventory',
-            'tasks=nsbl:NsblTasks'
+            'inventory=nsbl.nsbl:NsblInventory',
+            'tasks=nsbl.nsbl:NsblTasks'
         ]
     },
     include_package_data=True,
