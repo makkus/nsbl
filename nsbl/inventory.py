@@ -1,21 +1,27 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 import copy
 import json
 import os
 import pprint
-from exceptions import NsblException
+from builtins import *
 
+from future.builtins.disabled import *
 from jinja2 import Environment, PackageLoader
 
 import yaml
-from frkl import (CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME,
-                  KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, ConfigProcessor,
-                  EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
-                  FrklCallback, FrklProcessor, IdProcessor, UrlAbbrevProcessor,
-                  dict_merge)
+from frkl.frkl import (CHILD_MARKER_NAME, DEFAULT_LEAF_NAME,
+                       DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME,
+                       OTHER_KEYS_NAME, ConfigProcessor,
+                       EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
+                       FrklCallback, FrklProcessor, IdProcessor,
+                       UrlAbbrevProcessor, dict_merge)
 
 from .defaults import *
+from .exceptions import NsblException
 
 
 class NsblInventory(FrklCallback):

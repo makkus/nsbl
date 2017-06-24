@@ -1,14 +1,22 @@
 # -*- coding: utf-8 -*-
 
+# python 3 compatibility
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 import os
 import pprint
 import shutil
+from builtins import *
 
 from cookiecutter.main import cookiecutter
+from future.builtins.disabled import *
 from jinja2 import Environment, PackageLoader
 
+#import frkl
 import yaml
-from frkl import ConfigProcessor, Frkl, FrklCallback, FrklProcessor, dict_merge
+#from frkl import ConfigProcessor, Frkl, FrklCallback, FrklProcessor, dict_merge
+from frkl import frkl
 
 from .defaults import *
 from .exceptions import NsblException
@@ -210,7 +218,7 @@ def get_internal_role_path(role, role_repos=[]):
 
     return False
 
-class NsblTasks(FrklCallback):
+class NsblTasks(frkl.FrklCallback):
 
     def create(config, role_repos, task_descs, env_name=None, env_id=None, meta={}, pre_chain=DEFAULT_TASKS_PRE_CHAIN):
 
@@ -356,7 +364,7 @@ class NsblTasks(FrklCallback):
         return "NsblTasks(env_id='{}', env_name='{}', role_names={})".format(self.env_id, self.env_name, self.get_role_names())
 
 
-class NsblTaskProcessor(ConfigProcessor):
+class NsblTaskProcessor(frkl.ConfigProcessor):
     """Processor to take a list of (unfrklized) tasks, and frklizes (expands) the data.
 
     In particular, this extracts roles and tags them with their types.
@@ -610,7 +618,7 @@ class NsblDynRole(NsblRole):
         os.chdir(current_dir)
 
 
-class NsblDynamicRoleProcessor(ConfigProcessor):
+class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
     """Processor to extract and pre-process single tasks to merge them into one or several roles later on."""
 
     def __init__(self, init_params=None):

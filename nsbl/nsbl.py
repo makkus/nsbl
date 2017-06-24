@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 import copy
 import json
 import logging
@@ -8,9 +11,11 @@ import pprint
 import shutil
 import subprocess
 import sys
+from builtins import *
 
 import click
 from cookiecutter.main import cookiecutter
+from future.builtins.disabled import *
 from jinja2 import Environment, PackageLoader
 from six import string_types
 
