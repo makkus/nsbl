@@ -15,7 +15,7 @@ requirements = [
     'cookiecutter>=1.5.1',
     'ansible>=2.2.0',
     'gitpython==2.1.3',
-    'frkl>=0.1.0',
+    'frkl>=version='0.1.1'',
     'cursor>=1.1.0'
 ]
 
