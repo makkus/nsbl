@@ -584,6 +584,8 @@ class NsblInternalRole(NsblRole):
 
 
 class NsblExternalRole(NsblRole):
+
+    def __init__(self, meta_dict, vars_dict, role_id):
         """Class to describe external roles.
 
         External roles are ones that will be downloaded when a run is kicked off.
@@ -597,7 +599,6 @@ class NsblExternalRole(NsblRole):
           role_id (str): the id of this role, used to look up role details later
         """
 
-    def __init__(self, meta_dict, vars_dict, role_id):
 
         super(NsblExternalRole, self).__init__(meta_dict, vars_dict, role_id)
         self.role_type = EXT_ROLE_TASK_TYPE

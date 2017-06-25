@@ -39,9 +39,9 @@ setup(
     entry_points={
         'console_scripts': [
             'nsbl=nsbl.nsbl.cli:cli',
-            'nsbl-inventory=nsbl.nsbl.inventory_cli:main',
-            'nsbl-playbook=nsbl.nsbl.playbook_cli:cli',
-            'nsbl-tasks=nsbl.nsbl.tasks_cli:cli'
+            'nsbl-inventory=nsbl.inventory_cli:main',
+            'nsbl-playbook=nsbl.playbook_cli:cli',
+            'nsbl-tasks=nsbl.tasks_cli:cli'
         ],
         'frkl.frk': [
             'augment_tasks=nsbl.nsbl:NsblTaskProcessor',

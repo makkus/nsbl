@@ -60,7 +60,7 @@ def cli(ctx, version, role_repo, task_desc):
 # @click.option('--static/--dynamic', default=True, help="whether to render a dynamic inventory script using the provided config files instead of a plain ini-type config file and group_vars and host_vars folders, default: static")
 @click.option('--force', '-f', is_flag=True, help="delete potentially existing target directory", default=False)
 @click.pass_context
-def create(ctx, config, stdout_callback, target, force):
+def execute(ctx, config, stdout_callback, target, force):
 
     nsbl = Nsbl.create(config, ctx.obj['role-repos'], ctx.obj['task-desc'], wrap_into_localhost_env=True)
 

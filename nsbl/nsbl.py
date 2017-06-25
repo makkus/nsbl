@@ -219,7 +219,7 @@ def get_internal_role_path(role_dict, role_repos=[]):
 class Nsbl(FrklCallback):
 
     def create(config, role_repos=[], task_descs=[], include_parent_meta=False, include_parent_vars=False, default_env_type=DEFAULT_ENV_TYPE, pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()], wrap_into_localhost_env=False):
-        "Utility method to create a Nsbl object out of the configuration and some metadata about how to process that configuration.
+        """"Utility method to create a Nsbl object out of the configuration and some metadata about how to process that configuration.
 
         Args:
           config (list): a list of configuration items
@@ -232,7 +232,7 @@ class Nsbl(FrklCallback):
           wrap_into_localhost_env (bool): whether to wrap the input configuration into a localhost environment for convenience
         Returns:
           Nsbl: the Nsbl object, already 'processed'
-        "
+        """
 
         init_params = {"task_descs": task_descs, "role_repos": role_repos, "include_parent_meta": include_parent_meta, "include_parent_vars": include_parent_vars, "default_env_type": default_env_type}
         nsbl = Nsbl(init_params)
