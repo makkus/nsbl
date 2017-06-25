@@ -27,6 +27,15 @@ from .exceptions import NsblException
 class NsblInventory(FrklCallback):
 
     def create(config, default_env_type=DEFAULT_ENV_TYPE, pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()]):
+        """Convenience method to create a NsblInventory object out of the configs and a few optional parameters.
+
+        Args:
+          config (list): list of config items
+          default_env_type (str): the type a environment is if it is not explicitely specified, either ENV_TYPE_HOST or ENV_TYPE_GROUP
+          pre_chain (list): the chain of ConfigProcessors to plug in front of the one that is used internally, needs to return a python list
+        Returns:
+          NsblInventory: the inventory object, already 'processed'
+        """
 
         chain = pre_chain + [FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
         inv_frkl = Frkl(config, chain)
@@ -41,6 +50,12 @@ class NsblInventory(FrklCallback):
 
     def __init__(self, init_params=None):
         """Class to be used to create a dynamic ansible inventory from (elastic) yaml config files.
+
+        The only init_params key that is supported is:
+
+        default_env_type (str): the type a environment is if it is not explicitely specified, either ENV_TYPE_HOST or ENV_TYPE_GROUP
+        Args:
+          init_params (dict): the dict to initialize this object
         """
         super(NsblInventory, self).__init__(init_params)
         self.groups = {}
@@ -57,6 +72,11 @@ class NsblInventory(FrklCallback):
         return self.list()
 
     def extract_vars(self, inventory_dir):
+        """Writes a folder structure with 'group_vars' and 'host_vars' folders into the target directory.
+
+        Args:
+          inventory_dir (str): the directory the inventory should be written to
+        """
 
         for group, group_vars in self.groups.items():
             vars = group_vars.get(VARS_KEY, {})
@@ -83,6 +103,7 @@ class NsblInventory(FrklCallback):
                 text_file.write(content)
 
     def get_inventory_config_string(self):
+        """Returns a string that can be used to write an ansible hosts file, including hosts, groups and child-groups."""
 
         jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
         template = jinja_env.get_template('hosts')
@@ -91,6 +112,15 @@ class NsblInventory(FrklCallback):
         return output_text
 
     def write_inventory_file_or_script(self, inventory_dir, extract_vars=False, relative_paths=True):
+        """Writes an ansible hosts file or dynamic inventory script into the provided directory.
+
+        Writing a dynamic inventory script is not implemented yet.
+
+        Args:
+          inventory_dir (str): the target directory
+          extract_vars (bool): whether to extract all vars (True, default) or write a dynamic inventory script
+          relative_paths (bool): only important for when writing dynamic inventory scripts, makes the paths in the script relative to the ansible environment root so its easily copy-able
+        """
 
         if extract_vars:
             inventory_string = self.get_inventory_config_string()
@@ -202,6 +232,7 @@ class NsblInventory(FrklCallback):
         self.add_host(host, None)
 
     def callback(self, env):
+        """Adds a new environment, and sorts it into the appropriate internal variable."""
 
         if ENV_META_KEY not in env.keys():
             raise NsblException(
@@ -312,7 +343,7 @@ class NsblInventory(FrklCallback):
 class WrapTasksIntoLocalhostEnvProcessor(ConfigProcessor):
     """Wraps a list of tasks into a localhost environment.
 
-    Convenience processor to not have to add this manually.
+    Convenience processor to not have to do this manually, keeps configuration files minimal and sweet.
     """
 
     def __init__(self, init_params=None):
@@ -331,7 +362,6 @@ class WrapTasksIntoLocalhostEnvProcessor(ConfigProcessor):
         return True
 
     def process_current_config(self):
-
 
         config = self.current_input_config
 

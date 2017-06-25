@@ -222,9 +222,22 @@ def get_internal_role_path(role, role_repos=[]):
 class NsblTasks(frkl.FrklCallback):
 
     def create(config, role_repos, task_descs, env_name=None, env_id=None, meta={}, pre_chain=DEFAULT_TASKS_PRE_CHAIN):
+        """
+
+        Args:
+          config (list): the config items describing the tasks
+          role_repos (list): a list of all locally available role repos
+          task_descs (list): a list of additional task descriptions, those can be used to augment the ones that come with role repositories
+          env_name (str): the name of the environment (host or group) this list of tasks belongs to, defaults to 'localhost'
+          env_id (int): the id of the environment. This is required.
+          meta (dict): the 'meta' dict that contains ansible variables that go into the generated playbook for these tasks
+          pre_chain (list): the chain of ConfigProcessors to plug in front of the one that is used internally, needs to return a python list
+
+        Result:
+        NsblTasks: the NsblTasks object, already 'processed'
+        """
 
         role_repos, task_descs = get_default_role_repos_and_task_descs(role_repos, task_descs)
-
         init_params = {}
         if role_repos:
             init_params["role_repos"] = role_repos
@@ -249,6 +262,17 @@ class NsblTasks(frkl.FrklCallback):
     create = staticmethod(create)
 
     def __init__(self, init_params=None):
+        """Frkl callback/collector object to take in lists of task configurations, and creates ansible playbooks and (dynamic) roles.
+
+        The init_params this class supports are:
+
+        role_repos (list): a list of all locally available role repos
+        task_descs (list): a list of additional task descriptions, those can be used to augment the ones that come with role repositories
+        env_name (str): the name of the environment (host or group) this list of tasks belongs to, defaults to 'localhost'
+        env_id (int): the id of the environment. This is required.
+        meta (dict): the 'meta' dict that contains ansible variables that go into the generated playbook for these tasks
+        """
+
         super(NsblTasks, self).__init__(init_params)
 
         self.roles = []
@@ -308,6 +332,18 @@ class NsblTasks(frkl.FrklCallback):
         return playbook_name
 
     def render_roles(self, role_base_dir):
+        """Renders all roles into the generated ansible environment folder.
+
+        External roles are added to the 'roles_requirements.txt' files to be
+        downloaded at execution time into the 'external' subfolder, internal
+        roles (roles that are present locally, either in a folder or a roles
+        repository) are copied into the 'internal' sub-folder, and sets of
+        tasks are put into dynamically generated roles which in turn are
+        rendered into the 'dynamic' sub-folder.
+
+        Args:
+          role_base_dir (str): the base dir where all roles should live
+        """
 
         jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
         roles_requirements_file = os.path.join(role_base_dir, "roles_requirements.yml")
@@ -478,6 +514,14 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
 class NsblRole(object):
 
     def __init__(self, meta_dict, vars_dict, role_id):
+        """NsblRole base class, holds common properties.
+
+        Args:
+          meta_dict (dict): 'meta' parameters for this role
+          vars_dict (dict): 'vars' parameters for this role
+          role_id (str): the id of this role, used to look up role details later
+        """
+
         self.meta_dict = meta_dict
         self.vars_dict = vars_dict
         self.role_id = role_id
@@ -488,11 +532,15 @@ class NsblRole(object):
         self.roles = self.meta_dict.get(TASK_ROLES_KEY, {})
 
     def get_vars(self):
+        """"Returns the vars dict associated with this role.
+
+        Mostly used to render vars into the role-run in a playbook.
+        """
 
         return self.vars_dict
 
     def get_lookup_dict(self):
-
+        """Returns a dictionary that enables reverse lookup of roles by their id."""
         return self.details()
 
     def details(self):
@@ -519,12 +567,35 @@ class NsblRole(object):
 class NsblInternalRole(NsblRole):
 
     def __init__(self, meta_dict, vars_dict, role_id):
+        """Class to describe internal roles.
+
+        Internal roles are roles that live locally and are copied into the 'internal'
+        folder in the role base directory. Those are sort of 'trusted' roles since they
+        either come with nsbl, or have to be downloaded manually by the user.
+
+        Args:
+          meta_dict (dict): 'meta' parameters for this role
+          vars_dict (dict): 'vars' parameters for this role
+          role_id (str): the id of this role, used to look up role details later
+        """
 
         super(NsblInternalRole, self).__init__(meta_dict, vars_dict, role_id)
         self.role_type = INT_ROLE_TASK_TYPE
 
 
 class NsblExternalRole(NsblRole):
+        """Class to describe external roles.
+
+        External roles are ones that will be downloaded when a run is kicked off.
+        Those are not as 'trust-worthy' as internal or dynamically created roles, since
+        they usually come from 3rd party developers, which is why they get a special
+        area in the rendered playbook environemnt ("roles/external") and treatment.
+
+        Args:
+          meta_dict (dict): 'meta' parameters for this role
+          vars_dict (dict): 'vars' parameters for this role
+          role_id (str): the id of this role, used to look up role details later
+        """
 
     def __init__(self, meta_dict, vars_dict, role_id):
 
@@ -535,6 +606,20 @@ class NsblExternalRole(NsblRole):
 class NsblDynRole(NsblRole):
 
     def __init__(self, tasks, role_id, role_repos={}):
+        """Class to describe nsbl dynamically created roles.
+
+        In order to support both roles and tasks in NsblTask lists, there needs to
+        be a way to put both into playbooks. Although there are other options, I
+        opted to dynamically create full-blown ansible roles out of a list of
+        tasks. If a list of ansible tasks in the NsblTask list is interrupted by an
+        ansible role, a new dynamic role will be created for the ansible tasks that
+        follow after the role.
+
+        Args:
+          tasks (list): list of tasks, including the tasks own 'meta' and 'vars' dicts
+          role_id (str): the id of the role, used to look up role details later
+          role_repos (list): a list of all locally available role repos, used to lookup task detail overlays
+        """
         self.tasks = tasks
         self.role_id = role_id
         self.role_type = DYN_ROLE_TYPE
@@ -553,6 +638,7 @@ class NsblDynRole(NsblRole):
 
 
     def get_lookup_dict(self):
+        """Returns a dictionary that enables reverse lookup of roles by their id."""
 
         result = self.details()
         result[TASKS_KEY] = {}
@@ -620,9 +706,21 @@ class NsblDynRole(NsblRole):
 
 
 class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
-    """Processor to extract and pre-process single tasks to merge them into one or several roles later on."""
 
     def __init__(self, init_params=None):
+        """Processor to extract and pre-process single tasks to merge them into one or several roles later on.
+
+        This is the central piece of the dynamic role generation. It checks every task that comes its way
+        whether it is an ansible task or role. If it is a role it produces either a NsblInternalRole or
+        NsblExternalRole object and returns that.
+
+        If it is a task it adds it to the list of other tasks, until another role comes along. Once that
+        happens, a dynamic role will be created with all the tasks accumulated so far. Once no new config
+        comes in anymore, the remaining tasks will also be merged into a dynamic role.
+
+        Args:
+          init_params (dict): the init parameters for this ConfigProcessor, only supporting the 'role_repos' key
+        """
 
         super(NsblDynamicRoleProcessor, self).__init__(init_params)
         self.current_tasks = []

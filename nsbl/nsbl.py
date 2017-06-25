@@ -250,6 +250,17 @@ class Nsbl(FrklCallback):
 
     def __init__(self, init_params=None):
         """Class to receive config items and create an Ansible environment out of them (including inventory and playbooks).
+
+        The init_params to this processor understands these keys:
+
+        'default_env_type' (str): either ENV_TYPE_HOST or ENV_TYPE_GROUP (default), indicates what type environments are that don't have this specified explicitely
+        'tasks-descs' (list): a list of additional task descriptions, those can be used to augment the ones that come with role repositories
+        'role_repos' (list): a list of all locally available role repos
+
+        More documentation: XXX
+
+        Args:
+          init_params (dict): dict to initialize this ConfigProcessor
         """
 
         super(Nsbl, self).__init__(init_params)
@@ -278,7 +289,9 @@ class Nsbl(FrklCallback):
     def finished(self):
 
         self.inventory.finished()
+        # this creates the task-description dictionary which is used to enable easier to use commands, and overlays of parameters
         task_format = generate_nsbl_tasks_format(self.task_descs)
+        # we have several task lists, each with its own environment associated
         for tasks in self.inventory.tasks:
 
             meta = tasks[TASKS_META_KEY]
@@ -289,7 +302,9 @@ class Nsbl(FrklCallback):
             init_params = {"role_repos": self.role_repos, "task_descs": self.task_descs, "env_name": env_name, "env_id": env_id, TASKS_META_KEY: meta}
             tasks_collector = NsblTasks(init_params)
             self.plays["{}_{}".format(env_name, env_id)] = tasks_collector
+            # we already have python objects as config items here, so no other ConfigProcessors necessary
             chain = [FrklProcessor(task_format), NsblTaskProcessor(init_params), NsblDynamicRoleProcessor(init_params)]
+
             #chain = [FrklProcessor(task_format)]
             # not adding vars here, since we have the inventory to do that...
             # configs = task_config
@@ -303,9 +318,9 @@ class Nsbl(FrklCallback):
             tasks_frkl = Frkl(task_config, chain)
 
             result = tasks_frkl.process(tasks_collector)
-            #result = tasks_frkl.process()
 
     def result(self):
+        """Returns a dict with 'inventory' and all 'plays' for this ansible environment."""
 
         return {"inventory": self.inventory, "plays": self.plays}
 
@@ -439,10 +454,26 @@ class Nsbl(FrklCallback):
 class NsblRunner(object):
 
     def __init__(self, nsbl):
+        """Class to kick off rendering and running the ansible environment in question.
+
+        Args:
+          nsbl (Nsbl): the Nsbl object holding the (processed) configuration
+        """
 
         self.nsbl = nsbl
 
     def run(self, target, force=True, ansible_verbose="", callback=None):
+        """Starts the ansible run, executing all generated playbooks.
+
+        By default the 'nsbl_internal' ansible callback is used, which outputs easier to read outputs/results. You can, however,
+        also use the callbacks that come with ansible, like 'default', 'skippy', etc.
+
+        Args:
+          target (str): the target directory where the ansible environment should be rendered
+          force (bool): whether to overwrite potentially existing files at the target (most likely an old rendered ansible environment)
+          ansible_verbose (str): unused for now
+          callback (str): the callback to use for the ansible run. default is 'nsbl_internal'
+        """
 
         if callback == None:
             callback = "nsbl_internal"
