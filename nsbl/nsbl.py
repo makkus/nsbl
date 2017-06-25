@@ -41,7 +41,6 @@ except NameError:
 
 log = logging.getLogger("nsbl")
 
-
 # ------------------------------
 # util functions
 def get_pkg_mgr_sudo(mgr):
@@ -61,6 +60,15 @@ def get_pkg_mgr_sudo(mgr):
         return True
 
 def get_git_auto_dest_name(repo, parent_dir="~"):
+    """Extracts the package/repo name out of a git repo and returns the suggested path where the local copy should live
+
+    Args:
+      repo (str): the repo url
+      parent_dir (str): the parent path to where the local repo will live
+
+    Returns:
+      str: the full path to the local repo
+    """
 
     temp = "{}{}{}".format(parent_dir, os.path.sep, repo.split("/")[-1])
 
@@ -70,6 +78,18 @@ def get_git_auto_dest_name(repo, parent_dir="~"):
     return temp
 
 def ensure_git_repo_format(repo, dest=None):
+    """Makes sure that the repo is in the format nsbl needs for git repos.
+
+    This format is a dictionary with "repo" and "dest" keys. If only a url is provided,
+    the repo name will be calculated using 'get_git_auto_dest_name'.
+
+    Args:
+      repo (str, dict): the repository
+      dest (str): the (optional) local destination of the repo
+
+    Returns:
+      dict: full information for this repo
+    """
 
     if isinstance(repo, string_types):
         if dest:
@@ -90,6 +110,19 @@ def ensure_git_repo_format(repo, dest=None):
 
 
 def get_local_role_desc(role_name, role_repos=[]):
+    """Returns the local path to the role with the provided name.
+
+    If the role_name is a path string, and it exists, that is returned as 'url' key.
+    If not, and optional role_repos are provided those repos are searched for a folder with the
+    same name. If that exists, that will be the return value.
+
+    Args:
+      role_name (str): the role name
+      role_repos (list): a list of local role repositories
+
+    Returns:
+      dict: a dict with only the 'url' key and calculated value
+    """
 
     url = False
     if os.path.exists(role_name):
@@ -106,6 +139,12 @@ def get_local_role_desc(role_name, role_repos=[]):
     return {"url": url}
 
 def merge_roles(role_obj, role_repos=[]):
+    """Merge the provided role object into a single dictionary containing all roles that can be found through it.
+
+    If the role object is a dictionary, it will be used directly, if it is a string, 'get_local_role_desc' will be
+    used to assemble the result dict. In case of list, all child items will be added to the result recursively according
+    to their type.
+    """
 
     role_dict = {}
 
@@ -126,6 +165,14 @@ def merge_roles(role_obj, role_repos=[]):
     return role_dict
 
 def expand_external_role(role_dict, role_repos=[]):
+    """Ensures the provided input is a dict, and if not converts it in an approriate way.
+
+    Args:
+      role_dict (str, dict): the input role description
+      role_repos (list): the available local role repos
+    Returns:
+      dict: the fully expanded role description(s)
+    """
 
     temp_role_dict = merge_roles(role_dict, role_repos)
 
@@ -143,6 +190,14 @@ def expand_external_role(role_dict, role_repos=[]):
     return result
 
 def get_internal_role_path(role_dict, role_repos=[]):
+    """Parses the input and returns the local path to the specified role, or False if not found.
+
+    Args:
+      role_dict (str, dict): the role url or description dict
+      role_repos (list): the available local role repos
+    Returns:
+      str, bool: the path to the local role, or False if not found
+    """
 
     if isinstance(role_dict, string_types):
         url = role_dict
@@ -164,6 +219,20 @@ def get_internal_role_path(role_dict, role_repos=[]):
 class Nsbl(FrklCallback):
 
     def create(config, role_repos=[], task_descs=[], include_parent_meta=False, include_parent_vars=False, default_env_type=DEFAULT_ENV_TYPE, pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()], wrap_into_localhost_env=False):
+        "Utility method to create a Nsbl object out of the configuration and some metadata about how to process that configuration.
+
+        Args:
+          config (list): a list of configuration items
+          role_repos (list): a list of all locally available role repos
+          task_descs (list): a list of additional task descriptions, those can be used to augment the ones that come with role repositories
+          include_parent_meta (bool): whether to include parent meta dict into tasks (not used at the moment)
+          include_parent_var (bool): whether to include parent var dict into tasks (not used at the moment)
+          default_env_type (str): the type a environment is if it is not explicitely specified, either ENV_TYPE_HOST or ENV_TYPE_GROUP
+          pre_chain (list): the chain of ConfigProcessors to plug in front of the one that is used internally, needs to return a python list
+          wrap_into_localhost_env (bool): whether to wrap the input configuration into a localhost environment for convenience
+        Returns:
+          Nsbl: the Nsbl object, already 'processed'
+        "
 
         init_params = {"task_descs": task_descs, "role_repos": role_repos, "include_parent_meta": include_parent_meta, "include_parent_vars": include_parent_vars, "default_env_type": default_env_type}
         nsbl = Nsbl(init_params)
@@ -180,7 +249,7 @@ class Nsbl(FrklCallback):
     create = staticmethod(create)
 
     def __init__(self, init_params=None):
-        """Class to receive yaml config files and create an Ansible environment out of them (including inventory and playbooks).
+        """Class to receive config items and create an Ansible environment out of them (including inventory and playbooks).
         """
 
         super(Nsbl, self).__init__(init_params)
