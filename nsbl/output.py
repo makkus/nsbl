@@ -36,7 +36,7 @@ class NsblLogCallbackAdapter(object):
 
     def __init__(self, lookup_dict, display_sub_tasks=True):
 
-        self.display_utility_tasks = False
+        self.display_utility_tasks = True
         self.display_sub_tasks = display_sub_tasks
         self.display_skipped_tasks = False
 

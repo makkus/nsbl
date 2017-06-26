@@ -3,6 +3,7 @@
 import fnmatch
 import os
 import pprint
+import subprocess
 from distutils import spawn
 
 from requests.structures import CaseInsensitiveDict
@@ -57,7 +58,21 @@ class FilterModule(object):
         }
 
     def missing_from_path_filter(self, exe):
-        return which(exe) is None
+        exe_missing = which(exe) is None
+        if exe != 'git':
+            return exe_missing
+        else:
+            # needed because Mac OS has some sort of wrapper script for git if xcode is not installed
+            try:
+                git_output = subprocess.check_output(['git', '--help'], shell=True, stderr=subprocess.STDOUT)
+                #git_output = "xcode-select"
+                if "xcode-select" in git_output:
+                    return True
+                else:
+                    return False
+            except:
+                return True
+
 
     def pkg_mgr_filter(self, dotfile_repos, prefix=None):
 

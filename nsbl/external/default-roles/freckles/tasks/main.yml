@@ -2,6 +2,13 @@
 # tasks file for dotfiles
 
 # install the default package manager now in case git is missing
+- name: install homebrew package manager if needed for installing 'git'
+  include_role:
+    name: geerlingguy.homebrew
+  vars:
+    homebrew_cask_apps: []
+  when: '("git" | missing_from_path) and ((pkg_mgr is defined and pkg_mgr == "homebrew") or (ansible_os_family == "Darwin" and pkg_mgr is not defined) )'
+
 - name: install nix package manager if needed for installing 'git'
   include_role:
     name: install-nix
@@ -11,11 +18,6 @@
   include_role:
     name: install-conda
   when: "pkg_mgr is defined and pkg_mgr == conda and 'git' | missing_from_path"
-
-- name: install homebrew package manager if needed for installing 'git'
-  include_role:
-    name: install-conda
-  when: "pkg_mgr is defined and pkg_mgr == homebrew and 'git' | missing_from_path"
 
 - name: install git
   install:
