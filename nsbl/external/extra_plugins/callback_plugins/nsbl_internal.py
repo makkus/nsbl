@@ -51,12 +51,28 @@ class CallbackModule(CallbackBase):
         name = self.get_task_detail("name")
         return name
 
+    def get_recursive_role_detail(self, detail_key, role):
+
+        if detail_key in role.get("_role_params", {}).keys():
+            return role["_role_params"][detail_key]
+
+        for r in role.get("_parents", []):
+            key = self.get_recursive_role_detail(detail_key, r)
+            if isinstance(key, int):
+                return key
+
+        return None
+
+
     def get_env_id(self):
 
         #pprint.pprint(self.task.serialize())
         #pprint.pprint(self.play.serialize())
 
         id = self.get_task_detail("role._role_params._env_id")
+
+        if not isinstance(id, int):
+            id = self.get_recursive_role_detail("_env_id", self.task.serialize().get("role", {}))
 
         if isinstance(id, int):
             return id
@@ -71,6 +87,8 @@ class CallbackModule(CallbackBase):
 
         id = self.get_task_detail("role._role_params._role_id")
 
+        if not isinstance(id, int):
+            id = self.get_recursive_role_detail("_role_id", self.task.serialize().get("role", {}))
         if isinstance(id, int):
             return id
         else:
