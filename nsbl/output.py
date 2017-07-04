@@ -63,6 +63,8 @@ class NsblLogCallbackAdapter(object):
         self.skipped = True
         self.changed = False
 
+        self.output = ClickStdOutput()
+
 
     def add_log_message(self, line):
 
@@ -78,7 +80,7 @@ class NsblLogCallbackAdapter(object):
         env_id = details.get(ENV_ID_KEY, None)
         if category == "play_start":
             name = self.lookup_dict[0][ENV_NAME_KEY]
-            click.echo("* starting tasks for environment '{}'...".format(name))
+            self.output.start_env(name)
             # click.echo("")
             return
 
@@ -112,18 +114,14 @@ class NsblLogCallbackAdapter(object):
 
         if role_changed:
             if self.current_role_id != None:
-                self.process_task_changed()
-                self.process_role_changed()
+                self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item, self.current_task_is_dyn_role)
+                self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stderrs)
             self.current_env_id = env_id
             self.current_role_id = role_id
             self.current_dyn_task_id = dyn_task_id
 
             self.current_role = self.lookup_dict[self.current_env_id][TASKS_KEY][self.current_role_id]
-            if self.current_role["role_type"] == DYN_ROLE_TYPE:
-                click.echo(" * starting custom tasks:")
-            else:
-                click.echo(" * applying role '{}'...".format(self.current_role["name"]), nl=False)
-                self.new_line = False
+            self.output.start_role(self.current_role)
 
             self.saved_item = None
             self.failed = False
@@ -135,7 +133,7 @@ class NsblLogCallbackAdapter(object):
 
         if task_changed:
             if self.current_task_name != None and not role_changed:
-                self.process_task_changed()
+                self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item, self.current_task_is_dyn_role)
 
             self.current_task_name = task_name
             self.current_dyn_task_id = dyn_task_id
@@ -145,17 +143,7 @@ class NsblLogCallbackAdapter(object):
             else:
                 self.current_task_is_dyn_role = False
 
-            if self.current_task_is_dyn_role:
-                if not self.new_line:
-                    click.echo("")
-                click.echo("     * {}... ".format(self.current_task_name), nl=False)
-                self.new_line = False
-            else:
-                if self.display_sub_tasks:
-                    if not self.new_line:
-                        click.echo("")
-                    click.echo("   - {} => ".format(self.current_task_name), nl=False)
-                    self.new_line = False
+            self.output.start_task(self.current_task_name, self.current_role, self.current_task_is_dyn_role)
 
             self.saved_item = None
 
@@ -201,11 +189,56 @@ class NsblLogCallbackAdapter(object):
         elif category.startswith("nsbl"):
             self.task_has_nsbl_items = True
             self.saved_item = None
-            self.display_nsbl_item(event)
+            self.output.display_nsbl_item(event, self.current_task_is_dyn_role)
         elif category in ["item_ok", "item_failed"] and not self.task_has_nsbl_items:
             self.saved_item = None
             self.task_has_items = True
-            self.display_item(event)
+            self.output.display_item(event, self.current_task_is_dyn_role)
+
+
+    def finish_up(self):
+
+        self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item, self.current_task_is_dyn_role)
+        self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stderrs)
+
+
+class ClickStdOutput(object):
+
+    def __init__(self):
+
+        self.new_line = True
+        self.display_sub_tasks = False
+
+    def start_new_line(self):
+
+        click.echo("")
+        self.new_line = True
+
+    def start_env(self, env_name):
+
+        click.echo("* starting tasks for environment '{}'...".format(env_name))
+
+    def start_role(self, current_role):
+
+        if current_role["role_type"] == DYN_ROLE_TYPE:
+            click.echo(" * starting custom tasks:")
+        else:
+            click.echo(" * applying role '{}'...".format(current_role["name"]), nl=False)
+            self.new_line = False
+
+    def start_task(self, task_name, current_role, current_is_dyn_role):
+        if current_is_dyn_role:
+            if not self.new_line:
+                click.echo("")
+            click.echo("     * {}... ".format(task_name), nl=False)
+            self.new_line = False
+        else:
+            if self.display_sub_tasks:
+                if not self.new_line:
+                    click.echo("")
+                click.echo("   - {} => ".format(task_name), nl=False)
+                self.new_line = False
+
 
     def pretty_print_item(self, item):
 
@@ -227,9 +260,9 @@ class NsblLogCallbackAdapter(object):
 
         return item
 
-    def display_nsbl_item(self, ev):
+    def display_nsbl_item(self, ev, current_is_dyn_role):
 
-        if not self.display_sub_tasks and not self.current_task_is_dyn_role:
+        if not self.display_sub_tasks and not current_is_dyn_role:
             return
 
         item = self.pretty_print_item(ev["item"])
@@ -266,9 +299,9 @@ class NsblLogCallbackAdapter(object):
 
         self.new_line = True
 
-    def display_item(self, ev):
+    def display_item(self, ev, current_is_dyn_role):
 
-        if not self.display_sub_tasks and not self.current_task_is_dyn_role:
+        if not self.display_sub_tasks and not current_is_dyn_role:
             return
 
         item = self.pretty_print_item(ev["item"])
@@ -301,9 +334,9 @@ class NsblLogCallbackAdapter(object):
 
         self.new_line = True
 
-    def display_result(self, ev):
+    def display_result(self, ev, current_is_dyn_role):
 
-        if not self.display_sub_tasks and not self.current_task_is_dyn_role:
+        if not self.display_sub_tasks and not current_is_dyn_role:
             return
 
         if ev["ansible_task_name"].startswith("nsbl_started="):
@@ -316,7 +349,6 @@ class NsblLogCallbackAdapter(object):
             if ev["category"] == "ok":
                 skipped = ev["skipped"]
                 if skipped:
-                    print("XXXX")
                     msg = "skipped"
                 else:
                     if ev["status"] == "changed":
@@ -346,48 +378,40 @@ class NsblLogCallbackAdapter(object):
                 click.echo(output)
                 self.new_line = True
 
-    def process_task_changed(self):
-
-        if  self.task_has_items or self.task_has_nsbl_items:
-            return
-
-        elif self.saved_item:
-            self.display_result(self.saved_item)
-
-    def process_role_changed(self):
+    def process_role_changed(self, failed, skipped, changed, msgs, stderrs):
 
         if not self.new_line:
             click.echo("\b\b\b  => ", nl=False)
         else:
             click.echo("   => ", nl=False)
 
-        if self.failed:
+        if failed:
 
             msg = ["n/a"]
 
             click.echo("")
             output = []
-            if self.msgs:
-                if len(self.msgs) < 2:
-                    output.append("failed: {}".format("".join(self.msgs)))
+            if msgs:
+                if len(msgs) < 2:
+                    output.append("failed: {}".format("".join(msgs)))
                 else:
                     output.append("failed:")
                     output.append("      messages in this task:")
-                    for m in self.msgs:
+                    for m in msgs:
                         output.append("        -> {}".format(m))
             else:
                 output.append("failed")
 
-            if self.stderrs:
+            if stderrs:
                 output.append("      stderr:")
-                for e in self.stderrs:
+                for e in stderrs:
                     output.append("        -> {}".format(e))
 
             output = "\n".join(output)
             click.echo(output)
             click.echo("")
 
-        elif self.skipped:
+        elif skipped:
 
             output = "skipped"
             click.echo(output)
@@ -401,7 +425,10 @@ class NsblLogCallbackAdapter(object):
 
         # click.echo("")
 
-    def finish_up(self):
+    def process_task_changed(self, task_has_items, task_has_nsbl_items, saved_item, current_is_dyn_role):
 
-        self.process_task_changed()
-        self.process_role_changed()
+        if task_has_items or task_has_nsbl_items:
+            return
+
+        elif saved_item:
+            self.display_result(saved_item, current_is_dyn_role)

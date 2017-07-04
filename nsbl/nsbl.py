@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 from builtins import *
+from datetime import datetime
 
 import click
 from cookiecutter.main import cookiecutter
@@ -330,12 +331,19 @@ class Nsbl(FrklCallback):
         Args:
           env_dir (str): the folder where the environment should be created
           extract_vars (bool): whether to extract a hostvars and groupvars directory for the inventory (True), or render a dynamic inventory script for the environment (default, True) -- Not supported at the moment
-          force (bool): overwrite environment if already present at the specified location
+          force (bool): overwrite environment if already present at the specified location, use with caution because this might delete an important folder if you get the 'target' dir wrong
           ansible_verbose (str): parameters to give to ansible-playbook (like: "-vvv")
           callback (str): name of the callback to use, default: nsbl_internal
           add_timestamp_to_env (bool): whether to add a timestamp to the env_dir -- useful for when this is called from other programs (e.g. freckles)
           add_symlink_to_env (bool): whether to add a symlink to the current env from a fixed location (useful to archive all runs/logs)
         """
+
+        env_dir = os.path.expanduser(env_dir)
+        if add_timestamp_to_env:
+            start_date = datetime.now()
+            date_string = start_date.strftime('%y%m%d_%H_%M_%S')
+            dirname, basename = os.path.split(env_dir)
+            env_dir = os.path.join(dirname, "{}_{}".format(basename, date_string))
 
         result = {}
         result['env_dir'] = env_dir
@@ -358,6 +366,7 @@ class Nsbl(FrklCallback):
         roles_base_dir = os.path.join(env_dir, "roles")
         result["roles_base_dir"] = playbook_dir
 
+        #ask_sudo = "--ask-become-pass"
         ask_sudo = ""
         all_plays_name = "all_plays.yml"
         result["default_playbook_name"] = all_plays_name
@@ -386,6 +395,14 @@ class Nsbl(FrklCallback):
         template_path = os.path.join(os.path.dirname(__file__), "external", "cookiecutter-ansible-environment")
 
         cookiecutter(template_path, extra_context=cookiecutter_details, no_input=True)
+
+        if add_symlink_to_env:
+            link_path = os.path.expanduser(add_symlink_to_env)
+            if os.path.exists(link_path) and force:
+                os.unlink(link_path)
+            os.symlink(env_dir, link_path)
+
+
 
         # write inventory
         if extract_vars:
@@ -462,7 +479,7 @@ class NsblRunner(object):
 
         self.nsbl = nsbl
 
-    def run(self, target, force=True, ansible_verbose="", callback=None):
+    def run(self, target, force=True, ansible_verbose="", callback=None, add_timestamp_to_env=False, add_symlink_to_env=False):
         """Starts the ansible run, executing all generated playbooks.
 
         By default the 'nsbl_internal' ansible callback is used, which outputs easier to read outputs/results. You can, however,
@@ -473,12 +490,14 @@ class NsblRunner(object):
           force (bool): whether to overwrite potentially existing files at the target (most likely an old rendered ansible environment)
           ansible_verbose (str): unused for now
           callback (str): the callback to use for the ansible run. default is 'nsbl_internal'
+          add_timestamp_to_env (bool): whether to append a timestamp to the run directory (default: False)
+          add_symlink_to_env (str): whether to add a symlink to the run directory (will be deleted if exists already and force is specified) - default: False, otherwise path to symlink
         """
 
         if callback == None:
             callback = "nsbl_internal"
 
-        parameters = self.nsbl.render(target, True, force, ansible_args="", callback=callback)
+        parameters = self.nsbl.render(target, True, force=force, ansible_args="", callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
 
 
         run_env = os.environ.copy()
