@@ -24,9 +24,10 @@ from .nsbl import Nsbl, NsblRunner
 # @click.option('--static/--dynamic', default=True, help="whether to render a dynamic inventory script using the provided config files instead of a plain ini-type config file and group_vars and host_vars folders, default: static")
 @click.option('--force/--no-force', help="delete potentially existing target directory", default=True)
 @click.argument('config', required=True, nargs=-1)
+@click.option('--no-run', help="don't run the environment, only render it to the target directory", is_flag=True, default=False)
 @click_log.simple_verbosity_option()
 @click_log.init("nsbl")
-def cli(version, role_repo, task_desc, stdout_callback, target, force, config):
+def cli(version, role_repo, task_desc, stdout_callback, target, force, config, no_run):
     """Console script for nsbl"""
 
     if version:
@@ -36,7 +37,7 @@ def cli(version, role_repo, task_desc, stdout_callback, target, force, config):
     nsbl_obj = Nsbl.create(config, role_repo, task_desc)
 
     runner = NsblRunner(nsbl_obj)
-    runner.run(target, force=force, ansible_verbose="", callback=stdout_callback, add_timestamp_to_env=True, add_symlink_to_env="~/.nsbl/runs/current")
+    runner.run(target, force=force, ansible_verbose="", callback=stdout_callback, add_timestamp_to_env=True, add_symlink_to_env="~/.nsbl/runs/current", no_run=no_run)
 
 
 def output(python_object, format="raw", pager=False):

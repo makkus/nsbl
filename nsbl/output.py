@@ -34,11 +34,11 @@ class NsblPrintCallbackAdapter(object):
 
 class NsblLogCallbackAdapter(object):
 
-    def __init__(self, lookup_dict, display_sub_tasks=True):
+    def __init__(self, lookup_dict, display_sub_tasks=True, display_skipped_tasks=True):
 
         self.display_utility_tasks = False
         self.display_sub_tasks = display_sub_tasks
-        self.display_skipped_tasks = False
+        self.display_skipped_tasks = display_skipped_tasks
 
         self.lookup_dict = lookup_dict
         self.new_line = True
@@ -63,7 +63,7 @@ class NsblLogCallbackAdapter(object):
         self.skipped = True
         self.changed = False
 
-        self.output = ClickStdOutput()
+        self.output = ClickStdOutput(display_sub_tasks=self.display_sub_tasks, display_skipped_tasks=self.display_skipped_tasks)
 
 
     def add_log_message(self, line):
@@ -79,6 +79,15 @@ class NsblLogCallbackAdapter(object):
 
         env_id = details.get(ENV_ID_KEY, None)
         if category == "play_start":
+            if self.current_role_id != None:
+                self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item, self.current_task_is_dyn_role)
+                self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stderrs)
+                self.output.start_new_line()
+            self.current_role_id = None
+            self.current_task = None
+            self.current_env_id = None
+            self.current_dyn_task_id = None
+            self.current_task_name = None
             name = self.lookup_dict[0][ENV_NAME_KEY]
             self.output.start_env(name)
             # click.echo("")
@@ -204,10 +213,11 @@ class NsblLogCallbackAdapter(object):
 
 class ClickStdOutput(object):
 
-    def __init__(self):
+    def __init__(self, display_sub_tasks=True, display_skipped_tasks=True):
 
         self.new_line = True
-        self.display_sub_tasks = False
+        self.display_sub_tasks = display_sub_tasks
+        self.display_skipped_tasks = display_skipped_tasks
 
     def start_new_line(self):
 
@@ -416,7 +426,7 @@ class ClickStdOutput(object):
             output = "skipped"
             click.echo(output)
 
-        elif self.changed:
+        elif changed:
             output = "ok (changed)"
             click.echo(output)
         else:

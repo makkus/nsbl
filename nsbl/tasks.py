@@ -279,6 +279,7 @@ class NsblTasks(frkl.FrklCallback):
         self.all_ansible_roles = []
         # whether this play contains external roles
         self.ext_roles = False
+        self.use_become = False
 
     def validate_init(self):
 
@@ -379,6 +380,8 @@ class NsblTasks(frkl.FrklCallback):
         for r in role.roles:
             if r["type"] == REMOTE_ROLE_TYPE:
                 self.ext_roles = True
+            if r.get("use_become", False):
+                self.use_become = True
 
         add_roles(self.all_ansible_roles, role.roles)
 
@@ -418,7 +421,6 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
         return True
 
     def process_current_config(self):
-
 
         new_config = self.current_input_config
         meta_task_name = new_config[TASKS_META_KEY][TASK_META_NAME_KEY]
@@ -525,6 +527,9 @@ class NsblRole(object):
         self.meta_dict = meta_dict
         self.vars_dict = vars_dict
         self.role_id = role_id
+        self.use_become = False
+        if meta_dict.get(TASK_BECOME_KEY, False):
+            self.use_become = True
         self.tasks = []
 
         self.name = self.meta_dict[TASK_META_NAME_KEY]
@@ -599,7 +604,6 @@ class NsblExternalRole(NsblRole):
           role_id (str): the id of this role, used to look up role details later
         """
 
-
         super(NsblExternalRole, self).__init__(meta_dict, vars_dict, role_id)
         self.role_type = EXT_ROLE_TASK_TYPE
 
@@ -625,6 +629,7 @@ class NsblDynRole(NsblRole):
         self.role_id = role_id
         self.role_type = DYN_ROLE_TYPE
         self.role_repos = role_repos
+        self.use_become = False
         self.role_name = self.tasks[0][TASKS_META_KEY][ROLE_NAME_KEY]
         self.roles = []
         self.meta_dict = {}
@@ -637,7 +642,6 @@ class NsblDynRole(NsblRole):
     def __repr__(self):
         return "NsblRole(name={}, role_name={}, type={}, role_id={}, task_names={})".format(self.name, self.role_name, self.role_type, self.role_id, self.task_names)
 
-
     def get_lookup_dict(self):
         """Returns a dictionary that enables reverse lookup of roles by their id."""
 
@@ -649,11 +653,17 @@ class NsblDynRole(NsblRole):
 
         return result
 
-
     def parse_tasks(self):
 
         for idx, t in enumerate(self.tasks):
-            task_id = "{}_{}".format(self.role_name, idx)
+            if isinstance(self.role_name, int):
+                role_token = str(self.role_name).zfill(4)
+            else:
+                role_token = self.role_name
+
+            index_token = str(idx).zfill(4)
+
+            task_id = "{}_{}".format(role_token, index_token)
             t[TASKS_META_KEY][DYN_TASK_ID_KEY] = task_id
             self.task_names.append(t[TASKS_META_KEY][TASK_META_NAME_KEY])
             add_roles(self.roles, t[TASKS_META_KEY].get(TASK_ROLES_KEY, self.role_repos))
@@ -661,6 +671,9 @@ class NsblDynRole(NsblRole):
                 t[TASKS_META_KEY][TASK_DESC_KEY] = t[TASKS_META_KEY][TASK_META_NAME_KEY]
             for key, value in t.get(VARS_KEY, {}).items():
                 self.vars_dict["{}_{}".format(task_id, key)] = value
+
+            if t[TASKS_META_KEY].get(TASK_BECOME_KEY, False):
+                self.use_become = True
 
 
     def create_role(self, target_folder):
@@ -708,6 +721,8 @@ class NsblDynRole(NsblRole):
 
 class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
 
+    role_id = 0
+
     def __init__(self, init_params=None):
         """Processor to extract and pre-process single tasks to merge them into one or several roles later on.
 
@@ -726,7 +741,6 @@ class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
         super(NsblDynamicRoleProcessor, self).__init__(init_params)
         self.current_tasks = []
         self.current_role_name = None
-        self.role_id = 0
 
     def validate_init(self):
 
@@ -741,16 +755,17 @@ class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
 
     def process_current_config(self):
 
+
         if not self.last_call:
             new_config = self.current_input_config
-
 
             if new_config[TASKS_META_KEY][TASK_TYPE_KEY] == TASK_TASK_TYPE:
 
                 role_name = new_config[TASKS_META_KEY].get(ROLE_NAME_KEY, None)
                 if not role_name:
                     if not self.current_role_name:
-                        self.current_role_name = "{}_{}".format(DYN_ROLE_TYPE, self.role_id)
+                        self.current_role_name = "{}_{}".format(DYN_ROLE_TYPE, NsblDynamicRoleProcessor.role_id)
+                        NsblDynamicRoleProcessor.role_id += 1
                     role_name = self.current_role_name
                     new_config[TASKS_META_KEY][ROLE_NAME_KEY] = role_name
                     self.current_tasks.append(new_config)
@@ -758,11 +773,11 @@ class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
                 else:
                     if role_name != self.current_role_name:
                         if self.current_tasks:
-                            dyn_role = NsblDynRole(self.current_tasks, self.role_id, self.role_repos)
+                            dyn_role = NsblDynRole(self.current_tasks, NsblDynamicRoleProcessor.role_id, self.role_repos)
+                            NsblDynamicRoleProcessor.role_id += 1
                             self.current_tasks = [new_config]
                             self.current_role_name = role_name
                             yield dyn_role
-                            self.role_id += 1
                         else:
                             self.current_role_name = role_name
                             self.current_tasks.append(new_config)
@@ -773,27 +788,29 @@ class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
 
             elif new_config[TASKS_META_KEY][TASK_TYPE_KEY] in [INT_ROLE_TASK_TYPE, EXT_ROLE_TASK_TYPE]:
                 if len(self.current_tasks) > 0:
-                    dyn_role = NsblDynRole(self.current_tasks, self.role_id, self.role_repos)
-                    self.role_id += 1
+                    dyn_role = NsblDynRole(self.current_tasks, NsblDynamicRoleProcessor.role_id, self.role_repos)
+                    NsblDynamicRoleProcessor.role_id += 1
                     self.current_tasks = []
                     self.current_role_name = None
                     yield dyn_role
                 if new_config[TASKS_META_KEY][TASK_TYPE_KEY] == INT_ROLE_TASK_TYPE:
-                    role = NsblInternalRole(new_config[TASKS_META_KEY], new_config.get(VARS_KEY, {}), self.role_id)
+                    role = NsblInternalRole(new_config[TASKS_META_KEY], new_config.get(VARS_KEY, {}), NsblDynamicRoleProcessor.role_id)
+                    NsblDynamicRoleProcessor.role_id += 1
                     self.current_role_name = None
                     yield role
                 else:
-                    role = NsblExternalRole(new_config[TASKS_META_KEY], new_config.get(VARS_KEY, {}), self.role_id)
+                    role = NsblExternalRole(new_config[TASKS_META_KEY], new_config.get(VARS_KEY, {}), NsblDynamicRoleProcessor.role_id)
+                    NsblDynamicRoleProcessor.role_id += 1
                     self.current_role_name = None
                     yield role
-                self.role_id += 1
+
             else:
                 raise NsblException("Task type needs to be either '{}', '{}' or '{}': {}".format(TASK_TASK_TYPE, EXT_ROLE_TASK_TYPE, INT_ROLE_TASK_TYPE, new_config[TASKS_META_KEY][TASK_TYPE_KEY]))
 
 
         else:
             if len(self.current_tasks) > 0:
-                role = NsblDynRole(self.current_tasks, self.role_id, self.role_repos)
+                role = NsblDynRole(self.current_tasks, NsblDynamicRoleProcessor.role_id, self.role_repos)
                 yield role
             else:
                 yield None

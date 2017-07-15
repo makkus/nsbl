@@ -267,6 +267,7 @@ class Nsbl(FrklCallback):
         super(Nsbl, self).__init__(init_params)
         self.inventory = NsblInventory(init_params)
         self.plays = {}
+        self.use_become = False
 
     def validate_init(self):
 
@@ -316,27 +317,37 @@ class Nsbl(FrklCallback):
                 # configs = {TASKS_KEY: task_config}
                 # configs[VARS_KEY] = tasks.get(VARS_KEY, {})
 
-            tasks_frkl = Frkl(task_config, chain)
+            # wrapping the tasks in a list so the 'base-vars' don't get inherited
+            tasks_frkl = Frkl([task_config], chain)
 
             result = tasks_frkl.process(tasks_collector)
+            if tasks_collector.use_become:
+                self.use_become = True
 
     def result(self):
         """Returns a dict with 'inventory' and all 'plays' for this ansible environment."""
 
         return {"inventory": self.inventory, "plays": self.plays}
 
-    def render(self, env_dir, extract_vars=True, force=False, ansible_args="", callback='nsbl_internal', add_timestamp_to_env=False, add_symlink_to_env=False):
+    def render(self, env_dir, extract_vars=True, force=False, ask_become_pass=True, ansible_args="", callback='nsbl_internal', add_timestamp_to_env=False, add_symlink_to_env=False):
         """Creates the ansible environment in the folder provided.
 
         Args:
           env_dir (str): the folder where the environment should be created
           extract_vars (bool): whether to extract a hostvars and groupvars directory for the inventory (True), or render a dynamic inventory script for the environment (default, True) -- Not supported at the moment
           force (bool): overwrite environment if already present at the specified location, use with caution because this might delete an important folder if you get the 'target' dir wrong
+          ask_become_pass (bool): whether to include the '--ask-become-pass' arg to the ansible-playbook call
           ansible_verbose (str): parameters to give to ansible-playbook (like: "-vvv")
           callback (str): name of the callback to use, default: nsbl_internal
           add_timestamp_to_env (bool): whether to add a timestamp to the env_dir -- useful for when this is called from other programs (e.g. freckles)
           add_symlink_to_env (bool): whether to add a symlink to the current env from a fixed location (useful to archive all runs/logs)
         """
+
+        if not isinstance(ask_become_pass, bool):
+            if not isinstance(ask_become_pass, string_types) or ask_become_pass != 'auto':
+                raise NsblException("'ask_become_pass'-arg needs to be either a bool or 'auto'")
+            log.debug("Trying to guess become argument, using: {}".format(self.use_become))
+            ask_become_pass = self.use_become
 
         env_dir = os.path.expanduser(env_dir)
         if add_timestamp_to_env:
@@ -479,7 +490,7 @@ class NsblRunner(object):
 
         self.nsbl = nsbl
 
-    def run(self, target, force=True, ansible_verbose="", callback=None, add_timestamp_to_env=False, add_symlink_to_env=False):
+    def run(self, target, force=True, ansible_verbose="", ask_become_pass=True, callback=None, add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True, display_skipped_tasks=True):
         """Starts the ansible run, executing all generated playbooks.
 
         By default the 'nsbl_internal' ansible callback is used, which outputs easier to read outputs/results. You can, however,
@@ -489,16 +500,24 @@ class NsblRunner(object):
           target (str): the target directory where the ansible environment should be rendered
           force (bool): whether to overwrite potentially existing files at the target (most likely an old rendered ansible environment)
           ansible_verbose (str): unused for now
+          ask_become_pass (bool): whether the ansible-playbook call should use 'ask-become-pass' or not (possible values: True, False, 'auto' -- auto tries to do the right thing but might fail)
           callback (str): the callback to use for the ansible run. default is 'nsbl_internal'
           add_timestamp_to_env (bool): whether to append a timestamp to the run directory (default: False)
           add_symlink_to_env (str): whether to add a symlink to the run directory (will be deleted if exists already and force is specified) - default: False, otherwise path to symlink
+          no_run (bool): whether to only render the environment, but not run it
+          display_sub_tasks (bool): whether to display subtasks in the output (not applicable for all callbacks)
+          display_skipped_tasks (bool): whether to display skipped tasks in the output (not applicable for all callbacks)
         """
 
         if callback == None:
             callback = "nsbl_internal"
 
-        parameters = self.nsbl.render(target, True, force=force, ansible_args="", callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
+        parameters = self.nsbl.render(target, True, force=force, ansible_args="", ask_become_pass=ask_become_pass, callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
 
+
+        if no_run:
+            log.debug("Not running environment due to 'no_run' flag set.")
+            return
 
         run_env = os.environ.copy()
         if callback.startswith("nsbl_internal"):
@@ -509,7 +528,7 @@ class NsblRunner(object):
 
         if callback == "nsbl_internal":
             lookup_dict = self.nsbl.get_lookup_dict()
-            callback_adapter = NsblLogCallbackAdapter(lookup_dict)
+            callback_adapter = NsblLogCallbackAdapter(lookup_dict, display_sub_tasks=display_sub_tasks, display_skipped_tasks=display_skipped_tasks)
         else:
             callback_adapter = NsblPrintCallbackAdapter()
 
