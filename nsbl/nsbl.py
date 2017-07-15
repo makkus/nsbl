@@ -44,6 +44,14 @@ log = logging.getLogger("nsbl")
 
 # ------------------------------
 # util functions
+def can_passwordless_sudo():
+    """Checks if the user can use passwordless sudo on this host."""
+
+    FNULL = open(os.devnull, 'w')
+    p = subprocess.Popen('sudo -n ls', shell=True, stdout=FNULL, stderr=subprocess.STDOUT, close_fds=True)
+    r = p.wait()
+    return r == 0
+
 def get_pkg_mgr_sudo(mgr):
     """Simple function to determine whether a given package manager needs sudo rights or not.
     """
@@ -378,7 +386,14 @@ class Nsbl(FrklCallback):
         result["roles_base_dir"] = playbook_dir
 
         #ask_sudo = "--ask-become-pass"
-        ask_sudo = ""
+        if ask_become_pass:
+            if can_passwordless_sudo():
+                ask_sudo = ""
+            else:
+                ask_sudo = "--ask-become-pass"
+        else:
+            ask_sudo = ""
+
         all_plays_name = "all_plays.yml"
         result["default_playbook_name"] = all_plays_name
 
