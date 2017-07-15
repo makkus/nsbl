@@ -1,7 +1,7 @@
 envs:
-- common:
+- 10.0.0.4:
     meta:
-      type: group
+      type: host
       hosts:
         - postgresql
 
