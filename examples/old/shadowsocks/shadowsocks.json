@@ -1,0 +1,8 @@
+{
+    "server":"46.228.192.85",
+    "server_port":443,
+    "local_port":1080,
+    "password":"sitwa8niyya",
+    "timeout":600,
+    "method":"chacha20"
+}

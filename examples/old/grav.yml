@@ -1,0 +1,48 @@
+- apt:
+    update_cache: yes
+- install:
+    - zile
+# - install-nginx:
+    # meta:
+      # become: yes
+      # task-roles:
+        # - name: install-nginx
+          # src: jdauphant.nginx
+    # vars:
+      # nginx_sites:
+        # default:
+          # - listen 80
+          # - server_name _
+          # - root "/vagrant/grav"
+          # - index index.php
+# - get_url:
+    # url: https://getgrav.org/download/core/grav-admin/latest
+    # dest: /tmp/grav.zip
+# - shell:
+    # free_form: unzip -n /tmp/grav.zip
+    # chdir: /tmp
+# - shell: mv /tmp/grav-admin /vagrant/grav
+- geerlingguy.php:
+    meta:
+      become: yes
+      task-roles:
+        src: geerlingguy.php
+    vars:
+      php_packages_extra:
+        - php-zip
+- geerlingguy.apache-php-fpm:
+    meta:
+      become: yes
+      task-roles:
+        src: geerlingguy.apache-php-fpm
+- geerlingguy.apache:
+    meta:
+      become: yes
+      task-roles:
+        src: geerlingguy.apache
+    vars:
+      apache_vhosts:
+        - servername: "local.dev"
+          documentroot: "/vagrant/grav"
+          extra_parameters: |
+              ProxyPassMatch ^/(.*\.php(/.*)?)$ "fcgi://127.0.0.1:9000/vagrant/grav"

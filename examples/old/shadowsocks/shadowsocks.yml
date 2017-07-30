@@ -1,0 +1,23 @@
+envs:
+- 46.228.192.85:
+    meta:
+      type: host
+    vars:
+      ansible_user: deploy
+    tasks:
+      install:
+        - python
+        - python-dev
+        - python-pip
+        - python-m2crypto
+        - curl
+        - wget
+        - unzip
+        - gcc
+        - swig
+        - automake
+        - make
+        - perl
+        - cpio
+        - build-essential
+        - git

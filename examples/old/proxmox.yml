@@ -1,0 +1,28 @@
+envs:
+- localhost:
+    tasks:
+      - proxmox_kvm:
+          api_user: root@pam
+          api_password: m2ell;;2
+          api_host: 10.0.0.4
+          name: testansible
+          node: sliver
+- 10.0.0.4:
+    meta:
+      type: host
+    vars:
+      ansible_user: root
+    tasks:
+      - apt_key:
+          keyserver: sks-keyservers.net
+          id: 0D2A45C3F1BAA57C
+      - apt_repository:
+          repo: deb http://repo-cockpitproject.rhcloud.com/debian/ jessie main
+          state: present
+      - install:
+          - zile
+          - cockpit
+          - cockpit-docker
+          - cockpit-machines
+          - cockpit-packagekit
+          - cockpit-pcp

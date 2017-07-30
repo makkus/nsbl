@@ -1,0 +1,7 @@
+- localhost:
+    meta:
+      type: host
+
+    tasks:
+      - apt:
+          name: zile

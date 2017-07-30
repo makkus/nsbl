@@ -1,0 +1,89 @@
+envs:
+- 46.228.192.85:
+    meta:
+      type: host
+    vars:
+      ansible_user: root
+      root_password: so6fe9hy
+      deploy_password: h<W$|^1)s46"Ae//@Sz~?C2x1"
+      logwatch_email: makkus@posteo.de
+      deploy_username: deploy
+      deploy_pub_key:
+        - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7aU6CklhCjy8dHQ1JRA0TO8nkWhuooNoNux0+Zbw0+wax8FbViTKUe+Op9R3N4Mca23oa4Sni8l2NKcKTlzoKTugRx+4INv/2DxDzNK++UHiIME4w3TZAQ++ZF+Ujyvw/FlSIfCFaosLUvxLls2rO7qQEoBxrimrXXarGZ7PBEQ2Nxe8RTrcO84ffmj+rn6+ge1dtgdg9VzWQN1znMJqoaRZTO1ks6W0XB4D/ArTUK6J0Q0giKutq91QwW5MMIgx2tdHeKfICZkMOcmDfb5iQGo4YNmBzQb0jxQc25xgkJpVkqdp9h/aX06E/XhT3eZk2odqiUxGTY8pegO6zmA7/ cardno:000604944474
+      ssh_port: 22
+      mosh_from_port: 60000
+      mosh_to_port: 60010
+    tasks:
+      # - apt_key:
+          # keyserver: sks-keyservers.net
+          # id: 0D2A45C3F1BAA57C
+      # - apt_repository:
+          # repo: deb http://repo-cockpitproject.rhcloud.com/debian/ stretch main
+          # state: present
+      - install:
+          - aptitude
+      - apt:
+          update_cache: yes
+          cache_valid_time: 3600
+      - apt:
+          upgrade: safe
+      - install:
+          - fail2ban
+          - unattended-upgrades
+          - logwatch
+          - mosh
+          - sudo
+          - zile
+          - htop
+      - user:
+          name: deploy
+          password: h<W$|^1)s46"Ae//@Sz~?C2x1"
+          shell: /bin/bash
+      - authorized_key:
+          user: deploy
+          key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7aU6CklhCjy8dHQ1JRA0TO8nkWhuooNoNux0+Zbw0+wax8FbViTKUe+Op9R3N4Mca23oa4Sni8l2NKcKTlzoKTugRx+4INv/2DxDzNK++UHiIME4w3TZAQ++ZF+Ujyvw/FlSIfCFaosLUvxLls2rO7qQEoBxrimrXXarGZ7PBEQ2Nxe8RTrcO84ffmj+rn6+ge1dtgdg9VzWQN1znMJqoaRZTO1ks6W0XB4D/ArTUK6J0Q0giKutq91QwW5MMIgx2tdHeKfICZkMOcmDfb5iQGo4YNmBzQb0jxQc25xgkJpVkqdp9h/aX06E/XhT3eZk2odqiUxGTY8pegO6zmA7/ cardno:000604944474"
+      - lineinfile:
+          dest: /etc/sudoers
+          regexp: "deploy ALL"
+          line: "deploy ALL=(ALL) ALL"
+          state: present
+      - copy:
+          src: ~/projects/nsbl/examples/apt_periodic
+          dest: /etc/apt/apt.conf.d/10periodic
+      - debconf:
+          name: postfix
+          question: postfix/mailname
+          value: 2fa0c0f7.cus3084.kvm.st-srv.eu
+          vtype: string
+      - debconf:
+          name: postfix
+          question: postfix/main_mailer_type
+          value: Internet Site
+          vtype: string
+      - lineinfile:
+          dest: /etc/cron.daily/00logwatch
+          regexp: "^/usr/sbin/logwatch"
+          line: "/usr/sbin/logwatch --output mail --mailto makkus@posteo.de --detail high"
+          state: present
+          create: yes
+      - lineinfile:
+          dest: /etc/ssh/sshd_config
+          regexp: "^Port\\s"
+          line: "Port 22"
+          state: present
+      - lineinfile:
+          dest: /etc/ssh/sshd_config
+          regexp: "^PasswordAuthentication"
+          line: "PasswordAuthentication no"
+          state: present
+      - lineinfile:
+          dest: /etc/ssh/sshd_config
+          regexp: "^PermitRootLogin"
+          line: "PermitRootLogin no"
+          state: present
+- 46.228.192.85:
+    vars:
+      ansible_user: deploy
+    tasks:
+      install:
+        - emacs
