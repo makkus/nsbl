@@ -170,6 +170,7 @@ def calculate_role_repos(role_repos, use_default_roles=True):
     Returns:
       list: a list of all local role repos to be used
     """
+
     if not role_repos:
         role_repos = []
 

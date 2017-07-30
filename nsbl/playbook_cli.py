@@ -25,9 +25,10 @@ from .nsbl import Nsbl, NsblRunner
 @click.option('--force/--no-force', help="delete potentially existing target directory", default=True)
 @click.argument('config', required=True, nargs=-1)
 @click.option('--no-run', help="don't run the environment, only render it to the target directory", is_flag=True, default=False)
+@click.option('--ask-become-pass', help='whether to ask the user for a sudo password if necessary', is_flag=True, default=True)
 @click_log.simple_verbosity_option()
 @click_log.init("nsbl")
-def cli(version, role_repo, task_desc, stdout_callback, target, force, config, no_run):
+def cli(version, role_repo, task_desc, stdout_callback, target, force, config, no_run, ask_become_pass):
     """Console script for nsbl"""
 
     if version:
@@ -37,7 +38,7 @@ def cli(version, role_repo, task_desc, stdout_callback, target, force, config, n
     nsbl_obj = Nsbl.create(config, role_repo, task_desc)
 
     runner = NsblRunner(nsbl_obj)
-    runner.run(target, force=force, ansible_verbose="", callback=stdout_callback, add_timestamp_to_env=True, add_symlink_to_env="~/.nsbl/runs/current", no_run=no_run)
+    runner.run(target, force=force, ansible_verbose="", ask_become_pass=ask_become_pass, callback=stdout_callback, add_timestamp_to_env=True, add_symlink_to_env="~/.nsbl/runs/current", no_run=no_run)
 
 
 def output(python_object, format="raw", pager=False):

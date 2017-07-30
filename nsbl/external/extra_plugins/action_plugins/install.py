@@ -37,7 +37,8 @@ PKG_MGR_VARS = {
     'yum': ["name", "state", "conf_file", "disable_gpg_check", "disablerepo", "enablerepo", "exclude", "installroot", "skip_broken", "update_cache", "validate_certs"],
     'nix': ["name", "state"],
     'git': ["accept_hostkey", "archive", "bare", "clone", "depth", "dest", "executable", "force", "key_file", "recursive", "reference", "refspec", "repo", "ssh_opts", "track_submodules", "umask", "update", "verify_commit", "version"],
-    'pip': ["chdir", "editable", "executable", "extra_args", "name", "requirements", "state", "umask", "version", "virtualenv", "virtualenv_command", "virtualenv_python", "virtualenv_site_packages"]
+    'pip': ["chdir", "editable", "executable", "extra_args", "name", "requirements", "state", "umask", "version", "virtualenv", "virtualenv_command", "virtualenv_python", "virtualenv_site_packages"],
+    'conda': ['conda_environment', 'upgrade', 'channels', 'state', 'name']
 }
 
 DEFAULT_PKG_MGR_VARS = ["name", "state"]
@@ -202,6 +203,41 @@ class ActionModule(ActionBase):
 
         return result
 
+    def prepare_pip(self, package, calculated_package, pkg_mgr, task_vars, result):
+
+        result = {}
+        if calculated_package:
+            if not isinstance(calculated_package, (list, tuple)):
+                calculated_package = [calculated_package]
+            for pkg in calculated_package:
+                if pkg.endswith(".txt"):
+                    result[pkg] = {"requirements": pkg, "name": IGNORE_KEY}
+                else:
+                    result[pkg] = {"name": pkg, "requirements": IGNORE_KEY}
+        else:
+            temp = package["name"]
+            if temp.endswith(".txt"):
+                result[temp] = {"requirements": temp, "name": IGNORE_KEY}
+            else:
+                result[temp] = {"name": temp, "requirements": IGNORE_KEY}
+
+        return result
+
+    def prepare_conda(self, package, calculated_package, pkg_mgr, task_vars, result):
+
+        result = {}
+        if calculated_package:
+            if not isinstance(calculated_package, (list, tuple)):
+                calculated_package = [calculated_package]
+            for pkg in calculated_package:
+                result[pkg] = {"name": pkg}
+        else:
+            temp = package["name"]
+            result[temp] = {"name": temp}
+
+        return result
+
+
     def prepare_generic(self, package, calculated_package, pkg_mgr, task_vars, result):
 
         result = {}
@@ -222,6 +258,10 @@ class ActionModule(ActionBase):
             all_pkg_vars = self.prepare_git(package[VARS_KEY], calculated_package, task_vars, result)
         elif pkg_mgr == 'apt':
             all_pkg_vars = self.prepare_apt(package[VARS_KEY], calculated_package, pkg_mgr, task_vars, result)
+        elif pkg_mgr == 'conda':
+            all_pkg_vars = self.prepare_conda(package[VARS_KEY], calculated_package, pkg_mgr, task_vars, result)
+        elif pkg_mgr == 'pip':
+            all_pkg_vars = self.prepare_pip(package[VARS_KEY], calculated_package, pkg_mgr, task_vars, result)
         else:
             all_pkg_vars = self.prepare_generic(package[VARS_KEY], calculated_package, pkg_mgr, task_vars, result)
 

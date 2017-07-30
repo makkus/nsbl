@@ -65,6 +65,8 @@ def get_pkg_mgr_sudo(mgr):
         return False
     elif mgr == 'homebrew':
         return False
+    elif mgr == 'pip':
+        return False
     else:
         return True
 
@@ -386,6 +388,7 @@ class Nsbl(FrklCallback):
         result["roles_base_dir"] = playbook_dir
 
         #ask_sudo = "--ask-become-pass"
+
         if ask_become_pass:
             if can_passwordless_sudo():
                 ask_sudo = ""
@@ -426,6 +429,11 @@ class Nsbl(FrklCallback):
             link_path = os.path.expanduser(add_symlink_to_env)
             if os.path.exists(link_path) and force:
                 os.unlink(link_path)
+            link_parent = os.path.abspath(os.path.join(link_path, os.pardir))
+            try:
+                os.makedirs(link_parent)
+            except:
+                pass
             os.symlink(env_dir, link_path)
 
 
@@ -514,7 +522,7 @@ class NsblRunner(object):
         Args:
           target (str): the target directory where the ansible environment should be rendered
           force (bool): whether to overwrite potentially existing files at the target (most likely an old rendered ansible environment)
-          ansible_verbose (str): unused for now
+          ansible_verbose (str): verbosity arguments to ansible-playbook command
           ask_become_pass (bool): whether the ansible-playbook call should use 'ask-become-pass' or not (possible values: True, False, 'auto' -- auto tries to do the right thing but might fail)
           callback (str): the callback to use for the ansible run. default is 'nsbl_internal'
           add_timestamp_to_env (bool): whether to append a timestamp to the run directory (default: False)
@@ -527,7 +535,7 @@ class NsblRunner(object):
         if callback == None:
             callback = "nsbl_internal"
 
-        parameters = self.nsbl.render(target, True, force=force, ansible_args="", ask_become_pass=ask_become_pass, callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
+        parameters = self.nsbl.render(target, True, force=force, ansible_args=ansible_verbose, ask_become_pass=ask_become_pass, callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
 
 
         if no_run:
