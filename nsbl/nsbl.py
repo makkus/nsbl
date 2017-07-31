@@ -88,7 +88,7 @@ def get_git_auto_dest_name(repo, parent_dir="~"):
 
     return temp
 
-def ensure_git_repo_format(repo, dest=None):
+def ensure_git_repo_format(repo, dest=None, dest_is_parent=False):
     """Makes sure that the repo is in the format nsbl needs for git repos.
 
     This format is a dictionary with "repo" and "dest" keys. If only a url is provided,
@@ -97,14 +97,18 @@ def ensure_git_repo_format(repo, dest=None):
     Args:
       repo (str, dict): the repository
       dest (str): the (optional) local destination of the repo
-
+      dest_is_parent (bool): whether the provided destination is the parent folder (True), or the full path (False)
     Returns:
       dict: full information for this repo
     """
 
     if isinstance(repo, string_types):
         if dest:
-            return {"repo": repo, "dest": dest}
+            if dest_is_parent:
+                dest_full = get_git_auto_dest_name(repo, dest)
+                return {"repo": repo, "dest": dest_full}
+            else:
+                return {"repo": repo, "dest": dest}
         else:
             return {"repo": repo, "dest": get_git_auto_dest_name(repo)}
     elif isinstance(repo, dict):
@@ -112,7 +116,11 @@ def ensure_git_repo_format(repo, dest=None):
             raise NsblException("Repo dictionary needs at least a 'repo' key: {}".format(repo))
         if "dest" not in repo.keys():
             if dest:
-                repo["dest"] = dest
+                if dest_is_parent:
+                    dest_full = get_git_auto_dest_name(repo["repo"], dest)
+                    repo["dest"] = dest_full
+                else:
+                    repo["dest"] = dest
             else:
                 repo["dest"] = get_git_auto_dest_name(repo["repo"])
         return repo
