@@ -14,6 +14,7 @@ EXAMPLES = '''
 
 import json
 import os
+from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import *
 
@@ -24,6 +25,21 @@ NIX_CHANNEL_PATH = os.path.join(NIX_PATH, "bin", "nix-channel")
 
 # this creates the nix env in case the run was started without that environment set
 WRAP = True
+
+def get_nix_bin(module, bin_name):
+
+    conda_bin = find_executable('conda')
+    if not conda_bin:
+        for path in POTENTIAL_CONDA_PATHS:
+            if os.path.isfile(os.path.join(path, 'conda')):
+                conda_bin = os.path.join(path, 'conda')
+
+    if not conda_bin:
+        module.fail_json(msg="Could not find conda environment.")
+
+    return conda_bin
+
+
 
 def query_package(module, name, state="present"):
     if state == "present":

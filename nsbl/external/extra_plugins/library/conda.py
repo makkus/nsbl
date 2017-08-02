@@ -23,6 +23,7 @@ from ansible.module_utils.basic import *
 POTENTIAL_CONDA_PATHS = [
     os.path.expanduser("~/.inaugurate/opt/conda/bin"),
     os.path.expanduser("~/.local/opt/conda/bin"),
+    os.path.expanduser("~/.local/bin"),
     os.path.expanduser("~/.freckles/opt/conda/bin"),
     os.path.expanduser("~/miniconda3/bin"),
     os.path.expanduser("~/anaconda/bin")
