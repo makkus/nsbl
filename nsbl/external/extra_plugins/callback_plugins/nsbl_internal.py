@@ -35,12 +35,28 @@ class CallbackModule(CallbackBase):
         super(CallbackModule, self).__init__(*args, **kwargs)
         self.task = None
         self.play = None
+        self.task_serialized = False
+        self.play_serialized = False
+
+    def get_task_serialized(self):
+
+        if not self.task_serialized:
+            self.task_serialized = self.task.serialize()
+
+        return self.task_serialized
+
+    def get_play_serialized(self):
+
+        if not self.play_serialized:
+            self.play_serialized = self.play.serialize()
+
+        return self.play_serialized
 
     def get_task_detail(self, detail_key):
 
         if not self.task:
             return None
-        temp = self.task.serialize()
+        temp = self.get_task_serialized()
         for level in detail_key.split("."):
             temp = temp.get(level, {})
 
@@ -72,7 +88,7 @@ class CallbackModule(CallbackBase):
         id = self.get_task_detail("role._role_params._env_id")
 
         if not isinstance(id, int):
-            id = self.get_recursive_role_detail("_env_id", self.task.serialize().get("role", {}))
+            id = self.get_recursive_role_detail("_env_id", self.get_task_serialized().get("role", {}))
 
         if isinstance(id, int):
             return id
@@ -88,7 +104,7 @@ class CallbackModule(CallbackBase):
         id = self.get_task_detail("role._role_params._role_id")
 
         if not isinstance(id, int):
-            id = self.get_recursive_role_detail("_role_id", self.task.serialize().get("role", {}))
+            id = self.get_recursive_role_detail("_role_id", self.get_task_serialized().get("role", {}))
         if isinstance(id, int):
             return id
         else:
@@ -109,7 +125,7 @@ class CallbackModule(CallbackBase):
         output = {}
         output["category"] = category
         if category == "play_start":
-            roles = self.play.serialize().get("roles", {})
+            roles = self.get_play_serialized().get("roles", {})
             env_id = None
             if roles and len(roles) >= 1:
                 env_id = roles[0].get("_role_params", {}).get("_env_id", None)
@@ -188,11 +204,13 @@ class CallbackModule(CallbackBase):
 
     def v2_playbook_on_play_start(self, play):
         self.play = play
+        self.play_serialized = False
         self.print_output("play_start", None)
 
     def v2_playbook_on_task_start(self, task, is_conditional):
 
         self.task = task
+        self.task_serialized = False
         self.print_output("task_start", None)
 
     def v2_runner_item_on_ok(self, result):
