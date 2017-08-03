@@ -152,15 +152,20 @@ class ActionModule(ActionBase):
         else:
             calculated_package_platform = None
 
-        if calculated_package_platform in ['ignore', 'omit'] or calculated_package_pkg_mgr in ['ignore', 'omit']:
-            result['msg'] = "Ignoring package {}".format(package[VARS_KEY]["name"])
-            result['skipped'] = True
-            return result
+        # if calculated_package_platform in ['ignore', 'omit'] or calculated_package_pkg_mgr in ['ignore', 'omit']:
+            # result['msg'] = "Ignoring package {}".format(package[VARS_KEY]["name"])
+            # result['skipped'] = True
+            # return result
 
         if not auto or not calculated_package_platform:
             calculated_package = calculated_package_pkg_mgr
         else:
             calculated_package = calculated_package_platform
+
+        if calculated_package in ['ignore', 'omit']:
+            result['msg'] = "Ignoring package {}".format(package[VARS_KEY]["name"])
+            result['skipped'] = True
+            return result
 
         module_result = self.execute_package_module(package, calculated_package, auto, pkg_mgr, task_vars, result)
 

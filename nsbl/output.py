@@ -48,7 +48,7 @@ class NsblPrintCallbackAdapter(object):
 
 class NsblLogCallbackAdapter(object):
 
-    def __init__(self, lookup_dict, display_sub_tasks=True, display_skipped_tasks=True):
+    def __init__(self, lookup_dict, display_sub_tasks=True, display_skipped_tasks=True, display_unchanged_tasks=True):
 
         self.display_utility_tasks = False
         self.display_sub_tasks = display_sub_tasks
@@ -227,11 +227,12 @@ class NsblLogCallbackAdapter(object):
 
 class ClickStdOutput(object):
 
-    def __init__(self, display_sub_tasks=True, display_skipped_tasks=True):
+    def __init__(self, display_sub_tasks=True, display_skipped_tasks=True, display_unchanged_tasks=True):
 
         self.new_line = True
         self.display_sub_tasks = display_sub_tasks
         self.display_skipped_tasks = display_skipped_tasks
+        self.display_unchanged_tasks = display_unchanged_tasks
         self.terminal_width = get_terminal_width()
 
     def start_new_line(self):
@@ -320,6 +321,11 @@ class ClickStdOutput(object):
                 if ev["status"] == "changed":
                     msg = "changed"
                 else:
+                    if not self.display_unchanged_tasks:
+                        click.echo(u"\u001b[2K\r", nl=False)
+                        self.new_line = True
+                        return
+
                     msg = "no change"
             output = "ok ({})".format(msg)
             click.echo(output)
@@ -353,6 +359,11 @@ class ClickStdOutput(object):
                 if ev["status"] == "changed":
                     msg = "changed"
                 else:
+                    if not self.display_unchanged_tasks:
+                        click.echo(u"\u001b[2K\r", nl=False)
+                        self.new_line = True
+                        return
+
                     msg = "no change"
             output = "       - {} => ok ({})".format(item, msg)
             click.echo(output)
@@ -391,6 +402,11 @@ class ClickStdOutput(object):
                     if ev["status"] == "changed":
                         msg = "changed"
                     else:
+                        if not self.display_unchanged_tasks:
+                            click.echo(u"\u001b[2K\r", nl=False)
+                            self.new_line = True
+                            return
+
                         msg = "no change"
                 output = "ok ({})".format(msg)
                 click.echo(output)
@@ -457,6 +473,11 @@ class ClickStdOutput(object):
             output = "ok (changed)"
             click.echo(output)
         else:
+            if not self.display_unchanged_tasks:
+                click.echo(u"\u001b[2K\r", nl=False)
+                self.new_line = True
+                return
+
             output = "ok (no change)"
             click.echo(output)
 
