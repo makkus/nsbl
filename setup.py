@@ -13,8 +13,7 @@ requirements = [
     'Click>=6.0',
     'click-log>=0.1.8',
     'cookiecutter>=1.5.1',
-    'ansible>=2.2.0',
-    'gitpython==2.1.3',
+    'ansible==2.3.1.0',
     'frkl',
     'cursor>=1.1.0'
 ]
