@@ -153,6 +153,7 @@ class NsblLogCallbackAdapter(object):
 
             self.task_has_items = False
             self.task_has_nsbl_items = False
+            self.stderrs = []
 
         if task_changed:
             if self.current_task_name != None and not role_changed:
