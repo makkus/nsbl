@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 
+import fcntl
 import json
 import logging
 import pprint
+import struct
+import subprocess
 import sys
+import termios
 
 import click
 from six import string_types
@@ -21,6 +25,16 @@ class CursorOff(object):
     def __exit__(self, *args):
         cursor.show()
 
+def get_terminal_width():
+    command = ["tput", "cols"]
+    try:
+        width = int(subprocess.check_output(command))
+    except OSError as e:
+        return -1
+    except subprocess.CalledProcessError as e:
+        return -1
+    else:
+        return width
 
 class NsblPrintCallbackAdapter(object):
 
@@ -218,6 +232,7 @@ class ClickStdOutput(object):
         self.new_line = True
         self.display_sub_tasks = display_sub_tasks
         self.display_skipped_tasks = display_skipped_tasks
+        self.terminal_width = get_terminal_width()
 
     def start_new_line(self):
 
@@ -233,20 +248,31 @@ class ClickStdOutput(object):
         if current_role["role_type"] == DYN_ROLE_TYPE:
             click.echo(" * starting custom tasks:")
         else:
-            click.echo(" * applying role '{}'...".format(current_role["name"]), nl=False)
+            self.print_task_string(" * applying role '{}'...".format(current_role["name"]))
+            # click.echo(" * applying role '{}'...".format(current_role["name"]), nl=False)
             self.new_line = False
+
+    def print_task_string(self, task_str):
+
+        if self.terminal_width > 0:
+            reserve = 2
+            if len(task_str) > self.terminal_width - reserve:
+                task_str = "{}...".format(task_str[0:self.terminal_width - reserve-3])
+        click.echo(task_str, nl=False)
 
     def start_task(self, task_name, current_role, current_is_dyn_role):
         if current_is_dyn_role:
             if not self.new_line:
                 click.echo("")
-            click.echo("     * {}... ".format(task_name), nl=False)
+            self.print_task_string("     * {}... ".format(task_name))
+            # click.echo("     * {}... ".format(task_name), nl=False)
             self.new_line = False
         else:
             if self.display_sub_tasks:
                 if not self.new_line:
                     click.echo("")
-                click.echo("   - {} => ".format(task_name), nl=False)
+                self.print_task_string("   - {} => ".format(task_name))
+                # click.echo("   - {} => ".format(task_name), nl=False)
                 self.new_line = False
 
 
@@ -281,7 +307,8 @@ class ClickStdOutput(object):
                 click.echo("")
 
             output = "       - {} => ".format(item)
-            click.echo(output, nl=False)
+            self.print_task_string(output)
+            # click.echo(output, nl=False)
             self.new_line = False
             return
 
@@ -406,9 +433,9 @@ class ClickStdOutput(object):
                     output.append("failed: {}".format("".join(msgs)))
                 else:
                     output.append("failed:")
-                    output.append("      messages in this task:")
-                    for m in msgs:
-                        output.append("        -> {}".format(m))
+                    # output.append("      messages in this task:")
+                    # for m in msgs:
+                        # output.append("        -> {}".format(m))
             else:
                 output.append("failed")
 
