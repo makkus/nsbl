@@ -11,11 +11,10 @@ from ansible.module_utils._text import to_bytes, to_native, to_text
 from ansible.plugins.action import ActionBase
 from ansible.template import generate_ansible_template_vars
 from ansible.utils.hashing import checksum_s
-from requests.structures import CaseInsensitiveDict
-from six import string_types
-
 from frkl import frkl
 from nsbl.nsbl import ensure_git_repo_format, get_pkg_mgr_sudo
+from requests.structures import CaseInsensitiveDict
+from six import string_types
 
 __metaclass__ = type
 
@@ -153,7 +152,7 @@ class ActionModule(ActionBase):
         else:
             calculated_package_platform = None
 
-        if calculated_package_platform in ['ignore', 'omit']:
+        if calculated_package_platform in ['ignore', 'omit'] or calculated_package_pkg_mgr in ['ignore', 'omit']:
             result['msg'] = "Ignoring package {}".format(package[VARS_KEY]["name"])
             result['skipped'] = True
             return result
