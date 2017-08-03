@@ -557,6 +557,9 @@ class NsblRunner(object):
         script = parameters['run_playbooks_script']
         proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env)
 
+        if sys.stdout.isatty():
+            callback = "skippy"
+
         if callback == "nsbl_internal":
             lookup_dict = self.nsbl.get_lookup_dict()
             callback_adapter = NsblLogCallbackAdapter(lookup_dict, display_sub_tasks=display_sub_tasks, display_skipped_tasks=display_skipped_tasks)
