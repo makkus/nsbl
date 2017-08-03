@@ -5,6 +5,9 @@ import subprocess
 from ansible.module_utils.basic import *
 from ansible.module_utils.basic import AnsibleModule
 
+OTHER_PATHS_TO_CHECK = [
+    os.path.expanduser("~/.local/bin")
+]
 
 def which(program):
     def is_exe(fpath):
@@ -18,6 +21,11 @@ def which(program):
         temp = []
         for path in os.environ["PATH"].split(os.pathsep):
             path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+        for path in OTHER_PATHS_TO_CHECK:
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):
                 return exe_file

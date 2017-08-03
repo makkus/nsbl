@@ -37,7 +37,7 @@ PKG_MGR_VARS = {
     'nix': ["name", "state"],
     'git': ["accept_hostkey", "archive", "bare", "clone", "depth", "dest", "executable", "force", "key_file", "recursive", "reference", "refspec", "repo", "ssh_opts", "track_submodules", "umask", "update", "verify_commit", "version"],
     'pip': ["chdir", "editable", "executable", "extra_args", "name", "requirements", "state", "umask", "version", "virtualenv", "virtualenv_command", "virtualenv_python", "virtualenv_site_packages"],
-    'conda': ['conda_environment', 'upgrade', 'channels', 'state', 'name']
+    'conda': ['conda_environment', 'upgrade', 'conda_channels', 'state', 'name']
 }
 
 DEFAULT_PKG_MGR_VARS = ["name", "state"]

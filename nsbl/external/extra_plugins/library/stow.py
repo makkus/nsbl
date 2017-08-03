@@ -9,10 +9,33 @@ short_description: Manage links to dotfiles
 
 import json
 import os
+from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
 
 IGNORE_STRING="freckle"
+
+POTENTIAL_STOW_PATHS = [
+    os.path.expanduser("~/.local/opt/conda/bin"),
+    os.path.expanduser("~/.inaugurate/opt/conda/bin"),
+    os.path.expanduser("~/.local/bin"),
+    os.path.expanduser("~/.freckles/opt/conda/bin"),
+    os.path.expanduser("~/miniconda3/bin"),
+    os.path.expanduser("~/anaconda/bin")
+]
+
+def get_stow_bin(module):
+
+    stow_bin = find_executable('stow')
+    if not stow_bin:
+        for path in POTENTIAL_STOW_PATHS:
+            if os.path.isfile(os.path.join(path, 'stow')):
+                stow_bin = os.path.join(path, 'stow')
+
+    if not stow_bin:
+        module.fail_json(msg="Could not find stow executable.")
+
+    return stow_bin
 
 def stow(module, stow_version):
 
@@ -28,7 +51,7 @@ def stow(module, stow_version):
     else:
         ignore_parameter = "--ignore={}".format(IGNORE_STRING)
 
-    cmd = "stow -v {} -d {} -t {} -R {}".format(ignore_parameter, source_dir, target_dir, name)
+    cmd = "{} -v {} -d {} -t {} -R {}".format(get_stow_bin(module), ignore_parameter, source_dir, target_dir, name)
 
     rc, stdout, stderr = module.run_command(cmd, check_rc=False)
 
@@ -49,7 +72,7 @@ def main():
         )
     )
 
-    cmd = "stow --version"
+    cmd = "{} --version".format(get_stow_bin(module))
     rc, stdout, stderr = module.run_command(cmd, check_rc=False)
 
     if rc == 0:
