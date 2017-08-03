@@ -18,6 +18,11 @@ from .defaults import *
 
 log = logging.getLogger("nsbl")
 
+ENCODING = sys.stdout.encoding
+if not ENCODING:
+    ENCODING = "utf-8"
+
+
 class CursorOff(object):
     def __enter__(self):
         cursor.hide()
@@ -188,13 +193,13 @@ class NsblLogCallbackAdapter(object):
         ansible_task_name = details.get('name', None)
 
         if msg:
-            msg = msg.encode(sys.stdout.encoding, errors='replace').strip()
+            msg = msg.encode(ENCODING, errors='replace').strip()
         if msg:
             self.msgs.append(msg)
 
         if stderr:
             for s in stderr:
-                s = s.encode(sys.stdout.encoding, errors='replace').strip()
+                s = s.encode(ENCODING, errors='replace').strip()
                 self.stderrs.append(s)
 
         event = {"category": category, "task_name": task_name, "task_desc": task_desc, "status": status, "item": item, "msg": msg, "skipped": skipped, "ignore_errors": ignore_errors, "ansible_task_name": ansible_task_name, "action": action, "stderr": stderr}
