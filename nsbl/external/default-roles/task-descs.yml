@@ -8,45 +8,9 @@ tasks:
           - state
       vars:
         state: present
-  - install-nix:
-        meta:
-          task-desc: installing 'nix' package manager
-          task-name: makkus.install-nix
-  - install-conda:
-        meta:
-          task-desc: installing 'conda' package manager
-          task-name: makkus.install-conda
-  - install-homebrew:
-        meta:
-          task-type: ansible-role
-          task-desc: installing 'homebrew' package manager
-          task-name: geerlingguy.homebrew
-          task-roles:
-             - geerlingguy.homebrew
-             - elliotweiser.osx-command-line-tools
-        vars:
-          homebrew_cask_apps: []
   - yum:
       meta:
         become: yes
-  - freckles:
-      meta:
-        task-desc: setting up environment using freckles repo(s)
-        task-name: makkus.freckles
-        task-roles:
-           - install-nix
-           - install-conda
-           - geerlingguy.homebrew
-           - elliotweiser.osx-command-line-tools
-  - install:
-      meta:
-        task-name: install
-        task-desc: installing package(s)
-        with_items: packages
-        default-key: packages
-        var-keys:
-          - packages
-          - pkg_mgr
   - checkout-git:
       meta:
         default-key: repos
@@ -127,5 +91,3 @@ tasks:
            - ssh_key_type
            - system
            - uid
-
-
