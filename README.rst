@@ -24,7 +24,6 @@ elastic ansible configuration
 * Free software: GNU General Public License v3
 * Documentation: https://nsbl.readthedocs.io.
 
-
 Features
 --------
 
