@@ -153,6 +153,7 @@ class NsblLogCallbackAdapter(object):
             self.current_dyn_task_id = dyn_task_id
 
             self.current_role = self.lookup_dict[self.current_env_id][TASKS_KEY][self.current_role_id]
+
             self.output.start_role(self.current_role)
 
             self.saved_item = None
@@ -258,15 +259,19 @@ class ClickStdOutput(object):
 
     def start_env(self, env_name):
 
-        click.echo("* starting tasks for environment '{}'...".format(env_name))
+        click.echo("* starting tasks (on '{}')...".format(env_name))
 
     def start_role(self, current_role):
 
         if current_role["role_type"] == DYN_ROLE_TYPE:
             click.echo(" * starting custom tasks:")
         else:
-            self.print_task_string(" * applying role '{}'...".format(current_role["name"]))
-            # click.echo(" * applying role '{}'...".format(current_role["name"]), nl=False)
+            msg = current_role.get("meta", {}).get("task-desc", None)
+            if not msg:
+                msg = " * applying role '{}'...".format(current_role["name"])
+            msg = " * {}...".format(msg)
+            self.print_task_string(msg)
+
             self.new_line = False
 
     def print_task_string(self, task_str):
