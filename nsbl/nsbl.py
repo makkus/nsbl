@@ -521,7 +521,7 @@ class NsblRunner(object):
 
         self.nsbl = nsbl
 
-    def run(self, target, force=True, ansible_verbose="", ask_become_pass=True, callback=None, add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True, display_skipped_tasks=True):
+    def run(self, target, force=True, ansible_verbose="", ask_become_pass=True, callback=None, add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True, display_skipped_tasks=True, display_ignore_tasks=[]):
         """Starts the ansible run, executing all generated playbooks.
 
         By default the 'nsbl_internal' ansible callback is used, which outputs easier to read outputs/results. You can, however,
@@ -538,6 +538,7 @@ class NsblRunner(object):
           no_run (bool): whether to only render the environment, but not run it
           display_sub_tasks (bool): whether to display subtasks in the output (not applicable for all callbacks)
           display_skipped_tasks (bool): whether to display skipped tasks in the output (not applicable for all callbacks)
+          display_ignore_tasks (list): a list of strings that indicate task titles that should be ignored when displaying the task log (using the default nsbl output plugin -- this is ignored with other output callbacks)
         """
 
         if callback == None:
@@ -559,7 +560,7 @@ class NsblRunner(object):
 
         if callback == "nsbl_internal":
             lookup_dict = self.nsbl.get_lookup_dict()
-            callback_adapter = NsblLogCallbackAdapter(lookup_dict, display_sub_tasks=display_sub_tasks, display_skipped_tasks=display_skipped_tasks)
+            callback_adapter = NsblLogCallbackAdapter(lookup_dict, display_sub_tasks=display_sub_tasks, display_skipped_tasks=display_skipped_tasks, display_ignore_tasks=display_ignore_tasks)
         else:
             callback_adapter = NsblPrintCallbackAdapter()
 

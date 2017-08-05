@@ -53,11 +53,12 @@ class NsblPrintCallbackAdapter(object):
 
 class NsblLogCallbackAdapter(object):
 
-    def __init__(self, lookup_dict, display_sub_tasks=True, display_skipped_tasks=True, display_unchanged_tasks=True):
+    def __init__(self, lookup_dict, display_sub_tasks=True, display_skipped_tasks=True, display_unchanged_tasks=True, display_ignore_tasks=[]):
 
         self.display_utility_tasks = False
         self.display_sub_tasks = display_sub_tasks
         self.display_skipped_tasks = display_skipped_tasks
+        self.display_ignore_tasks = display_ignore_tasks
 
         self.lookup_dict = lookup_dict
         self.new_line = True
@@ -82,8 +83,7 @@ class NsblLogCallbackAdapter(object):
         self.skipped = True
         self.changed = False
 
-        self.output = ClickStdOutput(display_sub_tasks=self.display_sub_tasks, display_skipped_tasks=self.display_skipped_tasks)
-
+        self.output = ClickStdOutput(display_sub_tasks=self.display_sub_tasks, display_skipped_tasks=self.display_skipped_tasks, display_ignore_tasks=self.display_ignore_tasks)
 
     def add_log_message(self, line):
 
@@ -233,13 +233,15 @@ class NsblLogCallbackAdapter(object):
 
 class ClickStdOutput(object):
 
-    def __init__(self, display_sub_tasks=True, display_skipped_tasks=True, display_unchanged_tasks=True):
+    def __init__(self, display_sub_tasks=True, display_skipped_tasks=True, display_unchanged_tasks=True, display_ignore_tasks=[]):
 
         self.new_line = True
         self.display_sub_tasks = display_sub_tasks
         self.display_skipped_tasks = display_skipped_tasks
         self.display_unchanged_tasks = display_unchanged_tasks
         self.terminal_width = get_terminal_width()
+        self.ignore_strings = display_ignore_tasks
+        self.last_string_ignored = False
 
     def start_new_line(self):
 
@@ -261,11 +263,18 @@ class ClickStdOutput(object):
 
     def print_task_string(self, task_str):
 
+        if any((task_str.startswith("   - {}".format(token)) for token in self.ignore_strings)):
+            self.last_string_ignored = True
+            self.new_line = True
+            return
+
         if self.terminal_width > 0:
             reserve = 2
             if len(task_str) > self.terminal_width - reserve:
                 task_str = "{}...".format(task_str[0:self.terminal_width - reserve-3])
         click.echo(task_str, nl=False)
+        self.new_line = False
+
 
     def start_task(self, task_name, current_role, current_is_dyn_role):
         if current_is_dyn_role:
@@ -280,7 +289,6 @@ class ClickStdOutput(object):
                     click.echo("")
                 self.print_task_string("   - {} => ".format(task_name))
                 # click.echo("   - {} => ".format(task_name), nl=False)
-                self.new_line = False
 
 
     def pretty_print_item(self, item):
@@ -391,6 +399,10 @@ class ClickStdOutput(object):
     def display_result(self, ev, current_is_dyn_role):
 
         if not self.display_sub_tasks and not current_is_dyn_role:
+            return
+
+        if self.last_string_ignored:
+            self.last_string_ignored = False
             return
 
         if ev["ansible_task_name"].startswith("nsbl_started="):
