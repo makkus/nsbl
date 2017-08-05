@@ -347,11 +347,12 @@ class Nsbl(FrklCallback):
 
         return {"inventory": self.inventory, "plays": self.plays}
 
-    def render(self, env_dir, extract_vars=True, force=False, ask_become_pass=True, ansible_args="", callback='nsbl_internal', add_timestamp_to_env=False, add_symlink_to_env=False):
+    def render(self, env_dir, extra_plugins=None, extract_vars=True, force=False, ask_become_pass=True, ansible_args="", callback='nsbl_internal', add_timestamp_to_env=False, add_symlink_to_env=False):
         """Creates the ansible environment in the folder provided.
 
         Args:
           env_dir (str): the folder where the environment should be created
+          extra_plugins (str): a path to a repository of extra ansible plugins, if necessary
           extract_vars (bool): whether to extract a hostvars and groupvars directory for the inventory (True), or render a dynamic inventory script for the environment (default, True) -- Not supported at the moment
           force (bool): overwrite environment if already present at the specified location, use with caution because this might delete an important folder if you get the 'target' dir wrong
           ask_become_pass (bool): whether to include the '--ask-become-pass' arg to the ansible-playbook call
@@ -478,14 +479,18 @@ class Nsbl(FrklCallback):
         result["action_plugins_path"] = action_plugins_path
 
         target_dir = playbook_dir
-        shutil.copytree(library_path, os.path.join(target_dir, "library"))
-        shutil.copytree(action_plugins_path, os.path.join(target_dir, "action_plugins"))
-        os.makedirs(os.path.join(target_dir, "callback_plugins"))
-        shutil.copy(os.path.join(callback_plugins_path, "default_to_file.py"), os.path.join(target_dir, "callback_plugins"))
-        if callback == "nsbl_internal":
-            shutil.copy(os.path.join(callback_plugins_path, "nsbl_internal.py"), os.path.join(target_dir, "callback_plugins"))
-        elif callback == "nsbl_internal_raw":
-            shutil.copy(os.path.join(callback_plugins_path, "nsbl_internal.py"), os.path.join(target_dir, "callback_plugins", "{}.py".format(callback)))
+        if extra_plugins:
+            dirs = [o for o in os.listdir(extra_plugins) if os.path.isdir(os.path.join(extra_plugins,o))]
+            for d in dirs:
+                 shutil.copytree(os.path.join(extra_plugins, d), os.path.join(target_dir, d))
+        # shutil.copytree(library_path, os.path.join(target_dir, "library"))
+        # shutil.copytree(action_plugins_path, os.path.join(target_dir, "action_plugins"))
+        # os.makedirs(os.path.join(target_dir, "callback_plugins"))
+        # shutil.copy(os.path.join(callback_plugins_path, "default_to_file.py"), os.path.join(target_dir, "callback_plugins"))
+        # if callback == "nsbl_internal":
+        #     shutil.copy(os.path.join(callback_plugins_path, "nsbl_internal.py"), os.path.join(target_dir, "callback_plugins"))
+        # elif callback == "nsbl_internal_raw":
+        #     shutil.copy(os.path.join(callback_plugins_path, "nsbl_internal.py"), os.path.join(target_dir, "callback_plugins", "{}.py".format(callback)))
 
         if ext_roles:
             # download external roles
@@ -521,7 +526,7 @@ class NsblRunner(object):
 
         self.nsbl = nsbl
 
-    def run(self, target, force=True, ansible_verbose="", ask_become_pass=True, callback=None, add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True, display_skipped_tasks=True, display_ignore_tasks=[]):
+    def run(self, target, force=True, ansible_verbose="", ask_become_pass=True, extra_plugins=None, callback=None, add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True, display_skipped_tasks=True, display_ignore_tasks=[]):
         """Starts the ansible run, executing all generated playbooks.
 
         By default the 'nsbl_internal' ansible callback is used, which outputs easier to read outputs/results. You can, however,
@@ -538,13 +543,14 @@ class NsblRunner(object):
           no_run (bool): whether to only render the environment, but not run it
           display_sub_tasks (bool): whether to display subtasks in the output (not applicable for all callbacks)
           display_skipped_tasks (bool): whether to display skipped tasks in the output (not applicable for all callbacks)
+          extra_plugins (str): a repository of extra ansible plugins to use
           display_ignore_tasks (list): a list of strings that indicate task titles that should be ignored when displaying the task log (using the default nsbl output plugin -- this is ignored with other output callbacks)
         """
 
         if callback == None:
             callback = "nsbl_internal"
 
-        parameters = self.nsbl.render(target, True, force=force, ansible_args=ansible_verbose, ask_become_pass=ask_become_pass, callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
+        parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose, ask_become_pass=ask_become_pass, extra_plugins=extra_plugins, callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
 
 
         if no_run:
