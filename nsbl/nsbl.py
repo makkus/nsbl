@@ -482,6 +482,7 @@ class Nsbl(FrklCallback):
         shutil.copytree(library_path, os.path.join(target_dir, "library"))
         shutil.copytree(action_plugins_path, os.path.join(target_dir, "action_plugins"))
         os.makedirs(os.path.join(target_dir, "callback_plugins"))
+        shutil.copy(os.path.join(callback_plugins_path, "default_to_file.py"), os.path.join(target_dir, "callback_plugins"))
         if callback == "nsbl_internal":
             shutil.copy(os.path.join(callback_plugins_path, "nsbl_internal.py"), os.path.join(target_dir, "callback_plugins"))
         elif callback == "nsbl_internal_raw":

@@ -89,7 +89,7 @@ class NsblLogCallbackAdapter(object):
 
         try:
             details = json.loads(line)
-        except (ValueError) as e:
+        except (Exception) as e:
             self.output.print_error(line, e)
             return
 
@@ -254,7 +254,7 @@ class ClickStdOutput(object):
 
     def print_error(self, line, error):
 
-        click.echo("ERROR: {}:\n{}".format(error.message, line))
+        click.echo("\n\nEXECUTION ERROR: {}:\n{}\n\n".format(error.message, line))
 
     def start_env(self, env_name):
 
