@@ -423,7 +423,8 @@ class Nsbl(FrklCallback):
             "ask_sudo": ask_sudo,
             "playbook": all_plays_name,
             "callback_plugins": "callback_plugins",
-            "callback_plugin_name": callback
+            "callback_plugin_name": callback,
+            "callback_whitelist": "default_to_file"
         }
 
         log.debug("Creating build environment from template...")
@@ -443,8 +444,6 @@ class Nsbl(FrklCallback):
             except:
                 pass
             os.symlink(env_dir, link_path)
-
-
 
         # write inventory
         if extract_vars:
