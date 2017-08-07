@@ -43,6 +43,11 @@ def get_terminal_width():
 
 class NsblPrintCallbackAdapter(object):
 
+
+    def add_error_message(self, line):
+
+        click.error(line)
+
     def add_log_message(self, line):
 
         click.echo(line, nl=False)
@@ -84,6 +89,11 @@ class NsblLogCallbackAdapter(object):
         self.changed = False
 
         self.output = ClickStdOutput(display_sub_tasks=self.display_sub_tasks, display_skipped_tasks=self.display_skipped_tasks, display_ignore_tasks=self.display_ignore_tasks)
+
+    def add_error_message(self, line):
+
+        click.echo(line)
+
 
     def add_log_message(self, line):
 
@@ -247,6 +257,7 @@ class ClickStdOutput(object):
         self.terminal_width = get_terminal_width()
         self.ignore_strings = display_ignore_tasks
         self.last_string_ignored = False
+        self.current_role = None
 
     def start_new_line(self):
 
@@ -263,12 +274,14 @@ class ClickStdOutput(object):
 
     def start_role(self, current_role):
 
+        self.current_role = current_role
+
         if current_role["role_type"] == DYN_ROLE_TYPE:
             click.echo(" * starting custom tasks:")
         else:
             msg = current_role.get("meta", {}).get("task-desc", None)
             if not msg:
-                msg = " * applying role '{}'...".format(current_role["name"])
+                msg = "applying role '{}'...".format(current_role["name"])
             msg = " * {}...".format(msg)
             self.print_task_string(msg)
 
