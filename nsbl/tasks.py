@@ -4,17 +4,19 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import copy
 import os
 import pprint
 import shutil
+import sys
 from builtins import *
 
 from cookiecutter.main import cookiecutter
+from frkl import frkl
 from future.builtins.disabled import *
 from jinja2 import Environment, PackageLoader
 
 import yaml
-from frkl import frkl
 
 from .defaults import *
 from .exceptions import NsblException
@@ -279,6 +281,7 @@ class NsblTasks(frkl.FrklCallback):
         self.all_ansible_roles = []
         # whether this play contains external roles
         self.ext_roles = False
+        self.roles_to_copy = {}
         self.use_become = False
 
     def validate_init(self):
@@ -360,8 +363,11 @@ class NsblTasks(frkl.FrklCallback):
 
             if role_type == LOCAL_ROLE_TYPE:
                 target = os.path.join(role_base_dir, "internal", name)
-                shutil.copytree(src, target)
+                self.roles_to_copy.setdefault("internal", {})[src] = target
             elif role_type == REMOTE_ROLE_TYPE:
+                role_src = os.path.join(ANSIBLE_ROLE_CACHE_DIR, role["name"])
+                target = os.path.join(role_base_dir, "external", role["name"])
+                self.roles_to_copy.setdefault("external", {})[role_src] = target
                 template = jinja_env.get_template('external_role.yml')
                 output_text = template.render(role=role)
                 with open(roles_requirements_file, "a") as myfile:
@@ -444,6 +450,7 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
             new_config[TASKS_META_KEY][TASK_NAME_KEY] = task_name
 
         task_type = new_config.get(TASKS_META_KEY, {}).get(TASK_TYPE_KEY, None)
+
         roles = new_config.get(TASKS_META_KEY, {}).get(TASK_ROLES_KEY, {})
         task_roles = []
         add_roles(task_roles, roles, self.role_repos)
@@ -461,6 +468,10 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
                 add_roles(task_roles, task_name, self.role_repos)
             elif task_name in task_role_names or task_name in meta_role_names:
                 task_type = EXT_ROLE_TASK_TYPE
+            elif "." in task_name:
+                # if no task type specified, and task_name contains a '.', we assue it's an ansible galaxy role
+                task_type = EXT_ROLE_TASK_TYPE
+                add_roles(task_roles, task_name)
             else:
                 task_type = TASK_TASK_TYPE
 
