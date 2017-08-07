@@ -9,6 +9,7 @@ import logging
 import os
 import pprint
 import shutil
+import signal
 import subprocess
 import sys
 from builtins import *
@@ -587,8 +588,13 @@ class NsblRunner(object):
             if callback.startswith("nsbl_internal"):
                 run_env['NSBL_ENVIRONMENT'] = "true"
 
+            def preexec_function():
+                # Ignore the SIGINT signal by setting the handler to the standard
+                # signal handler SIG_IGN.
+                signal.signal(signal.SIGINT, signal.SIG_IGN)
+
             script = parameters['run_playbooks_script']
-            proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env)
+            proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env, preexec_fn=preexec_function)
 
 
             with CursorOff():
@@ -607,7 +613,8 @@ class NsblRunner(object):
                 callback_adapter.finish_up()
 
         except KeyboardInterrupt:
-            # callback_adapter.add_error_message("User interrupted execution. Exiting...")
+            proc.terminate()
+            callback_adapter.add_error_message("\n\nKeyboard interrupt received. Exiting...\n")
             pass
 
         return
