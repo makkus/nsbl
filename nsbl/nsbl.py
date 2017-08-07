@@ -39,7 +39,6 @@ try:
 except NameError:
     from sets import Set as set
 
-
 log = logging.getLogger("nsbl")
 
 # ------------------------------
@@ -347,7 +346,7 @@ class Nsbl(FrklCallback):
 
         return {"inventory": self.inventory, "plays": self.plays}
 
-    def render(self, env_dir, extra_plugins=None, extract_vars=True, force=False, ask_become_pass=True, ansible_args="", callback='nsbl_internal', add_timestamp_to_env=False, add_symlink_to_env=False):
+    def render(self, env_dir, extra_plugins=None, extract_vars=True, force=False, ask_become_pass=True, ansible_args="", callback='nsbl_internal', force_update_roles=False, add_timestamp_to_env=False, add_symlink_to_env=False):
         """Creates the ansible environment in the folder provided.
 
         Args:
@@ -358,6 +357,7 @@ class Nsbl(FrklCallback):
           ask_become_pass (bool): whether to include the '--ask-become-pass' arg to the ansible-playbook call
           ansible_verbose (str): parameters to give to ansible-playbook (like: "-vvv")
           callback (str): name of the callback to use, default: nsbl_internal
+          force_update_roles (bool): whether to overwrite external roles that were already downloaded
           add_timestamp_to_env (bool): whether to add a timestamp to the env_dir -- useful for when this is called from other programs (e.g. freckles)
           add_symlink_to_env (bool): whether to add a symlink to the current env from a fixed location (useful to archive all runs/logs)
         """
@@ -454,11 +454,14 @@ class Nsbl(FrklCallback):
         # write roles
         all_playbooks = []
         ext_roles = False
+        roles_to_copy = {}
         for play, tasks in self.plays.items():
 
             playbook = tasks.render_playbook(playbook_dir)
             all_playbooks.append(playbook)
             tasks.render_roles(roles_base_dir)
+            if tasks.roles_to_copy:
+                dict_merge(roles_to_copy, tasks.roles_to_copy, copy_dct=False)
             if tasks.ext_roles:
                 ext_roles = True
 
@@ -494,10 +497,26 @@ class Nsbl(FrklCallback):
 
         if ext_roles:
             # download external roles
+            click.echo("Checking whether to install external roles...")
+            role_requirement_file = os.path.join(env_dir, "roles", "roles_requirements.yml")
+            command = ["ansible-galaxy", "install", "-r", role_requirement_file, "-p", ANSIBLE_ROLE_CACHE_DIR]
+            if force_update_roles:
+                command.append("--force")
             log.debug("Downloading and installing external roles...")
-            res = subprocess.check_output([os.path.join(env_dir, "extensions", "setup", "role_update.sh")])
-            for line in res.splitlines():
-                log.debug("Installing role: {}".format(line.encode('utf8')))
+            res = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+            for line in iter(res.stdout.readline, ""):
+                if "already installed" not in line and "--force to change" not in line:
+                    # log.debug("Installing role: {}".format(line.encode('utf8')))
+                    click.echo("Installing roles: {}".format(line.encode('utf8')), nl=False)
+
+        if roles_to_copy.get("internal", {}):
+            for src, target in roles_to_copy["internal"].items():
+                log.debug("Coping internal role: {} -> {}".format(src, target))
+                shutil.copytree(src, target)
+        if roles_to_copy.get("external", {}):
+            for src, target in roles_to_copy["external"].items():
+                log.debug("Coping external role: {} -> {}".format(src, target))
+                shutil.copytree(src, target)
 
         return result
 
@@ -546,23 +565,8 @@ class NsblRunner(object):
           extra_plugins (str): a repository of extra ansible plugins to use
           display_ignore_tasks (list): a list of strings that indicate task titles that should be ignored when displaying the task log (using the default nsbl output plugin -- this is ignored with other output callbacks)
         """
-
         if callback == None:
             callback = "nsbl_internal"
-
-        parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose, ask_become_pass=ask_become_pass, extra_plugins=extra_plugins, callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
-
-
-        if no_run:
-            log.debug("Not running environment due to 'no_run' flag set.")
-            return
-
-        run_env = os.environ.copy()
-        if callback.startswith("nsbl_internal"):
-            run_env['NSBL_ENVIRONMENT'] = "true"
-
-        script = parameters['run_playbooks_script']
-        proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env)
 
         if callback == "nsbl_internal":
             lookup_dict = self.nsbl.get_lookup_dict()
@@ -570,19 +574,40 @@ class NsblRunner(object):
         else:
             callback_adapter = NsblPrintCallbackAdapter()
 
-        with CursorOff():
-            click.echo("")
-            for line in iter(proc.stdout.readline, ''):
-                # try:
-                    callback_adapter.add_log_message(line)
-                # except Exception as e:
-                    # proc.kill()
-                    # print("Current line:")
-                    # print("")
-                    # print(line)
-                    # print("")
-                    # raise e
+        try:
 
-            callback_adapter.finish_up()
+            parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose, ask_become_pass=ask_become_pass, extra_plugins=extra_plugins, callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
+
+
+            if no_run:
+                log.debug("Not running environment due to 'no_run' flag set.")
+                return
+
+            run_env = os.environ.copy()
+            if callback.startswith("nsbl_internal"):
+                run_env['NSBL_ENVIRONMENT'] = "true"
+
+            script = parameters['run_playbooks_script']
+            proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env)
+
+
+            with CursorOff():
+                click.echo("")
+                for line in iter(proc.stdout.readline, ''):
+                    # try:
+                        callback_adapter.add_log_message(line)
+                        # except Exception as e:
+                        # proc.kill()
+                        # print("Current line:")
+                        # print("")
+                        # print(line)
+                        # print("")
+                        # raise e
+
+                callback_adapter.finish_up()
+
+        except KeyboardInterrupt:
+            # callback_adapter.add_error_message("User interrupted execution. Exiting...")
+            pass
 
         return
