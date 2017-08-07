@@ -8,9 +8,8 @@ import os
 import pprint
 from builtins import *
 
-from six import string_types
-
 from frkl import frkl
+from six import string_types
 
 # from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, \
     # UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, \
@@ -83,6 +82,7 @@ ROLE_META_FILENAME = "meta.yml"
 DEFAULT_ROLES_PATH = os.path.join(os.path.dirname(__file__), "external", "default-roles")
 # default task description filename
 TASK_DESC_DEFAULT_FILENAME = "task-descs.yml"
+ANSIBLE_ROLE_CACHE_DIR = os.path.expanduser("~/.cache/ansible-roles")
 
 LOCAL_ROLE_TYPE = "local"
 REMOTE_ROLE_TYPE = "remote"
