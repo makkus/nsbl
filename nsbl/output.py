@@ -174,6 +174,7 @@ class NsblLogCallbackAdapter(object):
             self.task_has_items = False
             self.task_has_nsbl_items = False
             self.stderrs = []
+            self.msgs = []
 
         if task_changed:
             if self.current_task_name != None and not role_changed:
@@ -208,6 +209,8 @@ class NsblLogCallbackAdapter(object):
         ansible_task_name = details.get('name', None)
 
         if msg:
+            # if isinstance(msg, dict):
+                # raise Exception(msg)
             msg = msg.encode(ENCODING, errors='replace').strip()
         if msg:
             self.msgs.append(msg)
@@ -377,10 +380,21 @@ class ClickStdOutput(object):
                 else:
                     msg = "no error details"
 
-            output = "failed: {}".format(msg)
+            # output = "failed: {}".format(msg)
+            # click.echo(output)
+            output = "failed:"
             click.echo(output)
+            self.format_error(msg)
 
         self.new_line = True
+
+    def format_error(self, msgs):
+
+        if isinstance(msgs, string_types):
+            msgs = [msgs]
+        for msg in msgs:
+            for m in msg.split("\n"):
+                click.echo("\t\t{}".format(m.strip()))
 
     def display_item(self, ev, current_is_dyn_role):
 
@@ -414,8 +428,11 @@ class ClickStdOutput(object):
                     msg = "errors ignored"
                 else:
                     msg = "no error details"
-            output = "       - {} => failed: {}".format(item, msg)
+            # output = "       - {} => failed: {}".format(item, msg)
+            # click.echo(output)
+            output = "       - {} => failed:".format(item)
             click.echo(output)
+            self.format_error(msg)
         elif ev["category"] == "item_skipped":
             output = "       - {} => skipped".format(item)
             click.echo(output)
@@ -493,9 +510,9 @@ class ClickStdOutput(object):
                     output.append("failed: {}".format("".join(msgs)))
                 else:
                     output.append("failed:")
-                    # output.append("      messages in this task:")
-                    # for m in msgs:
-                        # output.append("        -> {}".format(m))
+                    output.append("      messages in this task:")
+                    for m in msgs:
+                        output.append("        -> {}".format(m))
             else:
                 output.append("failed")
 
