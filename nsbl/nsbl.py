@@ -594,7 +594,7 @@ class NsblRunner(object):
             #     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
             script = parameters['run_playbooks_script']
-            proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env, preexec_fn=os.setsid)
+            proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), shell=True, env=run_env, preexec_fn=os.setsid)
 
 
             with CursorOff():
