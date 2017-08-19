@@ -492,7 +492,7 @@ class Nsbl(FrklCallback):
         if extra_plugins:
             dirs = [o for o in os.listdir(extra_plugins) if os.path.isdir(os.path.join(extra_plugins,o))]
             for d in dirs:
-                 shutil.copytree(os.path.join(extra_plugins, d), os.path.join(target_dir, d))
+                shutil.copytree(os.path.join(extra_plugins, d), os.path.join(target_dir, d))
         # shutil.copytree(library_path, os.path.join(target_dir, "library"))
         # shutil.copytree(action_plugins_path, os.path.join(target_dir, "action_plugins"))
         # os.makedirs(os.path.join(target_dir, "callback_plugins"))
