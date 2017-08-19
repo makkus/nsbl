@@ -33,7 +33,8 @@ from .defaults import *
 from .exceptions import NsblException
 from .inventory import NsblInventory, WrapTasksIntoLocalhostEnvProcessor
 from .output import CursorOff, NsblLogCallbackAdapter, NsblPrintCallbackAdapter
-from .tasks import NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks
+from .tasks import (NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks,
+                    add_roles)
 
 try:
     set
@@ -237,7 +238,7 @@ def get_internal_role_path(role_dict, role_repos=[]):
 
 class Nsbl(FrklCallback):
 
-    def create(config, role_repos=[], task_descs=[], include_parent_meta=False, include_parent_vars=False, default_env_type=DEFAULT_ENV_TYPE, pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()], wrap_into_localhost_env=False):
+    def create(config, role_repos=[], task_descs=[], include_parent_meta=False, include_parent_vars=False, default_env_type=DEFAULT_ENV_TYPE, pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()], wrap_into_localhost_env=False, additional_roles=[]):
         """"Utility method to create a Nsbl object out of the configuration and some metadata about how to process that configuration.
 
         Args:
@@ -249,11 +250,12 @@ class Nsbl(FrklCallback):
           default_env_type (str): the type a environment is if it is not explicitely specified, either ENV_TYPE_HOST or ENV_TYPE_GROUP
           pre_chain (list): the chain of ConfigProcessors to plug in front of the one that is used internally, needs to return a python list
           wrap_into_localhost_env (bool): whether to wrap the input configuration into a localhost environment for convenience
+          additional_roles (list): a list of additional roles that should always be added to the ansible environment
         Returns:
           Nsbl: the Nsbl object, already 'processed'
         """
 
-        init_params = {"task_descs": task_descs, "role_repos": role_repos, "include_parent_meta": include_parent_meta, "include_parent_vars": include_parent_vars, "default_env_type": default_env_type}
+        init_params = {"task_descs": task_descs, "role_repos": role_repos, "include_parent_meta": include_parent_meta, "include_parent_vars": include_parent_vars, "default_env_type": default_env_type, "additional_roles": additional_roles}
         nsbl = Nsbl(init_params)
 
         if not wrap_into_localhost_env:
@@ -300,6 +302,8 @@ class Nsbl(FrklCallback):
         self.include_parent_meta = self.init_params.get("include_parent_meta", False)
         self.include_parent_vars = self.init_params.get("include_parent_vars", False)
 
+        self.additional_roles = self.init_params.get("additional_roles", [])
+
         return True
 
     def callback(self, env):
@@ -321,6 +325,8 @@ class Nsbl(FrklCallback):
             task_config = tasks[TASKS_KEY]
             init_params = {"role_repos": self.role_repos, "task_descs": self.task_descs, "env_name": env_name, "env_id": env_id, TASKS_META_KEY: meta}
             tasks_collector = NsblTasks(init_params)
+            add_roles(tasks_collector.all_ansible_roles, self.additional_roles, self.role_repos)
+
             self.plays["{}_{}".format(env_name, env_id)] = tasks_collector
             # we already have python objects as config items here, so no other ConfigProcessors necessary
             chain = [FrklProcessor(task_format), NsblTaskProcessor(init_params), NsblDynamicRoleProcessor(init_params)]
@@ -546,7 +552,7 @@ class NsblRunner(object):
 
         self.nsbl = nsbl
 
-    def run(self, target, force=True, ansible_verbose="", ask_become_pass=True, extra_plugins=None, callback=None, add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True, display_skipped_tasks=True, display_ignore_tasks=[]):
+    def run(self, target, force=True, ansible_verbose="", ask_become_pass=True, extra_plugins=None, callback=None, add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True, display_skipped_tasks=True, display_ignore_tasks=[], pre_run_callback=None):
         """Starts the ansible run, executing all generated playbooks.
 
         By default the 'nsbl_internal' ansible callback is used, which outputs easier to read outputs/results. You can, however,
@@ -565,6 +571,7 @@ class NsblRunner(object):
           display_skipped_tasks (bool): whether to display skipped tasks in the output (not applicable for all callbacks)
           extra_plugins (str): a repository of extra ansible plugins to use
           display_ignore_tasks (list): a list of strings that indicate task titles that should be ignored when displaying the task log (using the default nsbl output plugin -- this is ignored with other output callbacks)
+          pre_run_callback (function): a callback to execute after the environment is rendered, but before the run is kicked off
         """
         if callback == None:
             callback = "nsbl_internal"
@@ -579,6 +586,8 @@ class NsblRunner(object):
 
             parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose, ask_become_pass=ask_become_pass, extra_plugins=extra_plugins, callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
 
+            if pre_run_callback:
+                pre_run_callback()
 
             if no_run:
                 log.debug("Not running environment due to 'no_run' flag set.")
