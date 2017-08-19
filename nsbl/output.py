@@ -342,6 +342,9 @@ class ClickStdOutput(object):
 
     def display_nsbl_item(self, ev, current_is_dyn_role):
 
+        if self.last_string_ignored:
+            return
+
         if not self.display_sub_tasks and not current_is_dyn_role:
             return
 
@@ -397,6 +400,9 @@ class ClickStdOutput(object):
                 click.echo("\t\t{}".format(m.strip()))
 
     def display_item(self, ev, current_is_dyn_role):
+
+        if self.last_string_ignored:
+            return
 
         if not self.display_sub_tasks and not current_is_dyn_role:
             return
