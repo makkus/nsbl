@@ -1,7 +1,8 @@
 [submodule "nsbl/external/ansible-role-template"]
 	path = nsbl/external/ansible-role-template
 	url = https://github.com/makkus/ansible-role-template.git
+	branch = master
 [submodule "nsbl/external/cookiecutter-ansible-environment"]
 	path = nsbl/external/cookiecutter-ansible-environment
 	url = https://github.com/makkus/cookiecutter-ansible-environment.git
-
+	branch = master
