@@ -506,6 +506,10 @@ class Nsbl(FrklCallback):
             # download external roles
             click.echo("Downloading external roles...")
             role_requirement_file = os.path.join(env_dir, "roles", "roles_requirements.yml")
+
+            if not os.path.exists(ANSIBLE_ROLE_CACHE_DIR):
+                os.makedirs(ANSIBLE_ROLE_CACHE_DIR)
+
             command = ["ansible-galaxy", "install", "-r", role_requirement_file, "-p", ANSIBLE_ROLE_CACHE_DIR]
             if force_update_roles:
                 command.append("--force")
