@@ -586,8 +586,9 @@ class NsblRunner(object):
 
             parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose, ask_become_pass=ask_become_pass, extra_plugins=extra_plugins, callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
 
+            env_dir = parameters["env_dir"]
             if pre_run_callback:
-                pre_run_callback()
+                pre_run_callback(env_dir)
 
             if no_run:
                 log.debug("Not running environment due to 'no_run' flag set.")
