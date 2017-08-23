@@ -518,7 +518,7 @@ class Nsbl(FrklCallback):
             for line in iter(res.stdout.readline, ""):
                 if "already installed" not in line and "--force to change" not in line:
                     # log.debug("Installing role: {}".format(line.encode('utf8')))
-                    click.echo("Installing roles: {}".format(line.encode('utf8')), nl=False)
+                    click.echo("  {}".format(line.encode('utf8')), nl=False)
 
         if roles_to_copy.get("internal", {}):
             for src, target in roles_to_copy["internal"].items():

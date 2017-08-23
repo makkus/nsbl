@@ -4,6 +4,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import fnmatch
 import copy
 import os
 import pprint
@@ -22,10 +23,48 @@ from .defaults import *
 from .exceptions import NsblException
 
 DEFAULT_TASKS_PRE_CHAIN = [frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor()]
+DEFAULT_EXCLUDE_DIRS = [".git", ".tox", ".cache"]
+ROLE_MARKER_FOLDERNAME = "meta"
+ROLE_META_FILENAME = "main.yml"
+
+ROLE_CACHE = {}
 
 def to_nice_yaml(var):
     """util function to convert to yaml in a jinja template"""
     return yaml.safe_dump(var, default_flow_style=False)
+
+def find_roles_in_repo(role_repo):
+    """Utility function to find all roles in a role_repo.
+
+    Args:
+      role_repo: the path to the role repo
+
+    Returns:
+    dict: a dictionary with the name of the role as key, and the path to the role as value
+    """
+
+    if role_repo in ROLE_CACHE.keys():
+        return ROLE_CACHE[role_repo]
+
+    result = {}
+    for root, dirnames, filenames in os.walk(os.path.realpath(role_repo), topdown=True, followlinks=True):
+
+        dirnames[:] = [d for d in dirnames if d not in DEFAULT_EXCLUDE_DIRS]
+        # check for meta folders
+        for dirname in fnmatch.filter(dirnames, ROLE_MARKER_FOLDERNAME):
+
+            meta_file = os.path.realpath(os.path.join(root, dirname, ROLE_META_FILENAME))
+            if not os.path.exists(meta_file):
+                continue
+
+            role_folder = root
+            role_name = os.path.basename(role_folder)
+            result[role_name] = role_folder
+
+
+    ROLE_CACHE[role_repo] = result
+    return result
+
 
 def check_role_desc(role_name, role_repos=[]):
     """Utility function to return the local path of a provided role name.
@@ -51,8 +90,11 @@ def check_role_desc(role_name, role_repos=[]):
             role_type = LOCAL_ROLE_TYPE
         else:
             for repo in role_repos:
-                path = os.path.join(os.path.expanduser(repo), role_name)
-                if os.path.exists(path):
+                _local_repo_roles = find_roles_in_repo(repo)
+                path = _local_repo_roles.get(role_name, None)
+                # path = os.path.join(os.path.expanduser(repo), role_name)
+
+                if path and os.path.exists(path):
                     src = path
                     name = role_name
                     role_type = LOCAL_ROLE_TYPE
@@ -112,7 +154,6 @@ def check_role_desc(role_name, role_repos=[]):
     result = {"name": name, "src": src, "type": role_type}
     if version:
             result["version"] = version
-
 
     return result
 
@@ -383,15 +424,21 @@ class NsblTasks(frkl.FrklCallback):
     def callback(self, role):
 
         self.roles.append(role)
-        for r in role.roles:
-            if r["type"] == REMOTE_ROLE_TYPE:
-                self.ext_roles = True
-            if r.get("use_become", False):
-                self.use_become = True
+        # for r in role.roles:
+            # if r["type"] == REMOTE_ROLE_TYPE:
+                # self.ext_roles = True
+            # if r.get("use_become", False):
+                # self.use_become = True
 
         add_roles(self.all_ansible_roles, role.roles)
 
     def result(self):
+
+        for r in self.all_ansible_roles:
+            if r["type"] == REMOTE_ROLE_TYPE:
+                self.ext_roles = True
+            if r.get("use_become", False):
+                self.use_become = True
 
         return self
 
@@ -701,11 +748,12 @@ class NsblDynRole(NsblRole):
             tasks[task_name] = task
             if VARS_KEY not in task.keys():
                 task[VARS_KEY] = {}
+
             if VAR_KEYS_KEY not in task[TASKS_META_KEY].keys() or task[TASKS_META_KEY][VAR_KEYS_KEY] == '*':
                 task[TASKS_META_KEY][VAR_KEYS_KEY] = list(task.get(VARS_KEY, {}).keys())
-            else:
-                for key in task.get(VARS_KEY, {}).keys():
-                    task[TASKS_META_KEY][VAR_KEYS_KEY].append(key)
+            # else:
+                # for key in task.get(VARS_KEY, {}).keys():
+                    # task[TASKS_META_KEY][VAR_KEYS_KEY].append(key)
 
             # make var_keys items unique
             task[TASKS_META_KEY][VAR_KEYS_KEY] = list(set(task[TASKS_META_KEY][VAR_KEYS_KEY]))
