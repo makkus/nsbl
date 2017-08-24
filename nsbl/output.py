@@ -292,7 +292,7 @@ class ClickStdOutput(object):
 
     def print_task_string(self, task_str):
 
-        if any((task_str.startswith("   - {}".format(token)) for token in self.ignore_strings)):
+        if task_str.startswith("   - [") or any((task_str.startswith("   - {}".format(token)) for token in self.ignore_strings)):
             self.last_string_ignored = True
             self.new_line = True
             return
