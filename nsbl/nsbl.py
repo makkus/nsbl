@@ -353,7 +353,7 @@ class Nsbl(FrklCallback):
 
         return {"inventory": self.inventory, "plays": self.plays}
 
-    def render(self, env_dir, extra_plugins=None, extract_vars=True, force=False, ask_become_pass=True, ansible_args="", callback='nsbl_internal', force_update_roles=False, add_timestamp_to_env=False, add_symlink_to_env=False):
+    def render(self, env_dir, extra_plugins=None, extract_vars=True, force=False, ask_become_pass="yes", ansible_args="", callback='nsbl_internal', force_update_roles=False, add_timestamp_to_env=False, add_symlink_to_env=False):
         """Creates the ansible environment in the folder provided.
 
         Args:
@@ -361,7 +361,7 @@ class Nsbl(FrklCallback):
           extra_plugins (str): a path to a repository of extra ansible plugins, if necessary
           extract_vars (bool): whether to extract a hostvars and groupvars directory for the inventory (True), or render a dynamic inventory script for the environment (default, True) -- Not supported at the moment
           force (bool): overwrite environment if already present at the specified location, use with caution because this might delete an important folder if you get the 'target' dir wrong
-          ask_become_pass (bool): whether to include the '--ask-become-pass' arg to the ansible-playbook call
+          ask_become_pass (str): whether to include the '--ask-become-pass' arg to the ansible-playbook call, options: 'auto', 'true', 'false'
           ansible_verbose (str): parameters to give to ansible-playbook (like: "-vvv")
           callback (str): name of the callback to use, default: nsbl_internal
           force_update_roles (bool): whether to overwrite external roles that were already downloaded
@@ -369,11 +369,16 @@ class Nsbl(FrklCallback):
           add_symlink_to_env (bool): whether to add a symlink to the current env from a fixed location (useful to archive all runs/logs)
         """
 
-        if not isinstance(ask_become_pass, bool):
-            if not isinstance(ask_become_pass, string_types) or ask_become_pass != 'auto':
-                raise NsblException("'ask_become_pass'-arg needs to be either a bool or 'auto'")
-            log.debug("Trying to guess become argument, using: {}".format(self.use_become))
+        if isinstance(ask_become_pass, bool):
+            ask_become_pass = str(ask_become_pass)
+
+        if not isinstance(ask_become_pass, string_types) or ask_become_pass.lower() not in ["true", "false", "auto"]:
+            raise NsblException("Can't parse 'ask_become_pass' var: '{}'".format(ask_become_pass) )
+
+        if ask_become_pass == "auto":
             ask_become_pass = self.use_become
+        else:
+            ask_become_pass = bool(ask_become_pass)
 
         env_dir = os.path.expanduser(env_dir)
         if add_timestamp_to_env:
@@ -556,7 +561,7 @@ class NsblRunner(object):
 
         self.nsbl = nsbl
 
-    def run(self, target, force=True, ansible_verbose="", ask_become_pass=True, extra_plugins=None, callback=None, add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True, display_skipped_tasks=True, display_ignore_tasks=[], pre_run_callback=None):
+    def run(self, target, force=True, ansible_verbose="", ask_become_pass="true", extra_plugins=None, callback=None, add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True, display_skipped_tasks=True, display_ignore_tasks=[], pre_run_callback=None):
         """Starts the ansible run, executing all generated playbooks.
 
         By default the 'nsbl_internal' ansible callback is used, which outputs easier to read outputs/results. You can, however,
@@ -566,7 +571,7 @@ class NsblRunner(object):
           target (str): the target directory where the ansible environment should be rendered
           force (bool): whether to overwrite potentially existing files at the target (most likely an old rendered ansible environment)
           ansible_verbose (str): verbosity arguments to ansible-playbook command
-          ask_become_pass (bool): whether the ansible-playbook call should use 'ask-become-pass' or not (possible values: True, False, 'auto' -- auto tries to do the right thing but might fail)
+          ask_become_pass (str): whether the ansible-playbook call should use 'ask-become-pass' or not (possible values: 'true', 'false', 'auto' -- auto tries to do the right thing but might fail)
           callback (str): the callback to use for the ansible run. default is 'nsbl_internal'
           add_timestamp_to_env (bool): whether to append a timestamp to the run directory (default: False)
           add_symlink_to_env (str): whether to add a symlink to the run directory (will be deleted if exists already and force is specified) - default: False, otherwise path to symlink
