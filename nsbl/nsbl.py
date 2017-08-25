@@ -378,7 +378,7 @@ class Nsbl(FrklCallback):
         if ask_become_pass == "auto":
             ask_become_pass = self.use_become
         else:
-            ask_become_pass = bool(ask_become_pass)
+            ask_become_pass = ask_become_pass.lower() in (['true', 'yes'])
 
         env_dir = os.path.expanduser(env_dir)
         if add_timestamp_to_env:
