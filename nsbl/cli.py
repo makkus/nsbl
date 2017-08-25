@@ -18,6 +18,8 @@ from .inventory import NsblInventory
 from .nsbl import Nsbl
 from .tasks import NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks
 
+import logging
+logger = logging.getLogger('nsbl')
 
 def output(python_object, format="raw", pager=False):
 
@@ -42,9 +44,8 @@ def output(python_object, format="raw", pager=False):
 @click.option('--version', help='the version of frkl you are using', is_flag=True)
 @click.option('--role-repo', '-r', help='path to a local folder containing ansible roles', multiple=True)
 @click.option('--task-desc', '-t', help='path to a local task description yaml file', multiple=True)
-@click_log.simple_verbosity_option()
+@click_log.simple_verbosity_option(logger)
 @click.pass_context
-@click_log.init("nsbl")
 def cli(ctx, version, role_repo, task_desc):
     """Console script for nsbl"""
 
