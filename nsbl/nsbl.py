@@ -425,17 +425,33 @@ class Nsbl(FrklCallback):
         result["ansible_playbook_cli_args"] = ansible_playbook_args
         result["run_playbooks_script"] = os.path.join(env_dir, "run_all_plays.sh")
 
+        try:
+            import ara
+            ara_base = os.path.dirname(ara.__file__)
+        except:
+            ara_base = None
+            pass
+
+        if ara_base:
+            callback_plugins_list = "callback_plugins:{}/plugins/callbacks".format(ara_base)
+            action_plugins_list = "action_plugins:{}/plugins/actions".format(ara_base)
+            library_plugins_list = "library:{}/plugins/modules".format(ara_base)
+        else:
+            callback_plugins_list = "callback_plugins"
+            action_plugins_list = "action_plugins"
+            library_plugins_list = "library"
+
         cookiecutter_details = {
             "inventory": inv_target,
             "env_dir": env_dir,
             "playbook_dir": playbook_dir,
             "ansible_playbook_args": ansible_playbook_args,
-            "library_path": "library",
-            "action_plugins_path": "action_plugins",
+            "library_path": library_plugins_list,
+            "action_plugins_path": action_plugins_list,
             "extra_script_commands": "",
             "ask_sudo": ask_sudo,
             "playbook": all_plays_name,
-            "callback_plugins": "callback_plugins",
+            "callback_plugins": callback_plugins_list,
             "callback_plugin_name": callback,
             "callback_whitelist": "default_to_file"
         }
