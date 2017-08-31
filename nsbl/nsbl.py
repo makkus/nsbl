@@ -535,7 +535,10 @@ class Nsbl(FrklCallback):
             if force_update_roles:
                 command.append("--force")
             log.debug("Downloading and installing external roles...")
-            res = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+            my_env = os.environ.copy()
+            my_env["PATH"] = "{}:{}:{}".format(os.path.expanduser("~/.local/bin"), os.path.expanduser("~/.local/inaugurate/bin"), my_env["PATH"])
+
+            res = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, env=my_env)
             for line in iter(res.stdout.readline, ""):
                 if "already installed" not in line and "--force to change" not in line:
                     # log.debug("Installing role: {}".format(line.encode('utf8')))
