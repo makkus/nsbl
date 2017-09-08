@@ -33,7 +33,7 @@ from .defaults import *
 from .exceptions import NsblException
 from .inventory import NsblInventory, WrapTasksIntoLocalhostEnvProcessor
 from .output import CursorOff, NsblLogCallbackAdapter, NsblPrintCallbackAdapter
-from .tasks import (NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks,
+from .tasks import (NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks, NsblCapitalizedBecomeProcessor,
                     add_roles)
 
 try:
@@ -329,7 +329,7 @@ class Nsbl(FrklCallback):
 
             self.plays["{}_{}".format(env_name, env_id)] = tasks_collector
             # we already have python objects as config items here, so no other ConfigProcessors necessary
-            chain = [FrklProcessor(task_format), NsblTaskProcessor(init_params), NsblDynamicRoleProcessor(init_params)]
+            chain = [FrklProcessor(task_format), NsblTaskProcessor(init_params), NsblCapitalizedBecomeProcessor(), NsblDynamicRoleProcessor(init_params)]
 
             #chain = [FrklProcessor(task_format)]
             # not adding vars here, since we have the inventory to do that...

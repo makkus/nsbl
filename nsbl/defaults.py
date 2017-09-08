@@ -186,7 +186,7 @@ def calculate_role_repos(role_repos, use_default_roles=True):
 
     return role_repos
 
-def calculate_task_descs(task_descs, role_repos=[]):
+def calculate_task_descs(task_descs, role_repos=[], add_upper_case_versions=True):
     """Utility method to calculate which task descriptions to use.
 
     Task descriptions are yaml files that translate task-names in a task config
@@ -199,6 +199,7 @@ def calculate_task_descs(task_descs, role_repos=[]):
     Args:
       task_descs (list): a string or list of strings of local files
       role_repos (list): a list of role repos (see 'calculate_role_repos' method)
+      add_upper_case_versions (bool): if true, will add an upper-case version of every task desc that includes a meta/become = true entry
 
     Returns:
       list: a list of dicts of all task description configs to be used
@@ -231,5 +232,15 @@ def calculate_task_descs(task_descs, role_repos=[]):
 
     processed_task_descs = task_desk_frkl.process()
 
+    if add_upper_case_versions:
+        result = []
+        for task in processed_task_descs:
+            result.append(task)
+            task_become = copy.deepcopy(task)
+            task_become[TASKS_META_KEY][TASK_META_NAME_KEY] = task[TASKS_META_KEY][TASK_META_NAME_KEY].upper()
+            task_become[TASKS_META_KEY][TASK_BECOME_KEY] = True
+            result.append(task_become)
 
-    return processed_task_descs
+        return result
+    else:
+        return processed_task_descs

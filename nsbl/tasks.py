@@ -295,7 +295,8 @@ class NsblTasks(frkl.FrklCallback):
             init_params["meta"] = meta
 
         task_format = generate_nsbl_tasks_format(task_descs)
-        chain = pre_chain + [FrklProcessor(task_format), NsblTaskProcessor(init_params), NsblDynamicRoleProcessor(init_params)]
+        chain = pre_chain + [FrklProcessor(task_format), NsblTaskProcessor(init_params), NsblCapitalizedBecomeProcessor(), NsblDynamicRoleProcessor(init_params)]
+        # chain = pre_chain + [FrklProcessor(task_format), NsblTaskProcessor(init_params),  NsblDynamicRoleProcessor(init_params)]
         tasks = NsblTasks(init_params)
 
         tasks_frkl = Frkl(config, chain)
@@ -456,6 +457,30 @@ class NsblTasks(frkl.FrklCallback):
 
         return "NsblTasks(env_id='{}', env_name='{}', role_names={})".format(self.env_id, self.env_name, self.get_role_names())
 
+class NsblCapitalizedBecomeProcessor(frkl.ConfigProcessor):
+    """Processor that takes a list of frklized tasks, and converts tasks whose names are all uppercase to use the 'become' directive.
+
+    The task names will be lowercased. This obviously only works for tasknames that are all lowercase.
+    """
+
+    def process_current_config(self):
+
+        new_config = self.current_input_config
+        task_name = new_config[TASKS_META_KEY][TASK_NAME_KEY]
+
+        if task_name.isupper():
+
+            new_config[TASKS_META_KEY][TASK_NAME_KEY] = task_name.lower()
+
+            for role in new_config[TASKS_META_KEY].get(TASK_ROLES_KEY, []):
+                if role["name"] == task_name:
+                    role["name"] = task_name.lower()
+                if role["src"] == task_name:
+                    role["src"] = task_name.lower()
+
+            new_config[TASKS_META_KEY][TASK_BECOME_KEY] = True
+
+        return new_config
 
 class NsblTaskProcessor(frkl.ConfigProcessor):
     """Processor to take a list of (unfrklized) tasks, and frklizes (expands) the data.
@@ -469,6 +494,7 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
         if not self.role_repos:
             self.role_repos = calculate_role_repos([], use_default_roles=True)
         self.task_descs = self.init_params.get('task_descs', [])
+        self.ignore_case = self.init_params.get('ignore_case', True)
         if not self.task_descs:
             self.task_descs = calculate_task_descs(None, self.role_repos)
         return True
