@@ -29,6 +29,7 @@ tasks:
          task-desc: creating folder(s)
          task-name: file
          var-keys:
+           - path
            - attributes
            - group
            - mode
@@ -38,6 +39,7 @@ tasks:
            - serole
            - setype
            - seuser
+           - state
       vars:
          state: directory
   - copy:
