@@ -483,8 +483,10 @@ class Nsbl(FrklCallback):
         all_playbooks = []
         ext_roles = False
         roles_to_copy = {}
+        task_details = []
         for play, tasks in self.plays.items():
 
+            task_details.append(str(tasks))
             playbook = tasks.render_playbook(playbook_dir)
             all_playbooks.append(playbook)
             tasks.render_roles(roles_base_dir)
@@ -492,6 +494,8 @@ class Nsbl(FrklCallback):
                 dict_merge(roles_to_copy, tasks.roles_to_copy, copy_dct=False)
             if tasks.ext_roles:
                 ext_roles = True
+
+        result["task_details"] = task_details
 
         jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
         template = jinja_env.get_template('play.yml')
@@ -600,6 +604,9 @@ class NsblRunner(object):
           extra_plugins (str): a repository of extra ansible plugins to use
           display_ignore_tasks (list): a list of strings that indicate task titles that should be ignored when displaying the task log (using the default nsbl output plugin -- this is ignored with other output callbacks)
           pre_run_callback (function): a callback to execute after the environment is rendered, but before the run is kicked off
+
+        Return:
+          dict: the parameters of the run
         """
         if callback == None:
             callback = "nsbl_internal"
@@ -620,7 +627,7 @@ class NsblRunner(object):
 
             if no_run:
                 log.debug("Not running environment due to 'no_run' flag set.")
-                return
+                return parameters
 
             run_env = os.environ.copy()
             if callback.startswith("nsbl_internal"):
@@ -634,8 +641,6 @@ class NsblRunner(object):
             script = parameters['run_playbooks_script']
             # proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env, preexec_fn=os.setsid)
             proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env, preexec_fn=preexec_function)
-
-
 
             with CursorOff():
                 click.echo("")
@@ -659,4 +664,4 @@ class NsblRunner(object):
             callback_adapter.add_error_message("\n\nKeyboard interrupt received. Exiting...\n")
             pass
 
-        return
+        return parameters
