@@ -3,38 +3,25 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import copy
-import json
 import logging
-import os
-import pprint
 import shutil
 import signal
 import subprocess
 import sys
-from builtins import *
 from datetime import datetime
 
 import click
+from builtins import *
 from cookiecutter.main import cookiecutter
-from frkl.frkl import (CHILD_MARKER_NAME, DEFAULT_LEAF_NAME,
-                       DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME,
-                       OTHER_KEYS_NAME, ConfigProcessor,
-                       EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
-                       FrklCallback, FrklProcessor, IdProcessor,
-                       UrlAbbrevProcessor, dict_merge)
-from future.builtins.disabled import *
+from frkl.frkl import (EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
+                       FrklCallback, FrklProcessor, UrlAbbrevProcessor, dict_merge)
 from jinja2 import Environment, PackageLoader
-from six import string_types
-
-import yaml
 
 from .defaults import *
 from .exceptions import NsblException
 from .inventory import NsblInventory, WrapTasksIntoLocalhostEnvProcessor
 from .output import CursorOff, NsblLogCallbackAdapter, NsblPrintCallbackAdapter
-from .tasks import (NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks, NsblCapitalizedBecomeProcessor,
-                    add_roles)
+from .tasks import NsblCapitalizedBecomeProcessor, NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks, add_roles
 
 try:
     set

@@ -1,18 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import json
-import os
 import pprint
 import sys
 
 import click
-
 import click_log
 import yaml
 
 from . import __version__ as VERSION
 from .defaults import *
-from .env_creator import AnsibleEnvironment, NsblCreateException
 from .nsbl import Nsbl, NsblRunner
 
 

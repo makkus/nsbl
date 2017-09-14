@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import pprint
-import logging
-import os
-from .nsbl import NsblInventory
-from cookiecutter.main import cookiecutter
-import click
-import yaml
 import inspect
+import logging
 import subprocess
-import sys
+
+import os
+from cookiecutter.main import cookiecutter
+
+from .nsbl import NsblInventory
 
 log = logging.getLogger("nsbl")
 

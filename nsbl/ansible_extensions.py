@@ -1,7 +1,6 @@
+import yaml
 from ansible.plugins.filter.core import FilterModule
 from jinja2.ext import Extension
-
-import yaml
 
 
 def to_yaml(var):

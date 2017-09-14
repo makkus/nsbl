@@ -1,24 +1,19 @@
 # -*- coding: utf-8 -*-
 
 import json
-import os
-import pprint
+import logging
 import sys
 
 import click
-
 import click_log
 import yaml
-from frkl import frkl
 
 from . import __version__ as VERSION
 from .defaults import *
-from .env_creator import AnsibleEnvironment, NsblCreateException
 from .inventory import NsblInventory
 from .nsbl import Nsbl
-from .tasks import NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks
+from .tasks import NsblTasks
 
-import logging
 logger = logging.getLogger('nsbl')
 
 def output(python_object, format="raw", pager=False):

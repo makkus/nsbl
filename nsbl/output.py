@@ -1,17 +1,11 @@
 # -*- coding: utf-8 -*-
 
-import fcntl
 import json
 import logging
-import pprint
-import struct
 import subprocess
 import sys
-import termios
 
 import click
-from six import string_types
-
 import cursor
 
 from .defaults import *

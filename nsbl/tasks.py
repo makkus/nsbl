@@ -5,19 +5,11 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import fnmatch
-import copy
-import os
-import pprint
-import shutil
-import sys
-from builtins import *
-
-from cookiecutter.main import cookiecutter
-from frkl import frkl
-from future.builtins.disabled import *
-from jinja2 import Environment, PackageLoader
 
 import yaml
+from builtins import *
+from cookiecutter.main import cookiecutter
+from jinja2 import Environment, PackageLoader
 
 from .defaults import *
 from .exceptions import NsblException

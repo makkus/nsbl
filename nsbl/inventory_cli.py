@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import pprint
-import click
-import sys
 import json
+import sys
+
+import click
+
 from .inventory import NsblInventory
-from frkl import Frkl
-from .defaults import NSBL_INVENTORY_BOOTSTRAP_CHAIN
+
 
 @click.command()
 @click.option('--list', help='list of all groups', required=False, is_flag=True)

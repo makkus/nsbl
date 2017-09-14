@@ -4,10 +4,9 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import copy
-import os
-import pprint
-from builtins import *
 
+import os
+from builtins import *
 from frkl import frkl
 from six import string_types
 

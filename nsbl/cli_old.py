@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 
-import os
-import pprint
-import click
-import sys
-from .nsbl import NsblInventory, Nsbl
-from .tasks import NsblTasks, NsblTaskProcessor, NsblDynamicRoleProcessor
-from .env_creator import AnsibleEnvironment, NsblCreateException
-from . import __version__ as VERSION
-import yaml
 import json
-import frkl
+import sys
+
+import click
 import click_log
+import frkl
+import yaml
+
+from . import __version__ as VERSION
 from .defaults import *
+from .nsbl import Nsbl
+from .tasks import NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks
 
 
 def output(python_object, format="raw", pager=False):

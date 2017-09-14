@@ -8,15 +8,6 @@ test_nsbl
 Tests for `nsbl` module.
 """
 
-import os
-import pprint
-
-import pytest
-
-import yaml
-from frkl import frkl
-from nsbl import nsbl
-
 # @pytest.mark.parametrize("test_name", [
 #     "tasks_1"
 # ])

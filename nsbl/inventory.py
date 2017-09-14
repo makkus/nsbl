@@ -3,22 +3,12 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import copy
-import json
-import os
-import pprint
-from builtins import *
-
-from future.builtins.disabled import *
-from jinja2 import Environment, PackageLoader
-
 import yaml
-from frkl.frkl import (CHILD_MARKER_NAME, DEFAULT_LEAF_NAME,
-                       DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME,
-                       OTHER_KEYS_NAME, ConfigProcessor,
+from builtins import *
+from frkl.frkl import (ConfigProcessor,
                        EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
-                       FrklCallback, FrklProcessor, IdProcessor,
-                       UrlAbbrevProcessor, dict_merge)
+                       FrklCallback, FrklProcessor, UrlAbbrevProcessor)
+from jinja2 import Environment, PackageLoader
 
 from .defaults import *
 from .exceptions import NsblException

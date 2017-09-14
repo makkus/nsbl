@@ -8,15 +8,11 @@ test_nsbl
 Tests for `nsbl` module.
 """
 
-import pytest
-
 import pprint
 
-from contextlib import contextmanager
 from click.testing import CliRunner
-
-from nsbl import nsbl
 from nsbl import cli
+
 
 def test_command_line_interface():
     runner = CliRunner()

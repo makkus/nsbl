@@ -2,11 +2,8 @@
 
 import json
 import logging
-import pprint
 
 import click
-from six import string_types
-
 import cursor
 
 from .defaults import *

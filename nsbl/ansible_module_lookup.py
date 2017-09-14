@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-__
 
-from os import walk
 from ansible.utils import module_docs
+from os import walk
 
 path = "/home/markus/projects/other/ansible/lib/ansible/modules/cloud/amazon"
 if path[-1] != '/':
