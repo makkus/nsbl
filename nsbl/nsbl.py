@@ -30,6 +30,7 @@ except NameError:
 
 log = logging.getLogger("nsbl")
 
+
 # ------------------------------
 # util functions
 def can_passwordless_sudo():
@@ -39,6 +40,7 @@ def can_passwordless_sudo():
     p = subprocess.Popen('sudo -n ls', shell=True, stdout=FNULL, stderr=subprocess.STDOUT, close_fds=True)
     r = p.wait()
     return r == 0
+
 
 def get_pkg_mgr_sudo(mgr):
     """Simple function to determine whether a given package manager needs sudo rights or not.
@@ -58,6 +60,7 @@ def get_pkg_mgr_sudo(mgr):
     else:
         return True
 
+
 def get_git_auto_dest_name(repo, parent_dir="~"):
     """Extracts the package/repo name out of a git repo and returns the suggested path where the local copy should live
 
@@ -75,6 +78,7 @@ def get_git_auto_dest_name(repo, parent_dir="~"):
         temp = temp[0:-4]
 
     return temp
+
 
 def ensure_git_repo_format(repo, dest=None, dest_is_parent=False):
     """Makes sure that the repo is in the format nsbl needs for git repos.
@@ -141,9 +145,12 @@ def get_local_role_desc(role_name, role_repos=[]):
                 url = role_name
 
     if not url:
-        raise NsblException("Can't find local role '{}' (neither as absolute path nor in any of the local role repos)".format(role_name))
+        raise NsblException(
+            "Can't find local role '{}' (neither as absolute path nor in any of the local role repos)".format(
+                role_name))
 
     return {"url": url}
+
 
 def merge_roles(role_obj, role_repos=[]):
     """Merge the provided role object into a single dictionary containing all roles that can be found through it.
@@ -157,7 +164,8 @@ def merge_roles(role_obj, role_repos=[]):
 
     if isinstance(role_obj, dict):
         if "url" in role_obj.keys() or "version" in role_obj.keys():
-            raise NsblException("Although dictionaries and lists can be mixed for the {} key, dictionaries need to use role-names as keys, the keyworkds 'url' and 'version' are not allowed. Mostly likely this is a misconfiguration.")
+            raise NsblException(
+                "Although dictionaries and lists can be mixed for the {} key, dictionaries need to use role-names as keys, the keyworkds 'url' and 'version' are not allowed. Mostly likely this is a misconfiguration.")
         role_dict.update(role_obj)
     elif isinstance(role_obj, string_types):
         temp = get_local_role_desc(role_obj, role_repos)
@@ -167,9 +175,12 @@ def merge_roles(role_obj, role_repos=[]):
             temp = merge_roles(role_obj_child, role_repos)
             role_dict.update(temp)
     else:
-        raise NsblException("Role description needs to be either a list of strings or a dict. Value '{}' is not valid.".format(role_obj))
+        raise NsblException(
+            "Role description needs to be either a list of strings or a dict. Value '{}' is not valid.".format(
+                role_obj))
 
     return role_dict
+
 
 def expand_external_role(role_dict, role_repos=[]):
     """Ensures the provided input is a dict, and if not converts it in an approriate way.
@@ -195,6 +206,7 @@ def expand_external_role(role_dict, role_repos=[]):
         result[role_name] = temp_role
 
     return result
+
 
 def get_internal_role_path(role_dict, role_repos=[]):
     """Parses the input and returns the local path to the specified role, or False if not found.
@@ -223,9 +235,12 @@ def get_internal_role_path(role_dict, role_repos=[]):
 
     return False
 
-class Nsbl(FrklCallback):
 
-    def create(config, role_repos=[], task_descs=[], include_parent_meta=False, include_parent_vars=False, default_env_type=DEFAULT_ENV_TYPE, pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()], wrap_into_localhost_env=False, additional_roles=[]):
+class Nsbl(FrklCallback):
+    def create(config, role_repos=[], task_descs=[], include_parent_meta=False, include_parent_vars=False,
+               default_env_type=DEFAULT_ENV_TYPE,
+               pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()],
+               wrap_into_localhost_env=False, additional_roles=[]):
         """"Utility method to create a Nsbl object out of the configuration and some metadata about how to process that configuration.
 
         Args:
@@ -242,7 +257,9 @@ class Nsbl(FrklCallback):
           Nsbl: the Nsbl object, already 'processed'
         """
 
-        init_params = {"task_descs": task_descs, "role_repos": role_repos, "include_parent_meta": include_parent_meta, "include_parent_vars": include_parent_vars, "default_env_type": default_env_type, "additional_roles": additional_roles}
+        init_params = {"task_descs": task_descs, "role_repos": role_repos, "include_parent_meta": include_parent_meta,
+                       "include_parent_vars": include_parent_vars, "default_env_type": default_env_type,
+                       "additional_roles": additional_roles}
         nsbl = Nsbl(init_params)
 
         if not wrap_into_localhost_env:
@@ -254,6 +271,7 @@ class Nsbl(FrklCallback):
         temp = inv_frkl.process(nsbl)
 
         return nsbl
+
     create = staticmethod(create)
 
     def __init__(self, init_params=None):
@@ -310,23 +328,25 @@ class Nsbl(FrklCallback):
             env_id = meta[ENV_ID_KEY]
 
             task_config = tasks[TASKS_KEY]
-            init_params = {"role_repos": self.role_repos, "task_descs": self.task_descs, "env_name": env_name, "env_id": env_id, TASKS_META_KEY: meta}
+            init_params = {"role_repos": self.role_repos, "task_descs": self.task_descs, "env_name": env_name,
+                           "env_id": env_id, TASKS_META_KEY: meta}
             tasks_collector = NsblTasks(init_params)
             add_roles(tasks_collector.all_ansible_roles, self.additional_roles, self.role_repos)
 
             self.plays["{}_{}".format(env_name, env_id)] = tasks_collector
             # we already have python objects as config items here, so no other ConfigProcessors necessary
-            chain = [FrklProcessor(task_format), NsblTaskProcessor(init_params), NsblCapitalizedBecomeProcessor(), NsblDynamicRoleProcessor(init_params)]
+            chain = [FrklProcessor(task_format), NsblTaskProcessor(init_params), NsblCapitalizedBecomeProcessor(),
+                     NsblDynamicRoleProcessor(init_params)]
 
-            #chain = [FrklProcessor(task_format)]
+            # chain = [FrklProcessor(task_format)]
             # not adding vars here, since we have the inventory to do that...
             # configs = task_config
             # if self.include_parent_meta:
-                # configs = {TASKS_KEY: task_config}
-                # configs[TASKS_META_KEY] = meta
+            # configs = {TASKS_KEY: task_config}
+            # configs[TASKS_META_KEY] = meta
             # if self.include_parent_vars:
-                # configs = {TASKS_KEY: task_config}
-                # configs[VARS_KEY] = tasks.get(VARS_KEY, {})
+            # configs = {TASKS_KEY: task_config}
+            # configs[VARS_KEY] = tasks.get(VARS_KEY, {})
 
             # wrapping the tasks in a list so the 'base-vars' don't get inherited
             tasks_frkl = Frkl([task_config], chain)
@@ -340,7 +360,9 @@ class Nsbl(FrklCallback):
 
         return {"inventory": self.inventory, "plays": self.plays}
 
-    def render(self, env_dir, extra_plugins=None, extract_vars=True, force=False, ask_become_pass="yes", ansible_args="", callback='nsbl_internal', force_update_roles=False, add_timestamp_to_env=False, add_symlink_to_env=False):
+    def render(self, env_dir, extra_plugins=None, extract_vars=True, force=False, ask_become_pass="yes",
+               ansible_args="", callback='nsbl_internal', force_update_roles=False, add_timestamp_to_env=False,
+               add_symlink_to_env=False):
         """Creates the ansible environment in the folder provided.
 
         Args:
@@ -360,7 +382,7 @@ class Nsbl(FrklCallback):
             ask_become_pass = str(ask_become_pass)
 
         if not isinstance(ask_become_pass, string_types) or ask_become_pass.lower() not in ["true", "false", "auto"]:
-            raise NsblException("Can't parse 'ask_become_pass' var: '{}'".format(ask_become_pass) )
+            raise NsblException("Can't parse 'ask_become_pass' var: '{}'".format(ask_become_pass))
 
         if ask_become_pass == "auto":
             ask_become_pass = self.use_become
@@ -395,7 +417,7 @@ class Nsbl(FrklCallback):
         roles_base_dir = os.path.join(env_dir, "roles")
         result["roles_base_dir"] = playbook_dir
 
-        #ask_sudo = "--ask-become-pass"
+        # ask_sudo = "--ask-become-pass"
 
         if ask_become_pass:
             if can_passwordless_sudo():
@@ -502,7 +524,7 @@ class Nsbl(FrklCallback):
 
         target_dir = playbook_dir
         if extra_plugins:
-            dirs = [o for o in os.listdir(extra_plugins) if os.path.isdir(os.path.join(extra_plugins,o))]
+            dirs = [o for o in os.listdir(extra_plugins) if os.path.isdir(os.path.join(extra_plugins, o))]
             for d in dirs:
                 shutil.copytree(os.path.join(extra_plugins, d), os.path.join(target_dir, d))
         # shutil.copytree(library_path, os.path.join(target_dir, "library"))
@@ -527,9 +549,11 @@ class Nsbl(FrklCallback):
                 command.append("--force")
             log.debug("Downloading and installing external roles...")
             my_env = os.environ.copy()
-            my_env["PATH"] = "{}:{}:{}".format(os.path.expanduser("~/.local/bin"), os.path.expanduser("~/.local/inaugurate/bin"), my_env["PATH"])
+            my_env["PATH"] = "{}:{}:{}".format(os.path.expanduser("~/.local/bin"),
+                                               os.path.expanduser("~/.local/inaugurate/bin"), my_env["PATH"])
 
-            res = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, env=my_env)
+            res = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True,
+                                   env=my_env)
             for line in iter(res.stdout.readline, ""):
                 if "already installed" not in line and "--force to change" not in line:
                     # log.debug("Installing role: {}".format(line.encode('utf8')))
@@ -550,10 +574,10 @@ class Nsbl(FrklCallback):
 
         result = {}
         for play, tasks in self.plays.items():
-
             id = tasks.env_id
             tasks_lookup_dict = tasks.get_lookup_dict()
-            temp = {TASKS_KEY: tasks_lookup_dict, ENV_NAME_KEY: tasks.env_name, ENV_ID_KEY: tasks.env_id, "play_name": play}
+            temp = {TASKS_KEY: tasks_lookup_dict, ENV_NAME_KEY: tasks.env_name, ENV_ID_KEY: tasks.env_id,
+                    "play_name": play}
 
             result[id] = temp
 
@@ -561,7 +585,6 @@ class Nsbl(FrklCallback):
 
 
 class NsblRunner(object):
-
     def __init__(self, nsbl):
         """Class to kick off rendering and running the ansible environment in question.
 
@@ -571,7 +594,9 @@ class NsblRunner(object):
 
         self.nsbl = nsbl
 
-    def run(self, target, force=True, ansible_verbose="", ask_become_pass="true", extra_plugins=None, callback=None, add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True, display_skipped_tasks=True, display_ignore_tasks=[], pre_run_callback=None):
+    def run(self, target, force=True, ansible_verbose="", ask_become_pass="true", extra_plugins=None, callback=None,
+            add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True,
+            display_skipped_tasks=True, display_ignore_tasks=[], pre_run_callback=None):
         """Starts the ansible run, executing all generated playbooks.
 
         By default the 'nsbl_internal' ansible callback is used, which outputs easier to read outputs/results. You can, however,
@@ -600,13 +625,18 @@ class NsblRunner(object):
 
         if callback == "nsbl_internal":
             lookup_dict = self.nsbl.get_lookup_dict()
-            callback_adapter = NsblLogCallbackAdapter(lookup_dict, display_sub_tasks=display_sub_tasks, display_skipped_tasks=display_skipped_tasks, display_ignore_tasks=display_ignore_tasks)
+            callback_adapter = NsblLogCallbackAdapter(lookup_dict, display_sub_tasks=display_sub_tasks,
+                                                      display_skipped_tasks=display_skipped_tasks,
+                                                      display_ignore_tasks=display_ignore_tasks)
         else:
             callback_adapter = NsblPrintCallbackAdapter()
 
         try:
 
-            parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose, ask_become_pass=ask_become_pass, extra_plugins=extra_plugins, callback=callback, add_timestamp_to_env=add_timestamp_to_env, add_symlink_to_env=add_symlink_to_env)
+            parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose,
+                                          ask_become_pass=ask_become_pass, extra_plugins=extra_plugins,
+                                          callback=callback, add_timestamp_to_env=add_timestamp_to_env,
+                                          add_symlink_to_env=add_symlink_to_env)
 
             env_dir = parameters["env_dir"]
             if pre_run_callback:
@@ -627,20 +657,21 @@ class NsblRunner(object):
 
             script = parameters['run_playbooks_script']
             # proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env, preexec_fn=os.setsid)
-            proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env, preexec_fn=preexec_function)
+            proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE,
+                                    shell=True, env=run_env, preexec_fn=preexec_function)
 
             with CursorOff():
                 click.echo("")
                 for line in iter(proc.stdout.readline, ''):
                     # try:
-                        callback_adapter.add_log_message(line)
-                        # except Exception as e:
-                        # proc.kill()
-                        # print("Current line:")
-                        # print("")
-                        # print(line)
-                        # print("")
-                        # raise e
+                    callback_adapter.add_log_message(line)
+                    # except Exception as e:
+                    # proc.kill()
+                    # print("Current line:")
+                    # print("")
+                    # print(line)
+                    # print("")
+                    # raise e
 
                 callback_adapter.finish_up()
 

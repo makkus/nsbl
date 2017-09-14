@@ -16,8 +16,8 @@ from .tasks import NsblTasks
 
 logger = logging.getLogger('nsbl')
 
-def output(python_object, format="raw", pager=False):
 
+def output(python_object, format="raw", pager=False):
     if format == 'yaml':
         output_string = yaml.safe_dump(python_object, default_flow_style=False, encoding='utf-8', allow_unicode=True)
     elif format == 'json':
@@ -78,6 +78,7 @@ def list_hosts(ctx, config, format, pager):
     if inventory.hosts:
         output(inventory.hosts, format)
 
+
 @cli.command('list-roles')
 @click.argument('config', required=True, nargs=-1)
 @click.option('--format', '-f', required=False, default='yaml', help='output format, either json or yaml (default)')
@@ -92,6 +93,7 @@ def list_roles(ctx, config, format, pager):
         result.append(role.details())
 
     output(result, format, pager)
+
 
 # @cli.command('describe-tasks')
 # @click.argument('config', required=True, nargs=-1)
@@ -117,7 +119,8 @@ def list_roles(ctx, config, format, pager):
 
 @cli.command('create-inventory')
 @click.argument('config', required=True, nargs=-1)
-@click.option('--target', '-t', nargs=1, required=False, help="the target inventory dir, defaults to 'inventory' in the current directory", default="inventory")
+@click.option('--target', '-t', nargs=1, required=False,
+              help="the target inventory dir, defaults to 'inventory' in the current directory", default="inventory")
 # @click.option('--static/--dynamic', default=True, help="whether to render a dynamic inventory script using the provided config files instead of a plain ini-type config file and group_vars and host_vars folders, default: static")
 # @click.option('--relative/--absolute', default=True, help="only applicable for dynamic inventory script, determine to use relative or absolute paths to config files and role repos in the script. default: relative (to the target dir the script is in)")
 @click.pass_context
@@ -130,8 +133,9 @@ def extract_inventory(ctx, config, target):
     inventory.extract_vars(target)
     inventory.write_inventory_file_or_script(target, extract_vars=True)
     # else:
-        # os.makedirs("/tmp/inventory")
-        # inventory.write_inventory_file_or_script("/tmp/inventory", extract_vars=False, relative_paths=relative)
+    # os.makedirs("/tmp/inventory")
+    # inventory.write_inventory_file_or_script("/tmp/inventory", extract_vars=False, relative_paths=relative)
+
 
 @cli.command('print-inventory')
 @click.argument('config', required=True, nargs=-1)
@@ -144,6 +148,7 @@ def print_inventory(ctx, config, pager):
 
     inv_string = inventory.get_inventory_config_string()
     output(inv_string, format="raw", pager=pager)
+
 
 @cli.command('print-available-tasks')
 @click.option('--pager', '-p', required=False, default=False, help='output via pager')
@@ -166,10 +171,10 @@ def expand_packages(ctx, config, pager, format):
     """Creates an expanded list of packages out of a package list (for debugging purposes)"""
 
     frkl_format = {"child_marker": "packages",
-              "default_leaf": "vars",
-              "default_leaf_key": "name",
-              "key_move_map": {'*': "vars"}
-              }
+                   "default_leaf": "vars",
+                   "default_leaf_key": "name",
+                   "key_move_map": {'*': "vars"}
+                   }
     chain = [frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor(), frkl.FrklProcessor(frkl_format)]
 
     frkl_obj = frkl.Frkl(config, chain)
@@ -179,21 +184,21 @@ def expand_packages(ctx, config, pager, format):
 
 @cli.command('create-environment')
 @click.argument('config', required=True, nargs=-1)
-@click.option('--target', '-t', help="target output directory of created ansible environment, defaults to 'nsbl_env' in the current directory", default="nsbl_env")
+@click.option('--target', '-t',
+              help="target output directory of created ansible environment, defaults to 'nsbl_env' in the current directory",
+              default="nsbl_env")
 # @click.option('--static/--dynamic', default=True, help="whether to render a dynamic inventory script using the provided config files instead of a plain ini-type config file and group_vars and host_vars folders, default: static")
 @click.option('--force', '-f', is_flag=True, help="delete potentially existing target directory", default=False)
 @click.pass_context
 def create(ctx, config, target, force):
-
     nsbl = Nsbl.create(config, ctx.obj['role-repos'], ctx.obj['task-desc'])
 
     nsbl.render(target, extract_vars=True, force=force, ansible_args="", callback='default')
     # for play, tasks in result["plays"].items():
-        # pprint.pprint(play)
-        # pprint.pprint(tasks.roles)
+    # pprint.pprint(play)
+    # pprint.pprint(tasks.roles)
 
     # nsbl.render_environment(target, extract_vars=static, force=force, ansible_verbose="")
-
 
 
 if __name__ == "__main__":

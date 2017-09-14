@@ -16,17 +16,17 @@ for (dirpath, dirnames, ansible_modules) in walk(path):
             print(mod)
             try:
                 try:
-                    doc, plainexamples, returndocs = module_docs.get_docstring(path+mod)
+                    doc, plainexamples, returndocs = module_docs.get_docstring(path + mod)
 
                 except ValueError:
                     print("XXX")
-                    doc, plainexamples = module_docs.get_docstring(path+mod)
+                    doc, plainexamples = module_docs.get_docstring(path + mod)
                     print("ZZZ")
                     print(plainexamples)
                 except Exception as e:
                     print("YYY")
                     print(str(e))
-                    #module.fail_json(msg='error', error=str(e))
+                    # module.fail_json(msg='error', error=str(e))
 
                 try:
                     examples_list = plainexamples.split('\n')

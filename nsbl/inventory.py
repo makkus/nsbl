@@ -15,8 +15,8 @@ from .exceptions import NsblException
 
 
 class NsblInventory(FrklCallback):
-
-    def create(config, default_env_type=DEFAULT_ENV_TYPE, pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()]):
+    def create(config, default_env_type=DEFAULT_ENV_TYPE,
+               pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()]):
         """Convenience method to create a NsblInventory object out of the configs and a few optional parameters.
 
         Args:
@@ -36,6 +36,7 @@ class NsblInventory(FrklCallback):
         inv_frkl.process(inventory)
 
         return inventory
+
     create = staticmethod(create)
 
     def __init__(self, init_params=None):
@@ -74,7 +75,8 @@ class NsblInventory(FrklCallback):
                 continue
             group_dir = os.path.join(inventory_dir, "group_vars", group)
             var_file = os.path.join(group_dir, "{}.yml".format(group))
-            content = yaml.safe_dump(vars, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode('utf-8')
+            content = yaml.safe_dump(vars, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode(
+                'utf-8')
 
             os.makedirs(group_dir)
             with open(var_file, "w") as text_file:
@@ -86,7 +88,8 @@ class NsblInventory(FrklCallback):
                 continue
             host_dir = os.path.join(inventory_dir, "host_vars", host)
             var_file = os.path.join(host_dir, "{}.yml".format(host))
-            content = yaml.safe_dump(vars, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode('utf-8')
+            content = yaml.safe_dump(vars, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode(
+                'utf-8')
 
             os.makedirs(host_dir)
             with open(var_file, "w") as text_file:
@@ -122,7 +125,7 @@ class NsblInventory(FrklCallback):
 
         else:
             raise Exception("Dynamic inventory script creation not implemented yet.")
-        # else:
+            # else:
             # # write dynamic inventory script
             # jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
             # if relative_paths:
@@ -275,13 +278,13 @@ class NsblInventory(FrklCallback):
                     "Environment metadata needs to contain a name (either host- or group-name): {}".format(
                         env[ENV_META_KEY]))
             current_meta[ENV_NAME_KEY] = env_name
-            self.tasks.append({TASKS_META_KEY: current_meta, TASKS_KEY: env[TASKS_KEY], VARS_KEY: env.get(VARS_KEY, {})})
+            self.tasks.append(
+                {TASKS_META_KEY: current_meta, TASKS_KEY: env[TASKS_KEY], VARS_KEY: env.get(VARS_KEY, {})})
             self.current_env_id += 1
 
     def finished(self):
         if "localhost" in self.hosts.keys() and "ansible_connection" not in self.hosts["localhost"].get(VARS_KEY,
                                                                                                         {}).keys():
-
             self.hosts["localhost"][VARS_KEY]["ansible_connection"] = "local"
 
     def list(self):
@@ -358,4 +361,5 @@ class WrapTasksIntoLocalhostEnvProcessor(ConfigProcessor):
         if not self.last_call:
             self.task_configs.append(config)
         else:
-            return {"localhost": {TASKS_KEY: self.task_configs, TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST}, VARS_KEY: self.task_vars}}
+            return {"localhost": {TASKS_KEY: self.task_configs, TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST},
+                                  VARS_KEY: self.task_vars}}

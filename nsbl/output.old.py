@@ -10,6 +10,7 @@ from .defaults import *
 
 log = logging.getLogger("nsbl")
 
+
 class CursorOff(object):
     def __enter__(self):
         cursor.hide()
@@ -19,17 +20,14 @@ class CursorOff(object):
 
 
 class NsblPrintCallbackAdapter(object):
-
     def add_log_message(self, line):
-
         click.echo(line, nl=False)
 
     def finish_up(self):
-
         pass
 
-class NsblLogCallbackAdapter(object):
 
+class NsblLogCallbackAdapter(object):
     def __init__(self, lookup_dict, display_sub_tasks=True):
 
         self.display_utility_tasks = False
@@ -102,7 +100,6 @@ class NsblLogCallbackAdapter(object):
             self.current_role = self.lookup_dict[self.current_env_id][self.current_role_id]
             click.echo("new role: {}".format(self.current_role["name"]))
 
-
         if task_changed:
             self.current_task_name = task_name
             self.current_dyn_task_id = dyn_task_id
@@ -115,10 +112,9 @@ class NsblLogCallbackAdapter(object):
 
         click.echo("\t{}".format(category))
 
-
         # print(details)
-            # output = " * {}...".format(self.current_task[TASK_DESC_KEY])
-            # output = " * {}...".format(self.lookup_dict[self.current_env_id][self.current_role_id])
+        # output = " * {}...".format(self.current_task[TASK_DESC_KEY])
+        # output = " * {}...".format(self.lookup_dict[self.current_env_id][self.current_role_id])
         # output = " * {}".format(details["name"])
         # click.echo(output)
         self.new_line = True

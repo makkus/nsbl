@@ -16,6 +16,7 @@ PLAYBOOK_DIR = "plays"
 INVENTORY_DIR = "inventory"
 EXECUTION_SCRIPT_FILE = "run_play.sh"
 
+
 def can_passwordless_sudo():
     """Checks if the user can use passwordless sudo on this host."""
 
@@ -24,8 +25,8 @@ def can_passwordless_sudo():
     r = p.wait()
     return r == 0
 
-class NsblCreateException(Exception):
 
+class NsblCreateException(Exception):
     def __init__(self, message_or_parent, parent=None):
         if isinstance(message_or_parent, Exception):
             self.msg = message_or_parent.__str__()
@@ -38,7 +39,6 @@ class NsblCreateException(Exception):
 
 
 class AnsibleEnvironment(object):
-
     def __init__(self, configs, env_dir, roles={}, callback_plugins={}, callback_plugin_name=None):
 
         self.configs = configs
@@ -68,12 +68,12 @@ class AnsibleEnvironment(object):
         passwordless_sudo = can_passwordless_sudo()
 
         cookiecutter_details = {
-                "env_dir": self.env_dir,
-                "nsbl_script_configs": " --config ".join(self.configs),
-                "nsbl_roles": self.roles,
-                "nsbl_callback_plugins": self.callback_plugins,
-                "nsbl_callback_plugin_name": ""
-            }
+            "env_dir": self.env_dir,
+            "nsbl_script_configs": " --config ".join(self.configs),
+            "nsbl_roles": self.roles,
+            "nsbl_callback_plugins": self.callback_plugins,
+            "nsbl_callback_plugin_name": ""
+        }
 
         log.debug("Creating build environment from template...")
         log.debug("Using cookiecutter details: {}".format(cookiecutter_details))

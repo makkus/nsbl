@@ -11,8 +11,8 @@ from frkl import frkl
 from six import string_types
 
 # from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, \
-    # UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, \
-    # IdProcessor, dict_merge, Frkl
+# UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, \
+# IdProcessor, dict_merge, Frkl
 
 # stem key for inventory
 ENVS_KEY = "envs"
@@ -128,6 +128,7 @@ NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
     frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor(),
     frkl.FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
 
+
 def generate_nsbl_tasks_format(task_descs, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT):
     """Utility method to populate the KEY_MOVE_MAP key for the tasks frkl."""
 
@@ -136,12 +137,13 @@ def generate_nsbl_tasks_format(task_descs, tasks_format=DEFAULT_NSBL_TASKS_BOOTS
     for task_desc in task_descs:
         if DEFAULT_KEY_KEY in task_desc[TASKS_META_KEY].keys():
             # TODO: check for duplicate keys?
-            result[frkl.KEY_MOVE_MAP_NAME][task_desc[TASKS_META_KEY][TASK_META_NAME_KEY]] = "vars/{}".format(task_desc[TASKS_META_KEY][DEFAULT_KEY_KEY])
+            result[frkl.KEY_MOVE_MAP_NAME][task_desc[TASKS_META_KEY][TASK_META_NAME_KEY]] = "vars/{}".format(
+                task_desc[TASKS_META_KEY][DEFAULT_KEY_KEY])
 
     return result
 
-def get_default_role_repos_and_task_descs(role_repos, task_descs):
 
+def get_default_role_repos_and_task_descs(role_repos, task_descs):
     if role_repos:
         role_repos = role_repos
     else:
@@ -185,6 +187,7 @@ def calculate_role_repos(role_repos, use_default_roles=True):
 
     return role_repos
 
+
 def calculate_task_descs(task_descs, role_repos=[], add_upper_case_versions=True):
     """Utility method to calculate which task descriptions to use.
 
@@ -222,12 +225,12 @@ def calculate_task_descs(task_descs, role_repos=[], add_upper_case_versions=True
 
         task_descs = repo_task_descs + task_descs
 
-    #TODO: check whether paths exist
+    # TODO: check whether paths exist
     frkl_format = generate_nsbl_tasks_format([])
     task_desk_frkl = frkl.Frkl(task_descs, [frkl.UrlAbbrevProcessor(),
-                                       frkl.EnsureUrlProcessor(),
-                                       frkl.EnsurePythonObjectProcessor(),
-                                       frkl.FrklProcessor(frkl_format)])
+                                            frkl.EnsureUrlProcessor(),
+                                            frkl.EnsurePythonObjectProcessor(),
+                                            frkl.FrklProcessor(frkl_format)])
 
     processed_task_descs = task_desk_frkl.process()
 

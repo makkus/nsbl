@@ -29,5 +29,6 @@ def main(list, host, config):
         result_json = json.dumps(result, sort_keys=4, indent=4)
         print(result_json)
 
+
 if __name__ == "__main__":
     main()
