@@ -334,6 +334,8 @@ class ClickStdOutput(object):
                 return item["vars"]["name"]
             elif item.get("vars", {}).get("repo", None):
                 return item["vars"]["name"]
+            elif item.get("url", None) and item.get("path"):
+                return "{} -> {}".format(item["url"], item["path"])
 
         return item
 
