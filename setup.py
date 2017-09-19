@@ -24,7 +24,7 @@ test_requirements = [
 
 setup(
     name='nsbl',
-    version='0.0.55',
+    version='0.0.56',
     description="elastic ansible configuration",
     long_description=readme + '\n\n' + history,
     author="Markus Binsteiner",
