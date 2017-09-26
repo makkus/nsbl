@@ -80,7 +80,7 @@ ROLE_META_FILENAME = "meta.yml"
 # path where nsbl default roles are located
 DEFAULT_ROLES_PATH = os.path.join(os.path.dirname(__file__), "external", "default-roles")
 # default task description filename
-TASK_DESC_DEFAULT_FILENAME = "task-descs.yml"
+TASK_DESC_DEFAULT_FILENAME = "task-aliases.yml"
 ANSIBLE_ROLE_CACHE_DIR = os.path.expanduser("~/.cache/ansible-roles")
 
 LOCAL_ROLE_TYPE = "local"
