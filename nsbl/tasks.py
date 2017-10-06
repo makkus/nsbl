@@ -5,6 +5,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import fnmatch
+import re
 
 import yaml
 from builtins import *
@@ -13,6 +14,7 @@ from jinja2 import Environment, PackageLoader
 
 from .defaults import *
 from .exceptions import NsblException
+from frkl.frkl import Frkl, PLACEHOLDER, UrlAbbrevProcessor, dict_merge
 
 DEFAULT_TASKS_PRE_CHAIN = [frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor()]
 DEFAULT_EXCLUDE_DIRS = [".git", ".tox", ".cache"]
@@ -25,6 +27,26 @@ ROLE_CACHE = {}
 def to_nice_yaml(var):
     """util function to convert to yaml in a jinja template"""
     return yaml.safe_dump(var, default_flow_style=False)
+
+
+def expand_string_to_git_repo(value, default_abbrevs):
+    if isinstance(value, string_types):
+        is_string = True
+    elif isinstance(value, (list, tuple)):
+        is_string = False
+    else:
+        raise Exception("Not a supported type (only string or list are accepted): {}".format(value))
+
+    try:
+        frkl_obj = Frkl(value, [
+            UrlAbbrevProcessor(init_params={"abbrevs": default_abbrevs, "add_default_abbrevs": False})])
+        result = frkl_obj.process()
+        if is_string:
+            return result[0]
+        else:
+            return result
+    except (Exception) as e:
+        raise Exception("'{}' is not a valid repo url: {}".format(value, e.message))
 
 
 def find_roles_in_repo(role_repo):
@@ -243,6 +265,52 @@ def add_roles(all_roles, role_obj, role_repos=[]):
             "Role description needs to be either a list of strings or a dict. Value '{}' is not valid.".format(
                 role_obj))
 
+def calculate_local_repo_path(repo_url):
+    clean_string = re.sub('[^A-Za-z0-9]+', os.sep, repo_url)
+    return clean_string
+
+def get_default_repo(repo_name, repo_dict):
+    repo = repo_dict.get(repo_name, None)
+    return repo
+
+
+# DEFAULT_LOCAL_REPO_PATH_BASE, DEFAULT_REPOS, DEFAULT_ABBREVIATIONS
+def get_all_roles_in_repos(repos, repo_path_base, default_repo_dict, default_abbrevs):
+    result = []
+    repos = get_local_repos(repos, "roles", repo_path_base, default_repo_dict, default_abbrevs)
+
+    return find_all_roles_in_repos(repos)
+
+def find_all_roles_in_repos(repos):
+
+    result = []
+    for repo in repos:
+        roles = find_roles_in_repo(repo)
+        result.extend(roles)
+
+    return result
+
+def get_role_path_for_role_in_repos(role_name, role_repos):
+
+    pass
+
+def get_local_repos(repo_names, repo_type, repo_path_base, default_repo_dict, default_abbrevs):
+    result = []
+    for repo_name in repo_names:
+        repo = get_default_repo(repo_name, default_repo_dict)
+
+        if not repo:
+            repo_url = expand_string_to_git_repo(repo_name, default_abbrevs)
+            relative_repo_path = calculate_local_repo_path(repo_url)
+            repo_path = os.path.join(repo_path_base, relative_repo_path)
+            result.append(repo_path)
+        else:
+            repos = repo.get(repo_type, [])
+            for r in repos:
+                result.append(r[1])
+
+    return result
+
 
 def get_internal_role_path(role, role_repos=[]):
     """Resolves the local path to the (internal) role with the provided name.
@@ -262,10 +330,14 @@ def get_internal_role_path(role, role_repos=[]):
     if os.path.exists(url):
         return url
 
-    for repo in role_repos:
-        path = os.path.join(os.path.expanduser(repo), url)
-        if os.path.exists(path):
-            return path
+    role_desc = check_role_desc(role, role_repos)
+
+    if role_desc["type"] == "local":
+        return role_desc['src']
+
+    role_desc = check_role_desc(role.lower(), role_repos)
+    if role_desc["type"] == "local":
+        return role_desc['src']
 
     return False
 
@@ -552,7 +624,7 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
         elif not task_type == TASK_TASK_TYPE:
             if int_role_path:
                 task_type = INT_ROLE_TASK_TYPE
-                add_roles(task_roles, task_name, self.role_repos)
+                add_roles(task_roles, {"src": int_role_path, "name": task_name}, self.role_repos)
             elif task_name in task_role_names or task_name in meta_role_names:
                 task_type = EXT_ROLE_TASK_TYPE
             elif "." in task_name:

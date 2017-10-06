@@ -185,58 +185,58 @@ def merge_roles(role_obj, role_repos=[]):
     return role_dict
 
 
-def expand_external_role(role_dict, role_repos=[]):
-    """Ensures the provided input is a dict, and if not converts it in an approriate way.
+# def expand_external_role(role_dict, role_repos=[]):
+#     """Ensures the provided input is a dict, and if not converts it in an approriate way.
 
-    Args:
-      role_dict (str, dict): the input role description
-      role_repos (list): the available local role repos
-    Returns:
-      dict: the fully expanded role description(s)
-    """
+#     Args:
+#       role_dict (str, dict): the input role description
+#       role_repos (list): the available local role repos
+#     Returns:
+#       dict: the fully expanded role description(s)
+#     """
 
-    temp_role_dict = merge_roles(role_dict, role_repos)
+#     temp_role_dict = merge_roles(role_dict, role_repos)
 
-    result = {}
-    for role_name, role_details in temp_role_dict.items():
-        temp_role = {}
-        if isinstance(role_details, string_types):
-            temp_role["url"] = role_details
-        elif isinstance(role_details, dict):
-            temp_role["url"] = role_details["url"]
-            if "version" in role_details.keys():
-                temp_role["version"] = role_details["version"]
-        result[role_name] = temp_role
+#     result = {}
+#     for role_name, role_details in temp_role_dict.items():
+#         temp_role = {}
+#         if isinstance(role_details, string_types):
+#             temp_role["url"] = role_details
+#         elif isinstance(role_details, dict):
+#             temp_role["url"] = role_details["url"]
+#             if "version" in role_details.keys():
+#                 temp_role["version"] = role_details["version"]
+#         result[role_name] = temp_role
 
-    return result
+#     return result
 
 
-def get_internal_role_path(role_dict, role_repos=[]):
-    """Parses the input and returns the local path to the specified role, or False if not found.
+# def get_internal_role_path(role_dict, role_repos=[]):
+#     """Parses the input and returns the local path to the specified role, or False if not found.
 
-    Args:
-      role_dict (str, dict): the role url or description dict
-      role_repos (list): the available local role repos
-    Returns:
-      str, bool: the path to the local role, or False if not found
-    """
+#     Args:
+#       role_dict (str, dict): the role url or description dict
+#       role_repos (list): the available local role repos
+#     Returns:
+#       str, bool: the path to the local role, or False if not found
+#     """
 
-    if isinstance(role_dict, string_types):
-        url = role_dict
-    elif isinstance(role_dict, dict):
-        url = role_dict["url"]
-    else:
-        raise NsblException("Type '{}' not supported for role description: {}".format(type(role_dict), role_dict))
+#     if isinstance(role_dict, string_types):
+#         url = role_dict
+#     elif isinstance(role_dict, dict):
+#         url = role_dict["url"]
+#     else:
+#         raise NsblException("Type '{}' not supported for role description: {}".format(type(role_dict), role_dict))
 
-    if os.path.exists(url):
-        return url
+#     if os.path.exists(url):
+#         return url
 
-    for repo in role_repos:
-        path = os.path.join(os.path.expanduser(repo), url)
-        if os.path.exists(path):
-            return path
+#     for repo in role_repos:
+#         path = os.path.join(os.path.expanduser(repo), url)
+#         if os.path.exists(path):
+#             return path
 
-    return False
+#     return False
 
 
 class Nsbl(FrklCallback):
