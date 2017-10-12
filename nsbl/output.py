@@ -187,6 +187,7 @@ class NsblLogCallbackAdapter(object):
             self.output.start_task(self.current_task_name, self.current_role, self.current_task_is_dyn_role)
 
             self.saved_item = None
+            self.msgs = []
 
             self.task_has_items = False
             self.task_has_nsbl_items = False
