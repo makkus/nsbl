@@ -22,7 +22,8 @@ ROLE_MARKER_FOLDERNAME = "meta"
 ROLE_META_FILENAME = "main.yml"
 
 ROLE_CACHE = {}
-
+ABBREV_VERBOSE = True
+ABBREV_WARN = True
 
 def to_nice_yaml(var):
     """util function to convert to yaml in a jinja template"""
