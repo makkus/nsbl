@@ -12,7 +12,7 @@ with open('HISTORY.rst') as history_file:
 requirements = [
     'Click>=6.7',
     'click-log>=0.1.8',
-    'cookiecutter>=1.5.1',
+    'cookiecutter==1.5.1',
     'ansible==2.4.0.0',
     'frkl==0.2.1',
     'cursor>=1.1.0'
