@@ -75,6 +75,7 @@ class NsblLogCallbackAdapter(object):
         self.last_action = None
         self.msgs = []
         self.stderrs = []
+        self.stdouts = []
 
         self.failed = False
         self.skipped = True
@@ -108,7 +109,7 @@ class NsblLogCallbackAdapter(object):
             if self.current_role_id != None:
                 self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item,
                                                  self.current_task_is_dyn_role)
-                self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stderrs)
+                self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stdouts, self.stderrs)
                 self.output.start_new_line()
             self.current_role_id = None
             self.current_task = None
@@ -152,7 +153,7 @@ class NsblLogCallbackAdapter(object):
             if self.current_role_id != None:
                 self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item,
                                                  self.current_task_is_dyn_role)
-                self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stderrs)
+                self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stdouts, self.stderrs)
             self.current_env_id = env_id
             self.current_role_id = role_id
             self.current_dyn_task_id = dyn_task_id
@@ -168,6 +169,7 @@ class NsblLogCallbackAdapter(object):
 
             self.task_has_items = False
             self.task_has_nsbl_items = False
+            self.stdouts = []
             self.stderrs = []
             self.msgs = []
 
@@ -188,6 +190,8 @@ class NsblLogCallbackAdapter(object):
 
             self.saved_item = None
             self.msgs = []
+            self.stdouts = []
+            self.stderrs = []
 
             self.task_has_items = False
             self.task_has_nsbl_items = False
@@ -197,6 +201,7 @@ class NsblLogCallbackAdapter(object):
         task_desc = details.get('name', None)
 
         msg = details.get('msg', None)
+        stdout = details.get('stdout_lines', [])
         stderr = details.get('stderr_lines', [])
         item = details.get('item', None)
         status = details.get('status', None)
@@ -212,6 +217,10 @@ class NsblLogCallbackAdapter(object):
         if msg:
             self.msgs.append(msg)
 
+        if stdout:
+            for s in stdout:
+                s = s.encode(ENCODING, errors='replace').strip()
+                self.stdouts.append(s)
         if stderr:
             for s in stderr:
                 s = s.encode(ENCODING, errors='replace').strip()
@@ -219,7 +228,7 @@ class NsblLogCallbackAdapter(object):
 
         event = {"category": category, "task_name": task_name, "task_desc": task_desc, "status": status, "item": item,
                  "msg": msg, "skipped": skipped, "ignore_errors": ignore_errors, "ansible_task_name": ansible_task_name,
-                 "action": action, "stderr": stderr}
+                 "action": action, "stdout": stdout, "stderr": stderr}
 
         if status and status == "changed":
             self.changed = True
@@ -245,7 +254,7 @@ class NsblLogCallbackAdapter(object):
 
         self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item,
                                          self.current_task_is_dyn_role)
-        self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stderrs)
+        self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stdouts, self.stderrs)
 
 
 class ClickStdOutput(object):
@@ -498,7 +507,7 @@ class ClickStdOutput(object):
                 click.echo(output)
                 self.new_line = True
 
-    def process_role_changed(self, failed, skipped, changed, msgs, stderrs):
+    def process_role_changed(self, failed, skipped, changed, msgs, stdouts, stderrs):
 
         if not self.new_line:
             click.echo("\b\b\b  => ", nl=False)
@@ -522,6 +531,10 @@ class ClickStdOutput(object):
             else:
                 output.append("failed")
 
+            if stdouts:
+                output.append("      stdout:")
+                for e in stdouts:
+                    output.append("        -> {}".format(e))
             if stderrs:
                 output.append("      stderr:")
                 for e in stderrs:
