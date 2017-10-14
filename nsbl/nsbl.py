@@ -636,6 +636,7 @@ class NsblRunner(object):
 
         try:
 
+
             parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose,
                                           ask_become_pass=ask_become_pass, extra_plugins=extra_plugins,
                                           callback=callback, add_timestamp_to_env=add_timestamp_to_env,
@@ -666,17 +667,18 @@ class NsblRunner(object):
             with CursorOff():
                 click.echo("")
                 for line in iter(proc.stdout.readline, ''):
-                    # try:
                     callback_adapter.add_log_message(line)
-                    # except Exception as e:
-                    # proc.kill()
-                    # print("Current line:")
-                    # print("")
-                    # print(line)
-                    # print("")
-                    # raise e
 
                 callback_adapter.finish_up()
+
+            while proc.poll() is None:
+                # Process hasn't exited yet, let's wait some
+                time.sleep(0.5)
+
+            # Get return code from process
+            return_code = proc.returncode
+
+            parameters["return_code"] = return_code
 
         except KeyboardInterrupt:
             # proc.terminate()
