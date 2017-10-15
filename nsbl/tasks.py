@@ -14,7 +14,8 @@ from jinja2 import Environment, PackageLoader
 
 from .defaults import *
 from .exceptions import NsblException
-from frkl.frkl import Frkl, PLACEHOLDER, UrlAbbrevProcessor, dict_merge
+from frkl.frkl import Frkl, PLACEHOLDER, UrlAbbrevProcessor, dict_merge, FrklProcessor
+
 
 DEFAULT_TASKS_PRE_CHAIN = [frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor()]
 DEFAULT_EXCLUDE_DIRS = [".git", ".tox", ".cache"]
@@ -79,6 +80,39 @@ def find_roles_in_repo(role_repo):
             result[role_name] = role_folder
 
     ROLE_CACHE[role_repo] = result
+    return result
+
+def get_role_details_in_repo(role_repo):
+
+    roles = find_roles_in_repo(role_repo)
+
+    result = {}
+
+    for role, path in roles.items():
+        result[role] = {}
+        readme = os.path.join(path, "README.md")
+        if not os.path.exists(readme):
+            result[role]["readme"] = "n/a"
+        else:
+            with open(readme, 'r') as f:
+                content = f.read()
+                result[role]["readme"] = content
+
+        defaults_path = os.path.join(path, "defaults")
+
+        if not os.path.exists(readme):
+            result[role]["defaults"] = {}
+        else:
+            d_temp = {}
+            for defaults_file in os.listdir(defaults_path):
+                temp = os.path.join(defaults_path, defaults_file)
+                with open(temp, 'r') as f:
+                    content = f.read()
+                    d_temp[defaults_file] = yaml.safe_load(content)
+
+
+            result[role]["defaults"] = d_temp
+
     return result
 
 
