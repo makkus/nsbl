@@ -11,9 +11,6 @@ tasks:
   - yum:
       meta:
         become: yes
-  - checkout-git:
-      meta:
-        default-key: repos
   - delete:
       meta:
          default-key: path
