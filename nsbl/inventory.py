@@ -287,6 +287,12 @@ class NsblInventory(FrklCallback):
                                                                                                         {}).keys():
             self.hosts["localhost"][VARS_KEY]["ansible_connection"] = "local"
 
+        if "localhost" in self.hosts.keys() and "ansible_python_interpreter" not in self.hosts["localhost"].get(VARS_KEY,
+                                                                                                        {}).keys():
+
+            self.hosts["localhost"][VARS_KEY]["ansible_python_interpreter"] = sys.executable
+
+
     def list(self):
         """Lists all groups in the format that is required for ansible dynamic inventories.
 
