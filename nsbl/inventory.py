@@ -290,7 +290,8 @@ class NsblInventory(FrklCallback):
         if "localhost" in self.hosts.keys() and "ansible_python_interpreter" not in self.hosts["localhost"].get(VARS_KEY,
                                                                                                         {}).keys():
 
-            self.hosts["localhost"][VARS_KEY]["ansible_python_interpreter"] = sys.executable
+            if not os.path.exists("/usr/bin/python"):
+                self.hosts["localhost"][VARS_KEY]["ansible_python_interpreter"] = sys.executable
 
 
     def list(self):
