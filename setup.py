@@ -14,7 +14,7 @@ requirements = [
     'click-log>=0.1.8',
     'cookiecutter==1.5.1',
     'ansible==2.4.0.0',
-    'frkl==0.1.0',
+    'frkl==version='0.1.0'',
     'cursor>=1.1.0'
 ]
 
@@ -24,7 +24,7 @@ test_requirements = [
 
 setup(
     name='nsbl',
-    version='0.1.0',
+    version='version='0.1.0'',
     description="elastic ansible configuration",
     long_description=readme + '\n\n' + history,
     author="Markus Binsteiner",
