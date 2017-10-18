@@ -548,6 +548,8 @@ class NsblTasks(frkl.FrklCallback):
         # if r.get("use_become", False):
         # self.use_become = True
 
+        if role.use_become:
+            self.use_become = True
         add_roles(self.all_ansible_roles, role.roles)
 
     def result(self):
@@ -555,6 +557,7 @@ class NsblTasks(frkl.FrklCallback):
         for r in self.all_ansible_roles:
             if r["type"] == REMOTE_ROLE_TYPE:
                 self.ext_roles = True
+
             if r.get("use_become", False):
                 self.use_become = True
 
