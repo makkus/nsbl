@@ -301,7 +301,13 @@ def add_roles(all_roles, role_obj, role_repos=[]):
                 role_obj))
 
 def calculate_local_repo_path(repo_url):
-    clean_string = re.sub('[^A-Za-z0-9]+', os.sep, repo_url)
+
+    repo_name = repo_url.split(os.sep)[-1]
+
+    if repo_name.endswith(".git"):
+        repo_name = repo_name[0:-4]
+
+    clean_string = re.sub('[^A-Za-z0-9]+', os.sep, repo_url) + os.sep + repo_name
     return clean_string
 
 def get_default_repo(repo_name, repo_dict):
