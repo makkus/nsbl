@@ -80,6 +80,7 @@ def find_roles_in_repo(role_repo):
             result[role_name] = role_folder
 
     ROLE_CACHE[role_repo] = result
+
     return result
 
 def get_role_details_in_repo(role_repo):
@@ -308,6 +309,7 @@ def calculate_local_repo_path(repo_url):
         repo_name = repo_name[0:-4]
 
     clean_string = re.sub('[^A-Za-z0-9]+', os.sep, repo_url) + os.sep + repo_name
+    # clean_string = re.sub('[^A-Za-z0-9]+', os.sep, repo_url)
     return clean_string
 
 def get_default_repo(repo_name, repo_dict):
@@ -341,9 +343,14 @@ def get_local_repos(repo_names, repo_type, repo_path_base, default_repo_dict, de
         repo = get_default_repo(repo_name, default_repo_dict)
 
         if not repo:
-            repo_url = expand_string_to_git_repo(repo_name, default_abbrevs)
-            relative_repo_path = calculate_local_repo_path(repo_url)
-            repo_path = os.path.join(repo_path_base, relative_repo_path)
+
+            if not os.path.exists(repo_name):
+                repo_url = expand_string_to_git_repo(repo_name, default_abbrevs)
+                relative_repo_path = calculate_local_repo_path(repo_url)
+                repo_path = os.path.join(repo_path_base, relative_repo_path)
+            else:
+                repo_path = repo_name
+
             result.append(repo_path)
         else:
             repos = repo.get(repo_type, [])
