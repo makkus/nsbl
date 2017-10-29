@@ -308,8 +308,10 @@ def calculate_local_repo_path(repo_url):
     if repo_name.endswith(".git"):
         repo_name = repo_name[0:-4]
 
-    clean_string = re.sub('[^A-Za-z0-9]+', os.sep, repo_url) + os.sep + repo_name
-    # clean_string = re.sub('[^A-Za-z0-9]+', os.sep, repo_url)
+    # clean_string = re.sub('[^A-Za-z0-9]+', os.sep, repo_url) + os.sep + repo_name
+    REPL_CHARS = '[^_\-A-Za-z0-9\.]+'
+    clean_string = re.sub(REPL_CHARS, os.sep, repo_url) + os.sep + repo_name
+
     return clean_string
 
 def get_default_repo(repo_name, repo_dict):
