@@ -4,6 +4,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import copy
 import fnmatch
 import re
 
@@ -931,12 +932,17 @@ class NsblDynRole(NsblRole):
 
         role_dict = {
             "role_name": self.role_name,
-            "tasks": tasks,
+            "tasks": copy.deepcopy(tasks),
             "dependencies": ""
         }
 
         current_dir = os.getcwd()
         os.chdir(target_folder)
+
+        # empty "vars" dicts, as we don't need them and they might contain template strings cookiecutter wouldn't like
+        for role_name, role_details in role_dict.get("tasks", {}).items():
+            for var_key in role_details.get("vars", {}).keys():
+                role_details["vars"][var_key] = ""
 
         cookiecutter(role_template_local_path, extra_context=role_dict, no_input=True)
         os.chdir(current_dir)
