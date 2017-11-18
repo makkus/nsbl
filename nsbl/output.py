@@ -277,11 +277,11 @@ class ClickStdOutput(object):
 
     def print_error(self, line, error):
 
-        click.echo("\n\nEXECUTION ERROR: {}:\n{}\n\n".format(error.message, line))
+        click.echo(u"\n\nEXECUTION ERROR: {}:\n{}\n\n".format(error.message, line))
 
     def start_env(self, env_name):
 
-        click.echo("* starting tasks (on '{}')...".format(env_name))
+        click.echo(u"* starting tasks (on '{}')...".format(env_name))
 
     def start_role(self, current_role):
 
@@ -292,8 +292,8 @@ class ClickStdOutput(object):
         else:
             msg = current_role.get("meta", {}).get("task-desc", None)
             if not msg:
-                msg = "applying role '{}'...".format(current_role["name"])
-            msg = " * {}...".format(msg)
+                msg = u"applying role '{}'...".format(current_role["name"])
+            msg = u" * {}...".format(msg)
             self.print_task_string(msg)
 
             self.new_line = False
@@ -301,7 +301,7 @@ class ClickStdOutput(object):
     def print_task_string(self, task_str):
 
         if task_str.startswith("   - [") or any(
-            (task_str.startswith("   - {}".format(token)) for token in self.ignore_strings)):
+            (task_str.startswith(u"   - {}".format(token)) for token in self.ignore_strings)):
             self.last_string_ignored = True
             self.new_line = True
             return
@@ -309,7 +309,7 @@ class ClickStdOutput(object):
         if self.terminal_width > 0:
             reserve = 2
             if len(task_str) > self.terminal_width - reserve:
-                task_str = "{}...".format(task_str[0:self.terminal_width - reserve - 3])
+                task_str = u"{}...".format(task_str[0:self.terminal_width - reserve - 3])
         click.echo(task_str, nl=False)
         self.new_line = False
 
@@ -317,14 +317,14 @@ class ClickStdOutput(object):
         if current_is_dyn_role:
             if not self.new_line:
                 click.echo("")
-            self.print_task_string("     * {}... ".format(task_name))
+            self.print_task_string(u"     * {}... ".format(task_name))
             # click.echo("     * {}... ".format(task_name), nl=False)
             self.new_line = False
         else:
             if self.display_sub_tasks:
                 if not self.new_line:
                     click.echo("")
-                self.print_task_string("   - {} => ".format(task_name))
+                self.print_task_string(u"   - {} => ".format(task_name))
                 # click.echo("   - {} => ".format(task_name), nl=False)
 
     def pretty_print_item(self, item):
@@ -345,7 +345,7 @@ class ClickStdOutput(object):
             elif item.get("vars", {}).get("repo", None):
                 return item["vars"]["name"]
             elif item.get("url", None) and item.get("path"):
-                return "{} -> {}".format(item["url"], item["path"])
+                return u"{} -> {}".format(item["url"], item["path"])
 
         return item
 
@@ -362,7 +362,7 @@ class ClickStdOutput(object):
             if not self.new_line:
                 click.echo("")
 
-            output = "       - {} => ".format(item)
+            output = u"       - {} => ".format(item)
             self.print_task_string(output)
             # click.echo(output, nl=False)
             self.new_line = False
@@ -382,7 +382,7 @@ class ClickStdOutput(object):
                         return
 
                     msg = "no change"
-            output = "ok ({})".format(msg)
+            output = u"ok ({})".format(msg)
             click.echo(output)
         elif ev["category"] == "nsbl_item_failed":
             msg = ev.get('msg', None)
@@ -406,7 +406,7 @@ class ClickStdOutput(object):
             msgs = [msgs]
         for msg in msgs:
             for m in msg.split("\n"):
-                click.echo("\t\t{}".format(m.strip()))
+                click.echo(u"\t\t{}".format(m.strip()))
 
     def display_item(self, ev, current_is_dyn_role):
 
@@ -434,7 +434,7 @@ class ClickStdOutput(object):
                         return
 
                     msg = "no change"
-            output = "       - {} => ok ({})".format(item, msg)
+            output = u"       - {} => ok ({})".format(item, msg)
             click.echo(output)
         elif ev["category"] == "item_failed":
             msg = ev.get('msg', None)
@@ -445,11 +445,11 @@ class ClickStdOutput(object):
                     msg = "no error details"
             # output = "       - {} => failed: {}".format(item, msg)
             # click.echo(output)
-            output = "       - {} => failed:".format(item)
+            output = u"       - {} => failed:".format(item)
             click.echo(output)
             self.format_error(msg)
         elif ev["category"] == "item_skipped":
-            output = "       - {} => skipped".format(item)
+            output = u"       - {} => skipped".format(item)
             click.echo(output)
 
         self.new_line = True
@@ -466,7 +466,7 @@ class ClickStdOutput(object):
         if ev["ansible_task_name"].startswith("nsbl_started="):
             return
         if ev["ansible_task_name"].startswith("nsbl_finished="):
-            output = "no task information available"
+            output = u"no task information available"
             click.echo(output)
             self.new_line = True
         else:
@@ -484,18 +484,18 @@ class ClickStdOutput(object):
                             return
 
                         msg = "no change"
-                output = "ok ({})".format(msg)
+                output = u"ok ({})".format(msg)
                 click.echo(output)
                 self.new_line = True
             elif ev["category"] == "failed":
                 if ev["msg"]:
-                    output = "failed: {}".format(ev["msg"])
+                    output = u"failed: {}".format(ev["msg"])
                 else:
                     if ev.get("ignore_errors", False):
                         msg = "(but errors ignored)"
                     else:
                         msg = "(no error details)"
-                    output = "failed: {}".format(msg)
+                    output = u"failed: {}".format(msg)
                 click.echo(output)
                 self.new_line = True
             elif ev["category"] == "skipped":
@@ -522,23 +522,23 @@ class ClickStdOutput(object):
             output = []
             if msgs:
                 if len(msgs) < 2:
-                    output.append("failed: {}".format("".join(msgs)))
+                    output.append(u"failed: {}".format("".join(msgs)))
                 else:
                     output.append("failed:")
                     output.append("      messages in this task:")
                     for m in msgs:
-                        output.append("        -> {}".format(m))
+                        output.append(u"        -> {}".format(m))
             else:
                 output.append("failed")
 
             if stdouts:
                 output.append("      stdout:")
                 for e in stdouts:
-                    output.append("        -> {}".format(e))
+                    output.append(u"        -> {}".format(e))
             if stderrs:
                 output.append("      stderr:")
                 for e in stderrs:
-                    output.append("        -> {}".format(e))
+                    output.append(u"        -> {}".format(e))
 
             output = "\n".join(output)
             click.echo(output)
