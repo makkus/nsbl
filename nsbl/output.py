@@ -301,7 +301,7 @@ class ClickStdOutput(object):
     def print_task_string(self, task_str):
 
         if task_str.startswith("   - [") or any(
-            (task_str.startswith("   - {}".format(token)) for token in self.ignore_strings)):
+            (task_str.startswith(u"   - {}".format(token)) for token in self.ignore_strings)):
             self.last_string_ignored = True
             self.new_line = True
             return
@@ -309,7 +309,7 @@ class ClickStdOutput(object):
         if self.terminal_width > 0:
             reserve = 2
             if len(task_str) > self.terminal_width - reserve:
-                task_str = "{}...".format(task_str[0:self.terminal_width - reserve - 3])
+                task_str = u"{}...".format(task_str[0:self.terminal_width - reserve - 3])
         click.echo(task_str, nl=False)
         self.new_line = False
 
@@ -317,14 +317,14 @@ class ClickStdOutput(object):
         if current_is_dyn_role:
             if not self.new_line:
                 click.echo("")
-            self.print_task_string("     * {}... ".format(task_name))
+            self.print_task_string(u"     * {}... ".format(task_name))
             # click.echo("     * {}... ".format(task_name), nl=False)
             self.new_line = False
         else:
             if self.display_sub_tasks:
                 if not self.new_line:
                     click.echo("")
-                self.print_task_string("   - {} => ".format(task_name))
+                self.print_task_string(u"   - {} => ".format(task_name))
                 # click.echo("   - {} => ".format(task_name), nl=False)
 
     def pretty_print_item(self, item):
