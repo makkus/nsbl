@@ -2,11 +2,13 @@
 
 import json
 import logging
+import pprint
 import subprocess
 import sys
 
 import click
 import cursor
+from six import string_types
 
 from .defaults import *
 
@@ -210,9 +212,9 @@ class NsblLogCallbackAdapter(object):
         action = details.get('action', self.last_action)
         ansible_task_name = details.get('name', None)
 
+        if not isinstance(msg, string_types):
+            msg = pprint.pformat(msg)
         if msg:
-            # if isinstance(msg, dict):
-            # raise Exception(msg)
             msg = msg.encode(ENCODING, errors='replace').strip()
         if msg:
             self.msgs.append(msg)
