@@ -15,7 +15,8 @@ requirements = [
     'cookiecutter==1.5.1',
     'ansible==2.4.1.0',
     'frkl==0.1.0',
-    'cursor>=1.1.0'
+    'cursor>=1.1.0',
+    'six==1.11.0'
 ]
 
 test_requirements = [
