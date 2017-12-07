@@ -6,18 +6,21 @@ import sys
 
 import click
 import click_log
+import logging
 import yaml
 
 from . import __version__ as VERSION
 from .nsbl import Nsbl, NsblRunner
 
+logger = logging.getLogger("nsbl")
+click_log.basic_config(logger)
 
 @click.command()
 @click.option('--version', help='the version of frkl you are using', is_flag=True)
 @click.option('--role-repo', '-r', help='path to a local folder containing ansible roles', multiple=True)
 @click.option('--task-desc', '-t', help='path to a local task description yaml file', multiple=True)
 @click.option('--stdout-callback', '-c', help='name of or path to callback plugin to be used as default stdout plugin',
-              default="nsbl_internal")
+              default="default")
 @click.option('--target', '-t',
               help="target output directory of created ansible environment, defaults to 'nsbl_env' in the current directory",
               default="~/.nsbl/runs/archive/run")
@@ -28,8 +31,7 @@ from .nsbl import Nsbl, NsblRunner
               default=False)
 @click.option('--ask-become-pass', help='whether to ask the user for a sudo password if necessary', is_flag=True,
               default=True)
-@click_log.simple_verbosity_option()
-@click_log.init("nsbl")
+@click_log.simple_verbosity_option(logger)
 def cli(version, role_repo, task_desc, stdout_callback, target, force, config, no_run, ask_become_pass):
     """Console script for nsbl"""
 

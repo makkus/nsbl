@@ -56,7 +56,7 @@ def cli(ctx, version, role_repo, task_desc):
               help="target output directory of created ansible environment, defaults to 'nsbl_env' in the current directory",
               default="nsbl_env")
 @click.option('--stdout-callback', '-c', help='name of or path to callback plugin to be used as default stdout plugin',
-              default="nsbl_internal")
+              default="default")
 # @click.option('--static/--dynamic', default=True, help="whether to render a dynamic inventory script using the provided config files instead of a plain ini-type config file and group_vars and host_vars folders, default: static")
 @click.option('--force', '-f', is_flag=True, help="delete potentially existing target directory", default=False)
 @click.pass_context

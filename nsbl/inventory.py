@@ -370,3 +370,35 @@ class WrapTasksIntoLocalhostEnvProcessor(ConfigProcessor):
         else:
             return {"localhost": {TASKS_KEY: self.task_configs, TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST},
                                   VARS_KEY: self.task_vars}}
+
+class WrapTasksIntoHostsProcessor(ConfigProcessor):
+    """Wraps a list of tasks into a localhost environment.
+
+    Convenience processor to not have to do this manually, keeps configuration files minimal and sweet.
+    """
+
+    def __init__(self, init_params=None):
+        super(WrapTasksIntoLocalhostEnvProcessor, self).__init__(init_params)
+
+        self.task_configs = []
+
+    def validate_init(self):
+
+        self.task_vars = self.init_params.get(VARS_KEY, {})
+        self.hosts = self.init_params.get(ENV_HOSTS_KEY, {})
+
+        return True
+
+    def handles_last_call(self):
+
+        return True
+
+    def process_current_config(self):
+
+        config = self.current_input_config
+
+        if not self.last_call:
+            self.task_configs.append(config)
+        else:
+            return {"localhost": {TASKS_KEY: self.task_configs, TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST},
+                                  VARS_KEY: self.task_vars}}

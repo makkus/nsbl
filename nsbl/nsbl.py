@@ -365,7 +365,7 @@ class Nsbl(FrklCallback):
         return {"inventory": self.inventory, "plays": self.plays}
 
     def render(self, env_dir, extra_plugins=None, extract_vars=True, force=False, ask_become_pass="yes",
-               ansible_args="", callback='nsbl_internal', force_update_roles=False, add_timestamp_to_env=False,
+               ansible_args="", callback='default', force_update_roles=False, add_timestamp_to_env=False,
                add_symlink_to_env=False):
         """Creates the ansible environment in the folder provided.
 
@@ -531,14 +531,6 @@ class Nsbl(FrklCallback):
             dirs = [o for o in os.listdir(extra_plugins) if os.path.isdir(os.path.join(extra_plugins, o))]
             for d in dirs:
                 shutil.copytree(os.path.join(extra_plugins, d), os.path.join(target_dir, d))
-        # shutil.copytree(library_path, os.path.join(target_dir, "library"))
-        # shutil.copytree(action_plugins_path, os.path.join(target_dir, "action_plugins"))
-        # os.makedirs(os.path.join(target_dir, "callback_plugins"))
-        # shutil.copy(os.path.join(callback_plugins_path, "default_to_file.py"), os.path.join(target_dir, "callback_plugins"))
-        # if callback == "nsbl_internal":
-        #     shutil.copy(os.path.join(callback_plugins_path, "nsbl_internal.py"), os.path.join(target_dir, "callback_plugins"))
-        # elif callback == "nsbl_internal_raw":
-        #     shutil.copy(os.path.join(callback_plugins_path, "nsbl_internal.py"), os.path.join(target_dir, "callback_plugins", "{}.py".format(callback)))
 
         if ext_roles:
             # download external roles
@@ -611,7 +603,7 @@ class NsblRunner(object):
           force (bool): whether to overwrite potentially existing files at the target (most likely an old rendered ansible environment)
           ansible_verbose (str): verbosity arguments to ansible-playbook command
           ask_become_pass (str): whether the ansible-playbook call should use 'ask-become-pass' or not (possible values: 'true', 'false', 'auto' -- auto tries to do the right thing but might fail)
-          callback (str): the callback to use for the ansible run. default is 'nsbl_internal'
+          callback (str): the callback to use for the ansible run. default is 'default'
           add_timestamp_to_env (bool): whether to append a timestamp to the run directory (default: False)
           add_symlink_to_env (str): whether to add a symlink to the run directory (will be deleted if exists already and force is specified) - default: False, otherwise path to symlink
           no_run (bool): whether to only render the environment, but not run it
@@ -625,7 +617,7 @@ class NsblRunner(object):
           dict: the parameters of the run
         """
         if callback == None:
-            callback = "nsbl_internal"
+            callback = "default"
 
         if callback == "nsbl_internal":
             lookup_dict = self.nsbl.get_lookup_dict()
