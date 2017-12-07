@@ -13,7 +13,7 @@ requirements = [
     'Click>=6.7',
     'click-log>=0.1.8',
     'cookiecutter==1.5.1',
-    'ansible==2.4.1.0',
+    'ansible==2.4.2.0',
     'frkl==0.1.0',
     'cursor>=1.1.0',
     'six==1.11.0'
