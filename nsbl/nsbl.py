@@ -534,7 +534,7 @@ class Nsbl(FrklCallback):
 
         if ext_roles:
             # download external roles
-            click.echo("Downloading external roles...")
+            click.echo("\nDownloading external roles...")
             role_requirement_file = os.path.join(env_dir, "roles", "roles_requirements.yml")
 
             if not os.path.exists(ANSIBLE_ROLE_CACHE_DIR):
