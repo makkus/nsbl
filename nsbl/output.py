@@ -408,8 +408,13 @@ class ClickStdOutput(object):
             msgs = [msgs]
         for msg in msgs:
             for m in msg.split("\n"):
-                m = m.encode(ENCODING, errors='replace').strip()
-                click.echo(u"\t\t{}".format(m))
+                try:
+                    click.echo(u"\t\t{}".format(m.strip()))
+                except:
+                    try:
+                        click.echo(u"\t\t{}".format(m.decode('utf-8').strip()))
+                    except:
+                        click.echo("... error decoding string ... ignoring ...")
 
     def display_item(self, ev, current_is_dyn_role):
 
