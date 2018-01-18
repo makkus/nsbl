@@ -408,7 +408,8 @@ class ClickStdOutput(object):
             msgs = [msgs]
         for msg in msgs:
             for m in msg.split("\n"):
-                click.echo(u"\t\t{}".format(m.strip()))
+                m = m.encode(ENCODING, errors='replace').strip()
+                click.echo(u"\t\t{}".format(m))
 
     def display_item(self, ev, current_is_dyn_role):
 
