@@ -3,6 +3,11 @@
 #
 # Task file to install Oracle Java Development Kit in a system with a Debian based Linux distribution.
 #
+- name: install dirmngr
+  apt:
+    name="dirmngr"
+    state="present"
+  become: yes
 
 - name: debian | ubuntu | add java ppa repo
   apt_repository:
