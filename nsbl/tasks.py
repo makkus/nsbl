@@ -92,6 +92,8 @@ def get_role_details_in_repo(role_repo):
 
     for role, path in roles.items():
         result[role] = {}
+        result[role]["path"] = path
+        result[role]["repo"] = role_repo
         readme = os.path.join(path, "README.md")
         if not os.path.exists(readme):
             result[role]["readme"] = "n/a"
@@ -102,7 +104,7 @@ def get_role_details_in_repo(role_repo):
 
         defaults_path = os.path.join(path, "defaults")
 
-        if not os.path.exists(readme):
+        if not os.path.exists(defaults_path):
             result[role]["defaults"] = {}
         else:
             d_temp = {}
@@ -114,6 +116,16 @@ def get_role_details_in_repo(role_repo):
 
 
             result[role]["defaults"] = d_temp
+
+        meta_path = os.path.join(path, "meta", "main.yml")
+        if not os.path.exists(meta_path):
+            result[role]["meta"] = {}
+        else:
+            with open(meta_path, 'r') as f:
+                metadata = yaml.safe_load(f)
+                if not metadata:
+                    metadata = {}
+            result[role]["meta"] = metadata
 
     return result
 
