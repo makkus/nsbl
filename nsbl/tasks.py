@@ -141,7 +141,8 @@ def check_role_desc(role_name, role_repos=[]):
             name = os.path.basename(role_name)
             role_type = LOCAL_ROLE_TYPE
         else:
-            for repo in role_repos:
+            # reverse list, so last repos have highest priority
+            for repo in reversed(role_repos):
                 _local_repo_roles = find_roles_in_repo(repo)
                 path = _local_repo_roles.get(role_name, None)
                 # path = os.path.join(os.path.expanduser(repo), role_name)
