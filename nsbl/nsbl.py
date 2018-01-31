@@ -46,26 +46,6 @@ def can_passwordless_sudo():
     return r == 0
 
 
-def get_pkg_mgr_sudo(mgr):
-    """Simple function to determine whether a given package manager needs sudo rights or not.
-    """
-    if mgr == 'no_install':
-        return False
-    elif mgr == 'nix':
-        return False
-    elif mgr == 'conda':
-        return False
-    elif mgr == 'git':
-        return False
-    elif mgr == 'homebrew':
-        return False
-    elif mgr == 'pip':
-        return False
-    elif mgr == 'npm':
-        return False
-    else:
-        return True
-
 
 def get_git_auto_dest_name(repo, parent_dir="~"):
     """Extracts the package/repo name out of a git repo and returns the suggested path where the local copy should live
