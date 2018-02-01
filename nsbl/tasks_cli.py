@@ -61,7 +61,7 @@ def cli(ctx, version, role_repo, task_desc):
 @click.option('--force', '-f', is_flag=True, help="delete potentially existing target directory", default=False)
 @click.pass_context
 def execute(ctx, config, stdout_callback, target, force):
-    nsbl = Nsbl.create(config, ctx.obj['role-repos'], ctx.obj['task-desc'], wrap_into_localhost_env=True)
+    nsbl = Nsbl.create(config, ctx.obj['role-repos'], ctx.obj['task-desc'], wrap_into_hosts=["localhost"])
 
     runner = NsblRunner(nsbl)
     runner.run(target, force, "", stdout_callback)
