@@ -3,6 +3,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import copy
 import yaml
 from builtins import *
 from frkl.frkl import (ConfigProcessor,
@@ -13,6 +14,42 @@ from jinja2 import Environment, PackageLoader
 from .defaults import *
 from .exceptions import NsblException
 
+
+def parse_host_string(host_string):
+
+    if not host_string:
+        return {}
+
+    username = None
+    protocol = None
+    host = None
+    port = None
+
+    if "://" in host_string:
+        protocol, host = host_string.split("://")
+    else:
+        host = host_string
+
+    if "@" in host:
+        username, host = host.split("@")
+
+    if ":" in host:
+        host, port = host.split(":")
+
+    result = {}
+    if protocol:
+        result["protocol"] = protocol
+
+    if username:
+        result["user"] = username
+
+    if host:
+        result["host"] = host
+
+    if port:
+        result["port"] = port
+
+    return result
 
 class NsblInventory(FrklCallback):
     def create(config, default_env_type=DEFAULT_ENV_TYPE,
@@ -68,7 +105,6 @@ class NsblInventory(FrklCallback):
         Args:
           inventory_dir (str): the directory the inventory should be written to
         """
-
         for group, group_vars in self.groups.items():
             vars = group_vars.get(VARS_KEY, {})
             if not vars:
@@ -114,11 +150,13 @@ class NsblInventory(FrklCallback):
           extract_vars (bool): whether to extract all vars (True, default) or write a dynamic inventory script
           relative_paths (bool): only important for when writing dynamic inventory scripts, makes the paths in the script relative to the ansible environment root so its easily copy-able
         """
-
         if extract_vars:
             inventory_string = self.get_inventory_config_string()
             inventory_name = "hosts"
             inventory_file = os.path.join(inventory_dir, inventory_name)
+            par_dir = os.path.dirname(inventory_file)
+            if  not os.path.exists(par_dir):
+                os.makedirs(par_dir)
 
             with open(inventory_file, "w") as text_file:
                 text_file.write(inventory_string)
@@ -368,8 +406,10 @@ class WrapTasksIntoLocalhostEnvProcessor(ConfigProcessor):
         if not self.last_call:
             self.task_configs.append(config)
         else:
-            return {"localhost": {TASKS_KEY: self.task_configs, TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST},
+            result = {"localhost": {TASKS_KEY: self.task_configs, TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST},
                                   VARS_KEY: self.task_vars}}
+
+            return result
 
 class WrapTasksIntoHostsProcessor(ConfigProcessor):
     """Wraps a list of tasks into a localhost environment.
@@ -378,20 +418,21 @@ class WrapTasksIntoHostsProcessor(ConfigProcessor):
     """
 
     def __init__(self, init_params=None):
-        super(WrapTasksIntoLocalhostEnvProcessor, self).__init__(init_params)
+        super(WrapTasksIntoHostsProcessor, self).__init__(init_params)
 
         self.task_configs = []
 
     def validate_init(self):
 
         self.task_vars = self.init_params.get(VARS_KEY, {})
-        self.hosts = self.init_params.get(ENV_HOSTS_KEY, {})
+        self.hosts = self.init_params.get(ENV_HOSTS_KEY, [])
 
         return True
 
     def handles_last_call(self):
 
         return True
+
 
     def process_current_config(self):
 
@@ -400,5 +441,44 @@ class WrapTasksIntoHostsProcessor(ConfigProcessor):
         if not self.last_call:
             self.task_configs.append(config)
         else:
-            return {"localhost": {TASKS_KEY: self.task_configs, TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST},
-                                  VARS_KEY: self.task_vars}}
+
+            result = []
+
+            for host in self.hosts:
+
+                if isinstance(host, string_types):
+                    details = parse_host_string(host)
+                elif isinstance(host, dict):
+                    details = host
+                else:
+                    raise Exception("Can't parse host, unknown type (can only be string or dict): {}".format(host))
+
+                temp_vars = copy.deepcopy(self.task_vars)
+
+                if "host" in details.keys():
+                    temp_vars["host"] = details["host"]
+                else:
+                    temp_vars["host"] = "localhost"
+
+                if "user" in details.keys():
+                    temp_vars["ansible_user"] = details["user"]
+
+                if "protocol" in details.keys():
+                    temp_vars["ansible_connection"] = details["protocol"]
+                else:
+                    if temp_vars["host"] == "localhost" or temp_vars["host"] == "127.0.0.1":
+                        temp_vars["ansible_connection"] = "local"
+                    else:
+                        temp_vars["ansible_connection"] = "ssh"
+
+                if details.get("port", 0) > 0:
+                    temp_vars["ansible_port"] = details["port"]
+
+                temp = { temp_vars["host"]:
+                           { TASKS_KEY: self.task_configs,
+                             TASKS_META_KEY: { ENV_TYPE_KEY: ENV_TYPE_HOST },
+                             VARS_KEY: temp_vars
+                           }}
+                result.append(temp)
+
+            return result
