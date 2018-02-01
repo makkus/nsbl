@@ -20,7 +20,7 @@ from jinja2 import Environment, PackageLoader
 
 from .defaults import *
 from .exceptions import NsblException
-from .inventory import NsblInventory, WrapTasksIntoLocalhostEnvProcessor
+from .inventory import NsblInventory, WrapTasksIntoLocalhostEnvProcessor, WrapTasksIntoHostsProcessor
 from .output import CursorOff, NsblLogCallbackAdapter, NsblPrintCallbackAdapter
 from .tasks import NsblCapitalizedBecomeProcessor, NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks, add_roles
 
@@ -226,7 +226,7 @@ class Nsbl(FrklCallback):
     def create(config, role_repos=[], task_descs=[], include_parent_meta=False, include_parent_vars=False,
                default_env_type=DEFAULT_ENV_TYPE,
                pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()],
-               wrap_into_localhost_env=False, additional_roles=[]):
+               wrap_into_hosts=[], additional_roles=[]):
         """"Utility method to create a Nsbl object out of the configuration and some metadata about how to process that configuration.
 
         Args:
@@ -237,7 +237,7 @@ class Nsbl(FrklCallback):
           include_parent_var (bool): whether to include parent var dict into tasks (not used at the moment)
           default_env_type (str): the type a environment is if it is not explicitely specified, either ENV_TYPE_HOST or ENV_TYPE_GROUP
           pre_chain (list): the chain of ConfigProcessors to plug in front of the one that is used internally, needs to return a python list
-          wrap_into_localhost_env (bool): whether to wrap the input configuration into a localhost environment for convenience
+          wrap_into_hosts (list): whether to wrap the input configuration into a a list of hosts, for convenience, default: []
           additional_roles (list): a list of additional roles that should always be added to the ansible environment
         Returns:
           Nsbl: the Nsbl object, already 'processed'
@@ -248,10 +248,12 @@ class Nsbl(FrklCallback):
                        "additional_roles": additional_roles}
         nsbl = Nsbl(init_params)
 
-        if not wrap_into_localhost_env:
+        # if not wrap_into_localhost_env:
+        if not wrap_into_hosts:
             chain = pre_chain + [FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
         else:
-            wrap_processor = WrapTasksIntoLocalhostEnvProcessor({})
+            # wrap_processor = WrapTasksIntoLocalhostEnvProcessor({})
+            wrap_processor = WrapTasksIntoHostsProcessor({ENV_HOSTS_KEY: wrap_into_hosts})
             chain = pre_chain + [wrap_processor, FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
         inv_frkl = Frkl(config, chain)
         temp = inv_frkl.process(nsbl)
@@ -472,7 +474,10 @@ class Nsbl(FrklCallback):
         # write inventory
         if extract_vars:
             self.inventory.extract_vars(inventory_dir)
+
+
         self.inventory.write_inventory_file_or_script(inventory_dir, extract_vars=extract_vars)
+
 
         # write roles
         all_playbooks = []
@@ -610,13 +615,10 @@ class NsblRunner(object):
             callback_adapter = NsblPrintCallbackAdapter()
 
         try:
-
-
             parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose,
                                           ask_become_pass=ask_become_pass, extra_plugins=extra_plugins,
                                           callback=callback, add_timestamp_to_env=add_timestamp_to_env,
                                           add_symlink_to_env=add_symlink_to_env)
-
             env_dir = parameters["env_dir"]
             if pre_run_callback:
                 pre_run_callback(env_dir)
