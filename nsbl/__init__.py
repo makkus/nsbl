@@ -5,4 +5,4 @@
 
 __author__ = """Markus Binsteiner"""
 __email__ = 'makkus@posteo.de'
-__version__ = '0.3.3'
+__version__ = '0.3.4'
