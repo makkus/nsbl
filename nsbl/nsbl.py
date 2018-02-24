@@ -41,7 +41,8 @@ def can_passwordless_sudo():
         return True
 
     FNULL = open(os.devnull, 'w')
-    p = subprocess.Popen('sudo -n ls', shell=True, stdout=FNULL, stderr=subprocess.STDOUT, close_fds=True)
+    # use -k to ignore any existing sudo token
+    p = subprocess.Popen('sudo -k -n true', shell=True, stdout=FNULL, stderr=subprocess.STDOUT, close_fds=True)
     r = p.wait()
     return r == 0
 
