@@ -2,7 +2,13 @@
 History
 =======
 
-0.3.5 (2018-02.19)
+0.3.6 (2018-03-05)
+------------------
+
+* fixed 'check_sudo_available' behaviour (again)
+* added 'when' and 'register' directive options for frecklecute
+
+0.3.5 (2018-02-19)
 ------------------
 
 * fixed 'check_sudo_available' behaviour
