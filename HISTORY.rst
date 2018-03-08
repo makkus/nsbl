@@ -2,6 +2,11 @@
 History
 =======
 
+0.3.7 (2018-03-08)
+------------------
+
+* catching unicode encoding error when assembling Ansible environment
+
 0.3.6 (2018-03-05)
 ------------------
 
