@@ -68,17 +68,24 @@ def find_roles_in_repo(role_repo):
     result = {}
     for root, dirnames, filenames in os.walk(os.path.realpath(role_repo), topdown=True, followlinks=True):
 
-        dirnames[:] = [d for d in dirnames if d not in DEFAULT_EXCLUDE_DIRS]
-        # check for meta folders
-        for dirname in fnmatch.filter(dirnames, ROLE_MARKER_FOLDERNAME):
+        try:
 
-            meta_file = os.path.realpath(os.path.join(root, dirname, ROLE_META_FILENAME))
-            if not os.path.exists(meta_file):
-                continue
+            dirnames[:] = [d for d in dirnames if d not in DEFAULT_EXCLUDE_DIRS]
+            # check for meta folders
+            for dirname in fnmatch.filter(dirnames, ROLE_MARKER_FOLDERNAME):
 
-            role_folder = root
-            role_name = os.path.basename(role_folder)
-            result[role_name] = role_folder
+                meta_file = os.path.realpath(os.path.join(root, dirname, ROLE_META_FILENAME))
+                if not os.path.exists(meta_file):
+                    continue
+
+                role_folder = root
+                role_name = os.path.basename(role_folder)
+                result[role_name] = role_folder
+
+        except (UnicodeDecodeError) as e:
+
+            print(" X one or more filenames under '{}' can't be decoded, ignoring. This can cause problems later. ".format(root))
+
 
     ROLE_CACHE[role_repo] = result
 
