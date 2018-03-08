@@ -535,6 +535,8 @@ class ClickStdOutput(object):
                     output.append("failed:")
                     output.append("      messages in this task:")
                     for m in msgs:
+                        if m == "None":
+                            continue
                         output.append(u"        -> {}".format(m))
             else:
                 output.append("failed")
