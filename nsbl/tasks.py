@@ -4,6 +4,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+from collections import OrderedDict
 import copy
 import fnmatch
 import re
@@ -600,7 +601,7 @@ class NsblTasks(frkl.FrklCallback):
 
     def get_lookup_dict(self):
 
-        result = {}
+        result = OrderedDict()
         for role in self.roles:
             id = role.role_id
             result[id] = role.get_lookup_dict()
@@ -611,6 +612,50 @@ class NsblTasks(frkl.FrklCallback):
 
         return "NsblTasks(env_id='{}', env_name='{}', role_names={})".format(self.env_id, self.env_name,
                                                                              self.get_role_names())
+
+    def pretty_details(self):
+
+        result = []
+        for role_id, details in self.get_lookup_dict().items():
+            role_name = details["name"]
+            role_type = details["role_type"]
+            temp = OrderedDict()
+            temp["name"] = role_name
+            if role_type == DYN_ROLE_TYPE:
+                temp["type"] = "task-list"
+                role_tasks = []
+                for task_id, task_details in details["tasks"].items():
+                    task_details[TASKS_META_KEY].pop(u"_dyn_task_id")
+                    task_details[TASKS_META_KEY].pop("role-name")
+                    task_details[TASKS_META_KEY].pop("task-name")
+                    task_details[TASKS_META_KEY].pop("task-type")
+                    if not task_details[TASKS_META_KEY]["task-roles"]:
+                        task_details[TASKS_META_KEY].pop("task-roles")
+                    if not task_details[TASKS_META_KEY]["var-keys"]:
+                        task_details[TASKS_META_KEY].pop("var-keys")
+                    else:
+                        # no idea why this is necessary, but I got a yaml error otherwise
+                        var_keys = task_details[TASKS_META_KEY].pop("var-keys")
+                        task_details[TASKS_META_KEY]["var-keys"] = []
+                        for v in var_keys:
+                            task_details[TASKS_META_KEY]["var-keys"].append(v)
+
+                    # task_details.pop(VARS_KEY)
+                    role_tasks.append(task_details)
+
+                temp["tasks"] = role_tasks
+            elif role_type == INT_ROLE_TASK_TYPE:
+                temp["type"] = "trusted role"
+                temp["role name"] = details["task-name"]
+                temp["vars"] = details[VARS_KEY]
+            elif role_type == EXT_ROLE_TASK_TYPE:
+                temp["type"] = "external role"
+                temp["role name"] = details["task-name"]
+                temp["vars"] = details[VARS_KEY]
+
+            result.append(temp)
+
+        return result
 
 
 class NsblCapitalizedBecomeProcessor(frkl.ConfigProcessor):
@@ -880,7 +925,7 @@ class NsblDynRole(NsblRole):
         add_roles(self.roles, {"src": "{}_{}".format(DYN_ROLE_TYPE, self.role_id), "name": self.role_name})
 
     def __repr__(self):
-        return "NsblRole(name={}, role_name={}, type={}, role_id={}, task_names={})".format(self.name, self.role_name,
+        return "NsblDynRole(name={}, role_name={}, type={}, role_id={}, task_names={})".format(self.name, self.role_name,
                                                                                             self.role_type,
                                                                                             self.role_id,
                                                                                             self.task_names)
@@ -889,7 +934,7 @@ class NsblDynRole(NsblRole):
         """Returns a dictionary that enables reverse lookup of roles by their id."""
 
         result = self.details()
-        result[TASKS_KEY] = {}
+        result[TASKS_KEY] = OrderedDict()
         for task in self.tasks:
             id = task[TASKS_META_KEY][DYN_TASK_ID_KEY]
             result[TASKS_KEY][id] = task

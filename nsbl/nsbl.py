@@ -341,6 +341,7 @@ class Nsbl(FrklCallback):
             tasks_frkl = Frkl([task_config], chain)
 
             result = tasks_frkl.process(tasks_collector)
+
             if tasks_collector.use_become:
                 self.use_become = True
 
@@ -487,7 +488,7 @@ class Nsbl(FrklCallback):
         task_details = []
         for play, tasks in self.plays.items():
 
-            task_details.append(str(tasks))
+            task_details.append(tasks)
             playbook = tasks.render_playbook(playbook_dir)
             all_playbooks.append(playbook)
             tasks.render_roles(roles_base_dir)
