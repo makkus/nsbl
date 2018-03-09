@@ -627,8 +627,11 @@ class NsblTasks(frkl.FrklCallback):
                 for task_id, task_details in details["tasks"].items():
                     task_details[TASKS_META_KEY].pop(u"_dyn_task_id")
                     task_details[TASKS_META_KEY].pop("role-name")
-                    task_details[TASKS_META_KEY].pop("task-name")
                     task_details[TASKS_META_KEY].pop("task-type")
+                    if  task_details[TASKS_META_KEY]["task-desc"] == task_details[TASKS_META_KEY]["name"]:
+                        task_details[TASKS_META_KEY].pop("task-desc")
+                    if  task_details[TASKS_META_KEY]["task-name"] == task_details[TASKS_META_KEY]["name"]:
+                        task_details[TASKS_META_KEY].pop("task-name")
                     if not task_details[TASKS_META_KEY]["task-roles"]:
                         task_details[TASKS_META_KEY].pop("task-roles")
                     if not task_details[TASKS_META_KEY]["var-keys"]:
@@ -645,8 +648,11 @@ class NsblTasks(frkl.FrklCallback):
 
                 temp["tasks"] = role_tasks
             elif role_type == INT_ROLE_TASK_TYPE:
+                # import pprint
+                # pprint.pprint(details)
                 temp["type"] = "trusted role"
                 temp["role name"] = details["task-name"]
+                temp["role_path"] = next((d["src"] for d in details[TASKS_META_KEY]["task-roles"] if d["name"] == details["task-name"]), "n/a")
                 temp["vars"] = details[VARS_KEY]
             elif role_type == EXT_ROLE_TASK_TYPE:
                 temp["type"] = "external role"
