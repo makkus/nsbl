@@ -580,28 +580,28 @@ class ClickStdOutput(object):
             msg = ["n/a"]
 
             click.echo("")
+            click.echo("")
             output = []
             if msgs:
                 if len(msgs) < 2:
-                    output.append(u"failed: {}".format("".join(msgs)))
+                    output.append(u"- failed: {}".format("".join(msgs)))
                 else:
-                    output.append("failed:")
-                    output.append("      messages in this task:")
+                    output.append("- failed:")
                     for m in msgs:
                         if m == "None":
                             continue
-                        output.append(u"        -> {}".format(m))
+                        output.append(u"   -> {}".format(m))
             else:
-                output.append("failed")
+                output.append("- failed")
 
             if stdouts:
-                output.append("      stdout:")
+                output.append("   stdout:")
                 for e in stdouts:
-                    output.append(u"        -> {}".format(e))
+                    output.append(u"     -> {}".format(e))
             if stderrs:
-                output.append("      stderr:")
+                output.append("   stderr:")
                 for e in stderrs:
-                    output.append(u"        -> {}".format(e))
+                    output.append(u"     -> {}".format(e))
 
             output = "\n".join(output)
             click.echo(output)
