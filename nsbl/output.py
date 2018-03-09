@@ -5,9 +5,11 @@ import logging
 import pprint
 import subprocess
 import sys
-
+import textwrap
+import yaml
 import click
 import cursor
+import string
 from six import string_types
 
 from .defaults import *
@@ -18,6 +20,38 @@ ENCODING = sys.stdout.encoding
 if not ENCODING:
     ENCODING = "utf-8"
 
+def reindent(s, numSpaces):
+    s = string.split(s, '\n')
+    s = [(numSpaces * ' ') + string.lstrip(line) for line in s]
+    s = string.join(s, '\n')
+    return s
+
+def get_debug_value_string(value):
+
+    if isinstance(value, string_types):
+        return value
+    else:
+        return yaml.safe_dump(value, default_flow_style=False).strip()
+
+
+def print_debug_value(key, value, indentation):
+
+    if key == "msg":
+        result = "{}: {}".format(key, value)
+        return reindent(result, indentation)
+
+    msg = "var: {}\nvalue:".format(key)
+    msg = reindent(msg, indentation)
+
+    debug_value = get_debug_value_string(value)
+
+    if '\n' not in debug_value:
+        result = "{} {}".format(msg, debug_value)
+    else:
+        debug_value = reindent(debug_value, indentation+3)
+        result = "{}\n{}".format(msg, debug_value)
+
+    return result
 
 class CursorOff(object):
     def __enter__(self):
@@ -212,6 +246,9 @@ class NsblLogCallbackAdapter(object):
         action = details.get('action', self.last_action)
         ansible_task_name = details.get('name', None)
 
+        debug_key = details.get('debug_key', None)
+        debug_value = details.get('debug_value', None)
+
         if not isinstance(msg, string_types):
             msg = pprint.pformat(msg)
         if msg:
@@ -230,7 +267,7 @@ class NsblLogCallbackAdapter(object):
 
         event = {"category": category, "task_name": task_name, "task_desc": task_desc, "status": status, "item": item,
                  "msg": msg, "skipped": skipped, "ignore_errors": ignore_errors, "ansible_task_name": ansible_task_name,
-                 "action": action, "stdout": stdout, "stderr": stderr}
+                 "action": action, "stdout": stdout, "stderr": stderr, "debug_key": debug_key, "debug_value": debug_value}
 
         if status and status == "changed":
             self.changed = True
@@ -264,6 +301,7 @@ class ClickStdOutput(object):
                  display_ignore_tasks=[]):
 
         self.new_line = True
+        self.debug = False
         self.display_sub_tasks = display_sub_tasks
         self.display_skipped_tasks = display_skipped_tasks
         self.display_unchanged_tasks = display_unchanged_tasks
@@ -319,7 +357,12 @@ class ClickStdOutput(object):
         if current_is_dyn_role:
             if not self.new_line:
                 click.echo("")
-            self.print_task_string(u"     * {}... ".format(task_name))
+            if task_name == "debug":
+                self.debug = True
+                self.print_task_string(u"     + {}: ".format(task_name))
+            else:
+                self.print_task_string(u"     * {}... ".format(task_name))
+                self.debug = False
             # click.echo("     * {}... ".format(task_name), nl=False)
             self.new_line = False
         else:
@@ -401,6 +444,7 @@ class ClickStdOutput(object):
             self.format_error(msg)
 
         self.new_line = True
+        self.debug = False
 
     def format_error(self, msgs):
 
@@ -461,6 +505,7 @@ class ClickStdOutput(object):
             click.echo(output)
 
         self.new_line = True
+        self.debug = False
 
     def display_result(self, ev, current_is_dyn_role):
 
@@ -479,20 +524,26 @@ class ClickStdOutput(object):
             self.new_line = True
         else:
             if ev["category"] == "ok":
+
                 skipped = ev["skipped"]
                 if skipped:
-                    msg = "skipped"
+                    msg = "ok (skipped)"
                 else:
                     if ev["status"] == "changed":
-                        msg = "changed"
+                        msg = "ok (changed)"
                     else:
-                        if not self.display_unchanged_tasks:
-                            click.echo(u"\u001b[2K\r", nl=False)
-                            self.new_line = True
-                            return
+                        if self.debug:
+                            debug_key = ev.get("debug_key", "n/a")
+                            debug_value = ev.get("debug_value", "n/a")
+                            msg = "\n"+print_debug_value(debug_key, debug_value, 9)
+                        else:
+                            if not self.display_unchanged_tasks:
+                                click.echo(u"\u001b[2K\r", nl=False)
+                                self.new_line = True
+                                return
 
-                        msg = "no change"
-                output = u"ok ({})".format(msg)
+                            msg = "ok (no change)"
+                output = u"{}".format(msg)
                 click.echo(output)
                 self.new_line = True
             elif ev["category"] == "failed":
@@ -514,6 +565,8 @@ class ClickStdOutput(object):
                 output = "skipped"
                 click.echo(output)
                 self.new_line = True
+
+        self.debug = False
 
     def process_role_changed(self, failed, skipped, changed, msgs, stdouts, stderrs):
 
