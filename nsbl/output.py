@@ -26,6 +26,7 @@ def reindent(s, numSpaces):
     s = string.join(s, '\n')
     return s
 
+
 def get_debug_value_string(value):
 
     if isinstance(value, string_types):
@@ -33,6 +34,22 @@ def get_debug_value_string(value):
     else:
         return yaml.safe_dump(value, default_flow_style=False).strip()
 
+def print_coloured(tokens, nl=True):
+
+    for token in tokens:
+        text = token[0]
+        if len(token) > 1:
+            col = token[1]
+        else:
+            col = None
+
+        if col:
+            click.secho(text, fg=col, nl=False)
+        else:
+            click.echo(text, nl=False)
+
+    if nl:
+        click.echo()
 
 def print_debug_value(key, value, indentation):
 
@@ -52,6 +69,11 @@ def print_debug_value(key, value, indentation):
         result = "{}\n{}".format(msg, debug_value)
 
     return result
+
+def print_title(title_string, title_char='#'):
+
+    click.secho("{} {}".format(title_char, title_string), bold=True)
+
 
 class CursorOff(object):
     def __enter__(self):
@@ -321,7 +343,8 @@ class ClickStdOutput(object):
 
     def start_env(self, env_name):
 
-        click.echo(u"* starting tasks (on '{}')...".format(env_name))
+        print_title(u"starting tasks (on '{}')...".format(env_name), title_char="*")
+        click.echo()
 
     def start_role(self, current_role):
 
@@ -427,8 +450,8 @@ class ClickStdOutput(object):
                         return
 
                     msg = "no change"
-            output = u"ok ({})".format(msg)
-            click.echo(output)
+            output = [("ok", "green"), (" ({})".format(msg),)]
+            print_coloured(output)
         elif ev["category"] == "nsbl_item_failed":
             msg = ev.get('msg', None)
             if not msg:
@@ -439,8 +462,8 @@ class ClickStdOutput(object):
 
             # output = "failed: {}".format(msg)
             # click.echo(output)
-            output = "failed:"
-            click.echo(output)
+            output = "failed"
+            print_coloured([(output,)])
             self.format_error(msg)
 
         self.new_line = True
@@ -486,23 +509,26 @@ class ClickStdOutput(object):
                         return
 
                     msg = "no change"
-            output = u"       - {} => ok ({})".format(item, msg)
-            click.echo(output)
+            output = [("       - {} => ".format(item),), ("ok", "green"), (" ({})".format(msg),)]
+            print_coloured(output)
         elif ev["category"] == "item_failed":
             msg = ev.get('msg', None)
+            ignore = False
             if not msg:
                 if ev.get("ignore_errors", False):
                     msg = "errors ignored"
+                    ignore = True
                 else:
                     msg = "no error details"
-            # output = "       - {} => failed: {}".format(item, msg)
-            # click.echo(output)
-            output = u"       - {} => failed:".format(item)
-            click.echo(output)
+            if ignore:
+                output = [("       - {} => ".format(item),), ("failed", "yellow"), (":",)]
+            else:
+                output = [("       - {} => ".format(item),), ("failed", "red"), (":",)]
+            print_coloured(output)
             self.format_error(msg)
         elif ev["category"] == "item_skipped":
-            output = u"       - {} => skipped".format(item)
-            click.echo(output)
+            output = [(u"       - {} => ".format(item),), ("skipped", "yellow")]
+            print_coloured(output)
 
         self.new_line = True
         self.debug = False
@@ -524,46 +550,47 @@ class ClickStdOutput(object):
             self.new_line = True
         else:
             if ev["category"] == "ok":
-
                 skipped = ev["skipped"]
                 if skipped:
-                    msg = "ok (skipped)"
+                    msg = [("ok", "green"), (" (skipped)",)]
                 else:
                     if ev["status"] == "changed":
-                        msg = "ok (changed)"
+                        msg = [("ok", "green"), (" (changed)",)]
                     else:
                         if self.debug:
                             debug_key = ev.get("debug_key", "n/a")
                             debug_value = ev.get("debug_value", "n/a")
-                            msg = "\n"+print_debug_value(debug_key, debug_value, 9)
+                            msg = [("\n"+print_debug_value(debug_key, debug_value, 9))]
                         else:
                             if not self.display_unchanged_tasks:
                                 click.echo(u"\u001b[2K\r", nl=False)
                                 self.new_line = True
                                 return
 
-                            msg = "ok (no change)"
-                output = u"{}".format(msg)
-                click.echo(output)
+                            msg = [("ok", "green"), (" (no change)",)]
+
+                print_coloured(msg)
+
                 self.new_line = True
             elif ev["category"] == "failed":
                 if ev["msg"]:
-                    output = u"failed: {}".format(ev["msg"])
+                    output = [("failed", "red"), (": {}".format(ev["msg"]),)]
                 else:
                     if ev.get("ignore_errors", False):
                         msg = "(but errors ignored)"
                     else:
                         msg = "(no error details)"
                     output = u"failed: {}".format(msg)
-                click.echo(output)
+                    output = [("failed", "red"), (": {}".format(msg), )]
+                print_coloured(output)
                 self.new_line = True
             elif ev["category"] == "skipped":
                 if not self.display_skipped_tasks:
                     click.echo(u"\u001b[2K\r", nl=False)
                     self.new_line = True
                     return
-                output = "skipped"
-                click.echo(output)
+                output = [("skipped", "yellow"),]
+                print_coloured(output)
                 self.new_line = True
 
         self.debug = False
