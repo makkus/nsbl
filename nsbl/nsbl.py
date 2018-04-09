@@ -352,7 +352,7 @@ class Nsbl(FrklCallback):
 
     def render(self, env_dir, extra_plugins=None, extract_vars=True, force=False, ask_become_pass="yes",
                ansible_args="", callback='default', force_update_roles=False, add_timestamp_to_env=False,
-               add_symlink_to_env=False):
+               add_symlink_to_env=False, extra_paths=""):
         """Creates the ansible environment in the folder provided.
 
         Args:
@@ -366,6 +366,7 @@ class Nsbl(FrklCallback):
           force_update_roles (bool): whether to overwrite external roles that were already downloaded
           add_timestamp_to_env (bool): whether to add a timestamp to the env_dir -- useful for when this is called from other programs (e.g. freckles)
           add_symlink_to_env (bool): whether to add a symlink to the current env from a fixed location (useful to archive all runs/logs)
+          extra_paths (str): a colon-separated string of extra paths to be exported before the ansible playbook run
         """
 
         if isinstance(ask_become_pass, bool):
@@ -440,9 +441,11 @@ class Nsbl(FrklCallback):
             action_plugins_list = "action_plugins"
             library_plugins_list = "library"
 
+
         cookiecutter_details = {
             "inventory": inv_target,
             "env_dir": env_dir,
+            "extra_paths": extra_paths,
             "playbook_dir": playbook_dir,
             "ansible_playbook_args": ansible_playbook_args,
             "library_path": library_plugins_list,
@@ -584,7 +587,7 @@ class NsblRunner(object):
 
     def run(self, target, force=True, ansible_verbose="", ask_become_pass="true", extra_plugins=None, callback=None,
             add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True,
-            display_skipped_tasks=True, display_ignore_tasks=[], pre_run_callback=None):
+            display_skipped_tasks=True, display_ignore_tasks=[], pre_run_callback=None, extra_paths=""):
         """Starts the ansible run, executing all generated playbooks.
 
         By default the 'nsbl_internal' ansible callback is used, which outputs easier to read outputs/results. You can, however,
@@ -604,6 +607,7 @@ class NsblRunner(object):
           extra_plugins (str): a repository of extra ansible plugins to use
           display_ignore_tasks (list): a list of strings that indicate task titles that should be ignored when displaying the task log (using the default nsbl output plugin -- this is ignored with other output callbacks)
           pre_run_callback (function): a callback to execute after the environment is rendered, but before the run is kicked off
+          extra_paths (str): a colon-separated of extra paths that should be exported for the nsbl run
 
         Return:
           dict: the parameters of the run
@@ -623,7 +627,7 @@ class NsblRunner(object):
             parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose,
                                           ask_become_pass=ask_become_pass, extra_plugins=extra_plugins,
                                           callback=callback, add_timestamp_to_env=add_timestamp_to_env,
-                                          add_symlink_to_env=add_symlink_to_env)
+                                          add_symlink_to_env=add_symlink_to_env, extra_paths=extra_paths)
             env_dir = parameters["env_dir"]
             if pre_run_callback:
                 pre_run_callback(env_dir)
