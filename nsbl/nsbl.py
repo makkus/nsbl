@@ -521,7 +521,10 @@ class Nsbl(FrklCallback):
             for d in dirs:
                 shutil.copytree(os.path.join(extra_plugins, d), os.path.join(target_dir, d))
 
+        allow_external_roles = False
         if ext_roles:
+            if not allow_external_roles:
+                raise Exception("Downloading of external roles not allowed, check your configuration.")
             # download external roles
             click.echo("\nDownloading external roles...")
             role_requirement_file = os.path.join(env_dir, "roles", "roles_requirements.yml")
