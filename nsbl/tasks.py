@@ -506,7 +506,7 @@ class NsblTasks(frkl.FrklCallback):
         names = [role.role_name for role in self.roles]
         return names
 
-    def render_playbook(self, playbook_dir, playbook_name=None, add_ids=True):
+    def render_playbook(self, playbook_dir, playbook_name=None, add_ids=True, global_vars=None):
 
         if not os.path.exists(playbook_dir):
             os.makedirs(playbook_dir)
@@ -517,7 +517,7 @@ class NsblTasks(frkl.FrklCallback):
 
         template = jinja_env.get_template('playbook.yml')
         output_text = template.render(groups=self.env_name, roles=self.roles, meta=self.meta, env_id=self.env_id,
-                                      add_ids=add_ids)
+                                      add_ids=add_ids, global_vars=global_vars)
 
         if not playbook_name:
             playbook_name = "play_{}_{}.yml".format(self.env_name, self.env_id)
