@@ -343,7 +343,7 @@ class ClickStdOutput(object):
 
     def start_env(self, env_name):
 
-        print_title(u"starting tasks (on '{}')...".format(env_name), title_char="*")
+        print_title(u"executing tasks (on '{}')...".format(env_name), title_char="*")
         click.echo()
 
     def start_role(self, current_role):
@@ -560,7 +560,7 @@ class ClickStdOutput(object):
                         if self.debug:
                             debug_key = ev.get("debug_key", "n/a")
                             debug_value = ev.get("debug_value", "n/a")
-                            msg = [("\n"+print_debug_value(debug_key, debug_value, 9))]
+                            msg = [("\n"+print_debug_value(debug_key, debug_value, 9),)]
                         else:
                             if not self.display_unchanged_tasks:
                                 click.echo(u"\u001b[2K\r", nl=False)
