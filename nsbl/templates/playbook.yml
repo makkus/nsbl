@@ -2,6 +2,10 @@
 - name: name
   hosts: {{ groups }}
 {% if "become" in meta.keys() %}  become: {{ meta['become'] }}{% endif %}
+{% if global_vars %}
+  vars:
+    {{ global_vars | to_nice_yaml | indent(4) }}
+{% endif %}
   roles:
 {% for role in roles %}    - role: {{ role.role_name }}
 {% if add_ids %}      _role_id: {{ role.role_id }}
