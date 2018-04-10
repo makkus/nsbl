@@ -350,13 +350,14 @@ class Nsbl(FrklCallback):
 
         return {"inventory": self.inventory, "plays": self.plays}
 
-    def render(self, env_dir, extra_plugins=None, extract_vars=True, force=False, ask_become_pass="yes",
+    def render(self, env_dir, global_vars=None, extra_plugins=None, extract_vars=True, force=False, ask_become_pass="yes",
                ansible_args="", callback='default', force_update_roles=False, add_timestamp_to_env=False,
                add_symlink_to_env=False, extra_paths=""):
         """Creates the ansible environment in the folder provided.
 
         Args:
           env_dir (str): the folder where the environment should be created
+          global_vars (dict): vars to be rendered as global on top of a playbook
           extra_plugins (str): a path to a repository of extra ansible plugins, if necessary
           extract_vars (bool): whether to extract a hostvars and groupvars directory for the inventory (True), or render a dynamic inventory script for the environment (default, True) -- Not supported at the moment
           force (bool): overwrite environment if already present at the specified location, use with caution because this might delete an important folder if you get the 'target' dir wrong
@@ -492,7 +493,7 @@ class Nsbl(FrklCallback):
         for play, tasks in self.plays.items():
 
             task_details.append(tasks)
-            playbook = tasks.render_playbook(playbook_dir)
+            playbook = tasks.render_playbook(playbook_dir, global_vars=global_vars)
             all_playbooks.append(playbook)
             tasks.render_roles(roles_base_dir)
             if tasks.roles_to_copy:
@@ -582,10 +583,9 @@ class NsblRunner(object):
         Args:
           nsbl (Nsbl): the Nsbl object holding the (processed) configuration
         """
-
         self.nsbl = nsbl
 
-    def run(self, target, force=True, ansible_verbose="", ask_become_pass="true", extra_plugins=None, callback=None,
+    def run(self, target, global_vars=None, force=True, ansible_verbose="", ask_become_pass="true", extra_plugins=None, callback=None,
             add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True,
             display_skipped_tasks=True, display_ignore_tasks=[], pre_run_callback=None, extra_paths=""):
         """Starts the ansible run, executing all generated playbooks.
@@ -595,6 +595,7 @@ class NsblRunner(object):
 
         Args:
           target (str): the target directory where the ansible environment should be rendered
+          global_vars (dict): vars to be rendered on top of each playbook
           force (bool): whether to overwrite potentially existing files at the target (most likely an old rendered ansible environment)
           ansible_verbose (str): verbosity arguments to ansible-playbook command
           ask_become_pass (str): whether the ansible-playbook call should use 'ask-become-pass' or not (possible values: 'true', 'false', 'auto' -- auto tries to do the right thing but might fail)
@@ -624,7 +625,7 @@ class NsblRunner(object):
             callback_adapter = NsblPrintCallbackAdapter()
 
         try:
-            parameters = self.nsbl.render(target, extract_vars=True, force=force, ansible_args=ansible_verbose,
+            parameters = self.nsbl.render(target, global_vars=global_vars, extract_vars=True, force=force, ansible_args=ansible_verbose,
                                           ask_become_pass=ask_become_pass, extra_plugins=extra_plugins,
                                           callback=callback, add_timestamp_to_env=add_timestamp_to_env,
                                           add_symlink_to_env=add_symlink_to_env, extra_paths=extra_paths)
