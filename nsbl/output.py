@@ -96,11 +96,24 @@ def get_terminal_width():
 
 
 class NsblPrintCallbackAdapter(object):
+
     def add_error_message(self, line):
-        click.error(line)
+
+        click.echo(line.strip())
 
     def add_log_message(self, line):
+
         click.echo(line, nl=False)
+
+    def write(self, line):
+
+        if line.strip():
+            # self.current_lines.append(line)
+            self.add_log_message(line)
+
+    def flush(self):
+
+        pass
 
     def finish_up(self):
         pass
@@ -143,9 +156,18 @@ class NsblLogCallbackAdapter(object):
                                      display_skipped_tasks=self.display_skipped_tasks,
                                      display_ignore_tasks=self.display_ignore_tasks)
 
+    def write(self, line):
+
+        if line.strip():
+            self.add_log_message(line)
+
+    def flush(self):
+
+        pass
+
     def add_error_message(self, line):
 
-        click.echo(line)
+        click.echo(line.strip())
 
     def add_log_message(self, line):
 
@@ -414,6 +436,8 @@ class ClickStdOutput(object):
                 return item["vars"]["name"]
             elif item.get("url", None) and item.get("path"):
                 return u"{} -> {}".format(item["url"], item["path"])
+            elif item.get("stow_folder_name", None):
+                return item["stow_folder_name"]
 
         return item
 
