@@ -9,10 +9,17 @@ import signal
 import subprocess
 import sys
 import time
+import yaml
+import json
+import pexpect
+from ansible.parsing.vault import VaultLib, VaultSecret
+from ansible.constants import DEFAULT_VAULT_ID_MATCH
+
 from datetime import datetime
 
 import click
 from builtins import *
+from ansible_vault import Vault
 from cookiecutter.main import cookiecutter
 from frkl.frkl import (EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
                        FrklCallback, FrklProcessor, UrlAbbrevProcessor, dict_merge)
@@ -31,6 +38,7 @@ except NameError:
 
 log = logging.getLogger("nsbl")
 
+DEFAULT_ASK_BECOME_PASS = False
 
 # ------------------------------
 # util functions
@@ -350,7 +358,7 @@ class Nsbl(FrklCallback):
 
         return {"inventory": self.inventory, "plays": self.plays}
 
-    def render(self, env_dir, global_vars=None, extra_plugins=None, extract_vars=True, force=False, ask_become_pass="yes",
+    def render(self, env_dir, global_vars=None, extra_plugins=None, extract_vars=True, force=False, ask_become_pass=None, password=None, secure_vars=None,
                ansible_args="", callback='default', force_update_roles=False, add_timestamp_to_env=False,
                add_symlink_to_env=False, extra_paths=""):
         """Creates the ansible environment in the folder provided.
@@ -361,7 +369,9 @@ class Nsbl(FrklCallback):
           extra_plugins (str): a path to a repository of extra ansible plugins, if necessary
           extract_vars (bool): whether to extract a hostvars and groupvars directory for the inventory (True), or render a dynamic inventory script for the environment (default, True) -- Not supported at the moment
           force (bool): overwrite environment if already present at the specified location, use with caution because this might delete an important folder if you get the 'target' dir wrong
-          ask_become_pass (str): whether to include the '--ask-become-pass' arg to the ansible-playbook call, options: 'auto', 'true', 'false'
+          ask_become_pass (bool): whether to include the '--ask-become-pass' arg to the ansible-playbook call
+          password (str): if provided, it will be used instead of asking for a password
+          secure_vars (dict): vars to keep in a vault (not implemented yet)
           ansible_verbose (str): parameters to give to ansible-playbook (like: "-vvv")
           callback (str): name of the callback to use, default: nsbl_internal
           force_update_roles (bool): whether to overwrite external roles that were already downloaded
@@ -370,16 +380,11 @@ class Nsbl(FrklCallback):
           extra_paths (str): a colon-separated string of extra paths to be exported before the ansible playbook run
         """
 
-        if isinstance(ask_become_pass, bool):
-            ask_become_pass = str(ask_become_pass)
-
-        if not isinstance(ask_become_pass, string_types) or ask_become_pass.lower() not in ["true", "false", "auto"]:
-            raise NsblException("Can't parse 'ask_become_pass' var: '{}'".format(ask_become_pass))
-
-        if ask_become_pass == "auto":
+        if ask_become_pass is None:
             ask_become_pass = self.use_become
-        else:
-            ask_become_pass = ask_become_pass.lower() in (['true', 'yes'])
+
+        if not isinstance(ask_become_pass, bool):
+            raise Exception("'ask_become_pass' needs to be boolean value")
 
         env_dir = os.path.expanduser(env_dir)
         if add_timestamp_to_env:
@@ -409,15 +414,16 @@ class Nsbl(FrklCallback):
         roles_base_dir = os.path.join(env_dir, "roles")
         result["roles_base_dir"] = playbook_dir
 
-        # ask_sudo = "--ask-become-pass"
-
-        if ask_become_pass:
-            if can_passwordless_sudo():
-                ask_sudo = ""
+        if password is None:
+            if ask_become_pass:
+                if can_passwordless_sudo():
+                    ask_sudo = ""
+                else:
+                    ask_sudo = "--ask-become-pass"
             else:
-                ask_sudo = "--ask-become-pass"
+                ask_sudo = ""
         else:
-            ask_sudo = ""
+            ask_sudo = "--ask-become-pass"
 
         all_plays_name = "all_plays.yml"
         result["default_playbook_name"] = all_plays_name
@@ -481,9 +487,37 @@ class Nsbl(FrklCallback):
         if extract_vars:
             self.inventory.extract_vars(inventory_dir)
 
-
         self.inventory.write_inventory_file_or_script(inventory_dir, extract_vars=extract_vars)
 
+        # # write fault
+        # if password is not None or secure_vars:
+
+        #     vault_dir = os.path.join(env_dir, "vault")
+        #     os.makedirs(vault_dir)
+        #     os.chmod(vault_dir, 0o700)
+
+        #     data = {}
+        #     if password:
+        #         data["ansible_become_pass"] = password
+
+        #     if secure_vars:
+        #         for key, value in secure_vars:
+        #             data[key] = value
+
+        #     vault_file = os.path.join(vault_dir, "freckle_vault.yml")
+        #     data_string = yaml.safe_dump(data,
+        #         default_flow_style=False,
+        #         allow_unicode=True)
+
+        #     vault = VaultLib([(DEFAULT_VAULT_ID_MATCH, VaultSecret("password25".encode('utf-8')))])
+        #     e_data = unicode(vault.encrypt(data_string))
+        #     with open(vault_file, 'w') as v:
+        #         v.write(e_data)
+        #     os.chmod(vault_file, 0o600)
+        #     vault_key = os.path.join(vault_dir, "freckle_vault.key")
+        #     with open(vault_key, 'w') as v:
+        #         v.write('password25')
+        #     os.chmod(vault_key, 0o600)
 
         # write roles
         all_playbooks = []
@@ -585,7 +619,7 @@ class NsblRunner(object):
         """
         self.nsbl = nsbl
 
-    def run(self, target, global_vars=None, force=True, ansible_verbose="", ask_become_pass="true", extra_plugins=None, callback=None,
+    def run(self, target, global_vars=None, force=True, ansible_verbose="", ask_become_pass=None, password=None, secure_vars=None, extra_plugins=None, callback=None,
             add_timestamp_to_env=False, add_symlink_to_env=False, no_run=False, display_sub_tasks=True,
             display_skipped_tasks=True, display_ignore_tasks=[], pre_run_callback=None, extra_paths=""):
         """Starts the ansible run, executing all generated playbooks.
@@ -598,7 +632,9 @@ class NsblRunner(object):
           global_vars (dict): vars to be rendered on top of each playbook
           force (bool): whether to overwrite potentially existing files at the target (most likely an old rendered ansible environment)
           ansible_verbose (str): verbosity arguments to ansible-playbook command
-          ask_become_pass (str): whether the ansible-playbook call should use 'ask-become-pass' or not (possible values: 'true', 'false', 'auto' -- auto tries to do the right thing but might fail)
+          ask_become_pass (bool): whether to include the '--ask-become-pass' arg to the ansible-playbook call
+          password (str): if provided, it will be used instead of asking for a password
+          secure_vars (dict): other vars to keep secure, not implemented yet
           callback (str): the callback to use for the ansible run. default is 'default'
           add_timestamp_to_env (bool): whether to append a timestamp to the run directory (default: False)
           add_symlink_to_env (str): whether to add a symlink to the run directory (will be deleted if exists already and force is specified) - default: False, otherwise path to symlink
@@ -626,9 +662,10 @@ class NsblRunner(object):
 
         try:
             parameters = self.nsbl.render(target, global_vars=global_vars, extract_vars=True, force=force, ansible_args=ansible_verbose,
-                                          ask_become_pass=ask_become_pass, extra_plugins=extra_plugins,
+                                          ask_become_pass=ask_become_pass, password=password, secure_vars=secure_vars, extra_plugins=extra_plugins,
                                           callback=callback, add_timestamp_to_env=add_timestamp_to_env,
                                           add_symlink_to_env=add_symlink_to_env, extra_paths=extra_paths)
+
             env_dir = parameters["env_dir"]
             if pre_run_callback:
                 pre_run_callback(env_dir)
@@ -647,31 +684,53 @@ class NsblRunner(object):
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
 
             script = parameters['run_playbooks_script']
-            # proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env, preexec_fn=os.setsid)
-            proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE,
-                                    shell=True, env=run_env, preexec_fn=preexec_function)
 
-            with CursorOff():
-                click.echo("")
-                for line in iter(proc.stdout.readline, ''):
-                    callback_adapter.add_log_message(line)
+            if password is None:
+                proc = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=sys.stdout.fileno(), stdin=subprocess.PIPE, shell=True, env=run_env, preexec_fn=preexec_function)
+                with CursorOff():
+                    click.echo("")
 
-                callback_adapter.finish_up()
+                    for line in iter(proc.stdout.readline, ''):
+                        callback_adapter.add_log_message(line)
 
-            while proc.poll() is None:
-                # Process hasn't exited yet, let's wait some
-                time.sleep(0.5)
+                    callback_adapter.finish_up()
 
-            # Get return code from process
-            return_code = proc.returncode
+                while proc.poll() is None:
+                    # Process hasn't exited yet, let's wait some
+                    time.sleep(0.5)
 
-            parameters["return_code"] = return_code
+                # Get return code from process
+                return_code = proc.returncode
+                parameters["return_code"] = return_code
+                parameters["signal_status"] = -1
+
+            else:
+
+                with CursorOff():
+                    proc = pexpect.spawn("/bin/bash -c {}".format(script), env=run_env, preexec_fn=preexec_function)
+                    proc.expect("SUDO password:")
+                    proc.sendline('vagrant')
+                    proc.logfile = callback_adapter
+                    proc.logfile_send = None
+                    proc.expect(pexpect.EOF)
+                    proc.close()
+
+                    callback_adapter.finish_up()
+
+                return_code = proc.exitstatus
+                signal_status = proc.signalstatus
+
+                parameters["return_code"] = return_code
+                parameters["signal_status"] = signal_status
 
         except KeyboardInterrupt:
-            # proc.terminate()
+            parameters["return_code"] = 11
+            parameters["signal_status"] = -1
             os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-            # proc.send_signal(signal.SIGINT)
-            callback_adapter.add_error_message("\n\nKeyboard interrupt received. Exiting...\n")
+            print()
+            print()
+            callback_adapter.add_error_message("Keyboard interrupt received. Exiting...")
+            print()
             pass
 
         return parameters
