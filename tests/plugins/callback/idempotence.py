@@ -2,10 +2,9 @@
 
 from __future__ import (absolute_import, print_function)
 
-import sys
 import os
+import sys
 
-from ansible import constants as C
 from ansible.constants import mk_boolean
 
 try:
