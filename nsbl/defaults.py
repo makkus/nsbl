@@ -4,8 +4,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import copy
-
 import os
+
 from builtins import *
 from frkl import frkl
 from six import string_types
@@ -101,6 +101,9 @@ ENV_TYPE_HOST = 'host'
 ENV_TYPE_GROUP = 'group'
 DEFAULT_ENV_TYPE = ENV_TYPE_GROUP
 
+# default timeout when the freckle password option is used
+DEFAULT_TIMEOUT = 36000
+
 # tasks that emit 'nsbl'-specific events: nsbl_item_started, nsbl_item_ok, nsbl_item_failed
 NSBLIZED_TASKS = ["install"]
 
@@ -157,7 +160,7 @@ def get_default_role_repos_and_task_descs(role_repos, task_descs):
     return (role_repos, task_descs)
 
 
-def calculate_role_repos(role_repos, use_default_roles=True):
+def calculate_role_repos(role_repos):
     """Utility method to calculate which role repos to use.
 
     Role repos are folders containing ansible roles, and an (optional) task
@@ -166,7 +169,6 @@ def calculate_role_repos(role_repos, use_default_roles=True):
 
     Args:
       role_repos (list): a string or list of strings of local folders containing ansible roles
-      use_default_roles (bool): whether to use the default roles that come with nsbl
 
     Returns:
       list: a list of all local role repos to be used
@@ -180,10 +182,10 @@ def calculate_role_repos(role_repos, use_default_roles=True):
     else:
         role_repos = role_repos
 
-    if not role_repos:
-        role_repos.append(DEFAULT_ROLES_PATH)
-    elif use_default_roles:
-        role_repos.insert(0, DEFAULT_ROLES_PATH)
+    # if not role_repos:
+        # role_repos.append(DEFAULT_ROLES_PATH)
+    # elif use_default_roles:
+        # role_repos.insert(0, DEFAULT_ROLES_PATH)
 
     return role_repos
 

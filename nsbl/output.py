@@ -3,14 +3,13 @@
 import json
 import logging
 import pprint
+import string
 import subprocess
 import sys
-import textwrap
-import yaml
+
 import click
 import cursor
-import string
-from six import string_types
+import yaml
 
 from .defaults import *
 
@@ -156,25 +155,51 @@ class NsblLogCallbackAdapter(object):
                                      display_skipped_tasks=self.display_skipped_tasks,
                                      display_ignore_tasks=self.display_ignore_tasks)
 
+        self.current_line = ""
     def write(self, line):
 
-        if line.strip():
-            self.add_log_message(line)
+        self.current_line = "{}{}".format(self.current_line, line)
+
+        lines = self.current_line.split('\n')
+        if len(lines) > 1:
+            for line in lines[0:-1]:
+                self.add_log_message(line)
+
+        last_token = lines[-1]
+        if last_token.startswith("{") and last_token.endswith("}") and last_token.count("") == last_token.count("}"):
+            self.add_log_message(lines[-1])
+            self.current_line = ""
+        else:
+            self.current_line = last_token
 
     def flush(self):
 
+        # msg = "".join(self.current_lines)
+        # if msg.strip():
+            # for line in msg.split('\n')[:-1]:
+                # self.add_log_message(line)
+
+        # self.current_lines = [self.current_lines[-1]]
         pass
 
     def add_error_message(self, line):
 
         click.echo(line.strip())
 
-    def add_log_message(self, line):
+    def add_log_message(self, line, omit_errors=False):
 
         try:
-            details = json.loads(line)
+            if line.strip():
+                details = json.loads(line)
+            else:
+                return
         except (Exception) as e:
-            self.output.print_error(line, e)
+            if omit_errors:
+                return
+            if line.startswith('['):
+                click.echo(line.strip())
+            else:
+                self.output.print_error(line, e)
             return
 
         category = details["category"]
@@ -361,7 +386,7 @@ class ClickStdOutput(object):
 
     def print_error(self, line, error):
 
-        click.echo(u"\n\nEXECUTION ERROR: {}:\n{}\n\n".format(error.message, line))
+        click.echo(u"\n\nEXECUTION ERROR: {}:\n{}".format(error.message, line))
 
     def start_env(self, env_name):
 

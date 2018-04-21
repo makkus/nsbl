@@ -4,7 +4,6 @@ from __future__ import print_function
 
 import sys
 from argparse import ArgumentParser
-
 from importlib import import_module
 
 NOTHING = object()

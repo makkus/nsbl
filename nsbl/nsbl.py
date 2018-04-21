@@ -9,17 +9,10 @@ import signal
 import subprocess
 import sys
 import time
-import yaml
-import json
-import pexpect
-from ansible.parsing.vault import VaultLib, VaultSecret
-from ansible.constants import DEFAULT_VAULT_ID_MATCH
-
 from datetime import datetime
 
 import click
-from builtins import *
-from ansible_vault import Vault
+import pexpect
 from cookiecutter.main import cookiecutter
 from frkl.frkl import (EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
                        FrklCallback, FrklProcessor, UrlAbbrevProcessor, dict_merge)
@@ -27,7 +20,7 @@ from jinja2 import Environment, PackageLoader
 
 from .defaults import *
 from .exceptions import NsblException
-from .inventory import NsblInventory, WrapTasksIntoLocalhostEnvProcessor, WrapTasksIntoHostsProcessor
+from .inventory import NsblInventory, WrapTasksIntoHostsProcessor
 from .output import CursorOff, NsblLogCallbackAdapter, NsblPrintCallbackAdapter
 from .tasks import NsblCapitalizedBecomeProcessor, NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks, add_roles
 
@@ -709,6 +702,7 @@ class NsblRunner(object):
                 with CursorOff():
                     proc = pexpect.spawn("/bin/bash -c {}".format(script), env=run_env, preexec_fn=preexec_function)
                     proc.expect("SUDO password:")
+                    proc.timeout = DEFAULT_TIMEOUT
                     proc.sendline('vagrant')
                     proc.logfile = callback_adapter
                     proc.logfile_send = None

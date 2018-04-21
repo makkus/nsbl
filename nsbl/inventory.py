@@ -3,9 +3,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import copy
 import yaml
-from builtins import *
 from frkl.frkl import (ConfigProcessor,
                        EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
                        FrklCallback, FrklProcessor, UrlAbbrevProcessor)

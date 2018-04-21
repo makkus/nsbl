@@ -3,9 +3,9 @@
 
 import inspect
 import logging
+import os
 import subprocess
 
-import os
 from cookiecutter.main import cookiecutter
 
 from .nsbl import NsblInventory

@@ -4,20 +4,17 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from collections import OrderedDict
-import copy
 import fnmatch
 import re
+from collections import OrderedDict
 
 import yaml
-from builtins import *
 from cookiecutter.main import cookiecutter
+from frkl.frkl import Frkl, UrlAbbrevProcessor, FrklProcessor
 from jinja2 import Environment, PackageLoader
 
 from .defaults import *
 from .exceptions import NsblException
-from frkl.frkl import Frkl, PLACEHOLDER, UrlAbbrevProcessor, dict_merge, FrklProcessor
-
 
 DEFAULT_TASKS_PRE_CHAIN = [frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor()]
 DEFAULT_EXCLUDE_DIRS = [".git", ".tox", ".cache"]
@@ -32,8 +29,31 @@ def to_nice_yaml(var):
     """util function to convert to yaml in a jinja template"""
     return yaml.safe_dump(var, default_flow_style=False)
 
+def expand_string_to_git_details(value, default_abbrevs):
+
+    fail_msg = None
+    branch = None
+    opt_split_string = '::'
+    if opt_split_string in value:
+        tokens = value.split(opt_split_string)
+        opt = tokens[1:-1]
+        if not opt:
+            self.fail("Not a valid url, needs at least 2 split strings ('{}')".format(opt_split_string))
+        if len(opt) != 1:
+            self.fail("Not a valid url, can only have 1 branch: {}".format(value))
+        branch = opt[0]
+
+    result = expand_string_to_git_repo(value, default_abbrevs)
+    result = {"url": result}
+
+    if branch:
+        result["branch"] = branch
+
+    return result
+
 
 def expand_string_to_git_repo(value, default_abbrevs):
+
     if isinstance(value, string_types):
         is_string = True
     elif isinstance(value, (list, tuple)):
@@ -322,7 +342,7 @@ def add_roles(all_roles, role_obj, role_repos=[]):
             "Role description needs to be either a list of strings or a dict. Value '{}' is not valid.".format(
                 role_obj))
 
-def calculate_local_repo_path(repo_url):
+def calculate_local_repo_path(repo_url, branch=None):
 
     repo_name = repo_url.split(os.sep)[-1]
 
@@ -331,54 +351,51 @@ def calculate_local_repo_path(repo_url):
 
     # clean_string = re.sub('[^A-Za-z0-9]+', os.sep, repo_url) + os.sep + repo_name
     REPL_CHARS = '[^_\-A-Za-z0-9\.]+'
-    clean_string = re.sub(REPL_CHARS, os.sep, repo_url) + os.sep + repo_name
+
+    if branch is None:
+        branch = "default"
+
+    clean_string = re.sub(REPL_CHARS, os.sep, repo_url) + os.sep + branch + os.sep + repo_name
 
     return clean_string
 
-def get_default_repo(repo_name, repo_dict):
-    repo = repo_dict.get(repo_name, None)
-    return repo
-
 
 # DEFAULT_LOCAL_REPO_PATH_BASE, DEFAULT_REPOS, DEFAULT_ABBREVIATIONS
-def get_all_roles_in_repos(repos, repo_path_base, default_repo_dict, default_abbrevs):
-    result = []
-    repos = get_local_repos(repos, "roles", repo_path_base, default_repo_dict, default_abbrevs)
+# def get_all_roles_in_repos(repos, repo_path_base, default_repo_dict, default_abbrevs):
+#     result = []
+#     repos = get_local_repos(repos, "roles", repo_path_base, default_repo_dict, default_abbrevs)
 
-    return find_all_roles_in_repos(repos)
+#     return find_all_roles_in_repos(repos)
 
-def find_all_roles_in_repos(repos):
+# def find_all_roles_in_repos(repos):
 
-    result = []
-    for repo in repos:
-        roles = find_roles_in_repo(repo)
-        result.extend(roles)
+#     result = []
+#     for repo in repos:
+#         roles = find_roles_in_repo(repo)
+#         result.extend(roles)
 
-    return result
+#     return result
 
-def get_role_path_for_role_in_repos(role_name, role_repos):
-
-    pass
-
-def get_local_repos(repo_names, repo_type, repo_path_base, default_repo_dict, default_abbrevs):
+def get_local_repos(repo_names, repo_path_base, default_repo_dict, default_abbrevs):
     result = []
     for repo_name in repo_names:
-        repo = get_default_repo(repo_name, default_repo_dict)
+
+        repo = default_repo_dict.get(repo_name, None)
 
         if not repo:
 
             if not os.path.exists(repo_name):
-                repo_url = expand_string_to_git_repo(repo_name, default_abbrevs)
-                relative_repo_path = calculate_local_repo_path(repo_url)
+                repo_details = expand_string_to_git_details(repo_name, default_abbrevs)
+                repo_url = repo_details["url"]
+                repo_branch = repo_details.get('branch', None)
+                relative_repo_path = calculate_local_repo_path(repo_url, repo_branch)
                 repo_path = os.path.join(repo_path_base, relative_repo_path)
             else:
                 repo_path = repo_name
 
             result.append(repo_path)
         else:
-            repos = repo.get(repo_type, [])
-            for r in repos:
-                result.append(r[1])
+            result.append(repo["path"])
 
     return result
 
