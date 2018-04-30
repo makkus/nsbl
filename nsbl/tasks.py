@@ -38,12 +38,13 @@ def expand_string_to_git_details(value, default_abbrevs):
         tokens = value.split(opt_split_string)
         opt = tokens[1:-1]
         if not opt:
-            self.fail("Not a valid url, needs at least 2 split strings ('{}')".format(opt_split_string))
+            raise Exception("Not a valid url, needs at least 2 split strings ('{}')".format(opt_split_string))
         if len(opt) != 1:
-            self.fail("Not a valid url, can only have 1 branch: {}".format(value))
+            raise Exception("Not a valid url, can only have 1 branch: {}".format(value))
         branch = opt[0]
 
     result = expand_string_to_git_repo(value, default_abbrevs)
+
     result = {"url": result}
 
     if branch:
@@ -65,6 +66,7 @@ def expand_string_to_git_repo(value, default_abbrevs):
         frkl_obj = Frkl(value, [
             UrlAbbrevProcessor(init_params={"abbrevs": default_abbrevs, "add_default_abbrevs": False})])
         result = frkl_obj.process()
+        
         if is_string:
             return result[0]
         else:
