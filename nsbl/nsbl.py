@@ -344,6 +344,7 @@ class Nsbl(FrklCallback):
         self.inventory.finished()
         # this creates the task-description dictionary which is used to enable easier to use commands, and overlays of parameters
         task_format = generate_nsbl_tasks_format(self.task_descs)
+
         # we have several task lists, each with its own environment associated
         for tasks in self.inventory.tasks:
 
@@ -384,7 +385,6 @@ class Nsbl(FrklCallback):
 
             # wrapping the tasks in a list so the 'base-vars' don't get inherited
             tasks_frkl = Frkl([task_config], chain)
-
             result = tasks_frkl.process(tasks_collector)
 
             if tasks_collector.use_become:

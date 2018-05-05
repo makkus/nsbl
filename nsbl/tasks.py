@@ -16,7 +16,11 @@ from jinja2 import Environment, PackageLoader
 from .defaults import *
 from .exceptions import NsblException
 
-DEFAULT_TASKS_PRE_CHAIN = [frkl.UrlAbbrevProcessor(), frkl.EnsureUrlProcessor(), frkl.EnsurePythonObjectProcessor()]
+DEFAULT_TASKS_PRE_CHAIN = [
+    frkl.UrlAbbrevProcessor(),
+    frkl.EnsureUrlProcessor(),
+    frkl.EnsurePythonObjectProcessor()
+]
 DEFAULT_EXCLUDE_DIRS = [".git", ".tox", ".cache"]
 ROLE_MARKER_FOLDERNAME = "meta"
 ROLE_META_FILENAME = "main.yml"
@@ -25,9 +29,11 @@ ROLE_CACHE = {}
 ABBREV_VERBOSE = True
 ABBREV_WARN = True
 
+
 def to_nice_yaml(var):
     """util function to convert to yaml in a jinja template"""
-    return yaml.safe_dump(var, default_flow_style=False)
+    return yaml.safe_dump(var, default_flow_style=False, default_style="'")
+
 
 def expand_string_to_git_details(value, default_abbrevs):
 
@@ -38,9 +44,12 @@ def expand_string_to_git_details(value, default_abbrevs):
         tokens = value.split(opt_split_string)
         opt = tokens[1:-1]
         if not opt:
-            raise Exception("Not a valid url, needs at least 2 split strings ('{}')".format(opt_split_string))
+            raise Exception(
+                "Not a valid url, needs at least 2 split strings ('{}')".
+                format(opt_split_string))
         if len(opt) != 1:
-            raise Exception("Not a valid url, can only have 1 branch: {}".format(value))
+            raise Exception(
+                "Not a valid url, can only have 1 branch: {}".format(value))
         branch = opt[0]
 
     result = expand_string_to_git_repo(value, default_abbrevs)
@@ -60,19 +69,27 @@ def expand_string_to_git_repo(value, default_abbrevs):
     elif isinstance(value, (list, tuple)):
         is_string = False
     else:
-        raise Exception("Not a supported type (only string or list are accepted): {}".format(value))
+        raise Exception(
+            "Not a supported type (only string or list are accepted): {}".
+            format(value))
 
     try:
-        frkl_obj = Frkl(value, [
-            UrlAbbrevProcessor(init_params={"abbrevs": default_abbrevs, "add_default_abbrevs": False})])
+        frkl_obj = Frkl(
+            value, [
+                UrlAbbrevProcessor(init_params={
+                    "abbrevs": default_abbrevs,
+                    "add_default_abbrevs": False
+                })
+            ])
         result = frkl_obj.process()
-        
+
         if is_string:
             return result[0]
         else:
             return result
     except (Exception) as e:
-        raise Exception("'{}' is not a valid repo url: {}".format(value, e.message))
+        raise Exception("'{}' is not a valid repo url: {}".format(
+            value, e.message))
 
 
 def find_roles_in_repo(role_repo):
@@ -91,13 +108,17 @@ def find_roles_in_repo(role_repo):
     result = {}
     try:
 
-        for root, dirnames, filenames in os.walk(os.path.realpath(role_repo), topdown=True, followlinks=True):
+        for root, dirnames, filenames in os.walk(
+                os.path.realpath(role_repo), topdown=True, followlinks=True):
 
-            dirnames[:] = [d for d in dirnames if d not in DEFAULT_EXCLUDE_DIRS]
+            dirnames[:] = [
+                d for d in dirnames if d not in DEFAULT_EXCLUDE_DIRS
+            ]
             # check for meta folders
             for dirname in fnmatch.filter(dirnames, ROLE_MARKER_FOLDERNAME):
 
-                meta_file = os.path.realpath(os.path.join(root, dirname, ROLE_META_FILENAME))
+                meta_file = os.path.realpath(
+                    os.path.join(root, dirname, ROLE_META_FILENAME))
                 if not os.path.exists(meta_file):
                     continue
 
@@ -106,12 +127,14 @@ def find_roles_in_repo(role_repo):
                 result[role_name] = role_folder
 
     except (UnicodeDecodeError) as e:
-        print(" X one or more filenames under '{}' can't be decoded, ignoring. This can cause problems later. ".format(root))
-
+        print(
+            " X one or more filenames under '{}' can't be decoded, ignoring. This can cause problems later. ".
+            format(root))
 
     ROLE_CACHE[role_repo] = result
 
     return result
+
 
 def get_role_details_in_repo(role_repo):
 
@@ -142,7 +165,6 @@ def get_role_details_in_repo(role_repo):
                 with open(temp, 'r') as f:
                     content = f.read()
                     d_temp[defaults_file] = yaml.safe_load(content)
-
 
             result[role]["defaults"] = d_temp
 
@@ -204,7 +226,9 @@ def check_role_desc(role_name, role_repos=[]):
                     name = src
 
     elif not isinstance(role_name, dict):
-        raise NsblException("Type for role needs to be either string or dict: {}".format(role_name))
+        raise NsblException(
+            "Type for role needs to be either string or dict: {}".format(
+                role_name))
     else:
         name = role_name.get("name", None)
         src = role_name.get("src", None)
@@ -212,7 +236,8 @@ def check_role_desc(role_name, role_repos=[]):
 
         if not name and not src:
             raise NsblException(
-                "Role doesn't specify 'name' nor 'src', can't figure out what to do: {}".format(role_name))
+                "Role doesn't specify 'name' nor 'src', can't figure out what to do: {}".
+                format(role_name))
         elif not name:
             if os.path.exists(src):
                 name = os.path.basename(src)
@@ -279,8 +304,8 @@ def _add_role_check_duplicates(all_roles, new_role):
         match = True
         if new_role_src != src:
             raise NsblException(
-                "Two roles with the same name ('{}') but different 'src' details: {} <-> {}".format(role_name, new_role,
-                                                                                                    role))
+                "Two roles with the same name ('{}') but different 'src' details: {} <-> {}".
+                format(role_name, new_role, role))
         if new_role_version != version:
             if new_role_version == None:
                 continue
@@ -288,9 +313,8 @@ def _add_role_check_duplicates(all_roles, new_role):
                 role["version"] = new_role_version
             else:
                 raise NsblException(
-                    "Two roles with the same name ('{}') but different 'version' details: {} <-> {}".format(role_name,
-                                                                                                            new_role_version,
-                                                                                                            version))
+                    "Two roles with the same name ('{}') but different 'version' details: {} <-> {}".
+                    format(role_name, new_role_version, version))
 
     if not match:
         all_roles.append(new_role)
@@ -319,17 +343,21 @@ def add_roles(all_roles, role_obj, role_repos=[]):
                     if isinstance(role_details, dict):
                         if "name" in role_details.keys():
                             raise NsblException(
-                                "Role details can't contain 'name' key, name already provided as key of the parent dict: {}".format(
-                                    role_obj))
+                                "Role details can't contain 'name' key, name already provided as key of the parent dict: {}".
+                                format(role_obj))
                         role_details["name"] = role_name
                         temp = check_role_desc(role_details, role_repos)
                         _add_role_check_duplicates(all_roles, temp)
                     elif isinstance(role_details, string_types):
-                        temp = check_role_desc({"src": role_details, "name": role_name}, role_repos)
+                        temp = check_role_desc({
+                            "src": role_details,
+                            "name": role_name
+                        }, role_repos)
                         _add_role_check_duplicates(all_roles, temp)
                     else:
                         raise NsblException(
-                            "Role description needs to be either string or dict: {}".format(role_details))
+                            "Role description needs to be either string or dict: {}".
+                            format(role_details))
         else:
             temp = check_role_desc(role_obj, role_repos)
             _add_role_check_duplicates(all_roles, temp)
@@ -341,8 +369,9 @@ def add_roles(all_roles, role_obj, role_repos=[]):
             add_roles(all_roles, role_obj_child, role_repos)
     else:
         raise NsblException(
-            "Role description needs to be either a list of strings or a dict. Value '{}' is not valid.".format(
-                role_obj))
+            "Role description needs to be either a list of strings or a dict. Value '{}' is not valid.".
+            format(role_obj))
+
 
 def calculate_local_repo_path(repo_url, branch=None):
 
@@ -357,7 +386,8 @@ def calculate_local_repo_path(repo_url, branch=None):
     if branch is None:
         branch = "default"
 
-    clean_string = re.sub(REPL_CHARS, os.sep, repo_url) + os.sep + branch + os.sep + repo_name
+    clean_string = re.sub(REPL_CHARS, os.sep,
+                          repo_url) + os.sep + branch + os.sep + repo_name
 
     return clean_string
 
@@ -378,7 +408,9 @@ def calculate_local_repo_path(repo_url, branch=None):
 
 #     return result
 
-def get_local_repos(repo_names, repo_path_base, default_repo_dict, default_abbrevs):
+
+def get_local_repos(repo_names, repo_path_base, default_repo_dict,
+                    default_abbrevs):
     result = []
     for repo_name in repo_names:
 
@@ -387,10 +419,12 @@ def get_local_repos(repo_names, repo_path_base, default_repo_dict, default_abbre
         if not repo:
 
             if not os.path.exists(repo_name):
-                repo_details = expand_string_to_git_details(repo_name, default_abbrevs)
+                repo_details = expand_string_to_git_details(
+                    repo_name, default_abbrevs)
                 repo_url = repo_details["url"]
                 repo_branch = repo_details.get('branch', None)
-                relative_repo_path = calculate_local_repo_path(repo_url, repo_branch)
+                relative_repo_path = calculate_local_repo_path(
+                    repo_url, repo_branch)
                 repo_path = os.path.join(repo_path_base, relative_repo_path)
             else:
                 repo_path = repo_name
@@ -415,7 +449,9 @@ def get_internal_role_path(role, role_repos=[]):
     elif isinstance(role, dict):
         url = role["src"]
     else:
-        raise NsblException("Type '{}' not supported for role description: {}".format(type(role), role))
+        raise NsblException(
+            "Type '{}' not supported for role description: {}".format(
+                type(role), role))
 
     if os.path.exists(url):
         return url
@@ -433,7 +469,13 @@ def get_internal_role_path(role, role_repos=[]):
 
 
 class NsblTasks(frkl.FrklCallback):
-    def create(config, role_repos, task_descs, env_name=None, env_id=None, meta={}, pre_chain=DEFAULT_TASKS_PRE_CHAIN):
+    def create(config,
+               role_repos,
+               task_descs,
+               env_name=None,
+               env_id=None,
+               meta={},
+               pre_chain=DEFAULT_TASKS_PRE_CHAIN):
         """
 
         Args:
@@ -449,7 +491,8 @@ class NsblTasks(frkl.FrklCallback):
         NsblTasks: the NsblTasks object, already 'processed'
         """
 
-        role_repos, task_descs = get_default_role_repos_and_task_descs(role_repos, task_descs)
+        role_repos, task_descs = get_default_role_repos_and_task_descs(
+            role_repos, task_descs)
         init_params = {}
         if role_repos:
             init_params["role_repos"] = role_repos
@@ -464,8 +507,12 @@ class NsblTasks(frkl.FrklCallback):
             init_params["meta"] = meta
 
         task_format = generate_nsbl_tasks_format(task_descs)
-        chain = pre_chain + [FrklProcessor(task_format), NsblTaskProcessor(init_params),
-                             NsblCapitalizedBecomeProcessor(), NsblDynamicRoleProcessor(init_params)]
+        chain = pre_chain + [
+            FrklProcessor(task_format),
+            NsblTaskProcessor(init_params),
+            NsblCapitalizedBecomeProcessor(),
+            NsblDynamicRoleProcessor(init_params)
+        ]
         # chain = pre_chain + [FrklProcessor(task_format), NsblTaskProcessor(init_params),  NsblDynamicRoleProcessor(init_params)]
         tasks = NsblTasks(init_params)
 
@@ -502,7 +549,8 @@ class NsblTasks(frkl.FrklCallback):
         role_repos = self.init_params.get("role_repos", None)
         task_descs = self.init_params.get("task_descs", None)
 
-        role_repos, task_descs = get_default_role_repos_and_task_descs(role_repos, task_descs)
+        role_repos, task_descs = get_default_role_repos_and_task_descs(
+            role_repos, task_descs)
 
         self.env_name = self.init_params.get("env_name", "localhost")
         self.env_id = self.init_params["env_id"]
@@ -525,7 +573,11 @@ class NsblTasks(frkl.FrklCallback):
         names = [role.role_name for role in self.roles]
         return names
 
-    def render_playbook(self, playbook_dir, playbook_name=None, add_ids=True, global_vars=None):
+    def render_playbook(self,
+                        playbook_dir,
+                        playbook_name=None,
+                        add_ids=True,
+                        global_vars=None):
 
         if not os.path.exists(playbook_dir):
             os.makedirs(playbook_dir)
@@ -535,8 +587,13 @@ class NsblTasks(frkl.FrklCallback):
         jinja_env.filters['to_nice_yaml'] = to_nice_yaml
 
         template = jinja_env.get_template('playbook.yml')
-        output_text = template.render(groups=self.env_name, roles=self.roles, meta=self.meta, env_id=self.env_id,
-                                      add_ids=add_ids, global_vars=global_vars)
+        output_text = template.render(
+            groups=self.env_name,
+            roles=self.roles,
+            meta=self.meta,
+            env_id=self.env_id,
+            add_ids=add_ids,
+            global_vars=global_vars)
 
         if not playbook_name:
             playbook_name = "play_{}_{}.yml".format(self.env_name, self.env_id)
@@ -564,7 +621,8 @@ class NsblTasks(frkl.FrklCallback):
         """
 
         jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
-        roles_requirements_file = os.path.join(role_base_dir, "roles_requirements.yml")
+        roles_requirements_file = os.path.join(role_base_dir,
+                                               "roles_requirements.yml")
 
         if not os.path.exists(role_base_dir):
             os.makedirs(role_base_dir)
@@ -581,7 +639,8 @@ class NsblTasks(frkl.FrklCallback):
             elif role_type == REMOTE_ROLE_TYPE:
                 role_src = os.path.join(ANSIBLE_ROLE_CACHE_DIR, role["name"])
                 target = os.path.join(role_base_dir, "external", role["name"])
-                self.roles_to_copy.setdefault("external", {})[role_src] = target
+                self.roles_to_copy.setdefault("external",
+                                              {})[role_src] = target
                 template = jinja_env.get_template('external_role.yml')
                 output_text = template.render(role=role)
                 with open(roles_requirements_file, "a") as myfile:
@@ -592,7 +651,8 @@ class NsblTasks(frkl.FrklCallback):
                 target_folder = os.path.join(role_base_dir, "dynamic")
                 task_role.create_role(target_folder)
             else:
-                raise NsblException("Role type '{}' not valid".format(role_type))
+                raise NsblException(
+                    "Role type '{}' not valid".format(role_type))
 
     def callback(self, role):
 
@@ -629,8 +689,8 @@ class NsblTasks(frkl.FrklCallback):
 
     def __repr__(self):
 
-        return "NsblTasks(env_id='{}', env_name='{}', role_names={})".format(self.env_id, self.env_name,
-                                                                             self.get_role_names())
+        return "NsblTasks(env_id='{}', env_name='{}', role_names={})".format(
+            self.env_id, self.env_name, self.get_role_names())
 
     def pretty_details(self):
 
@@ -647,9 +707,13 @@ class NsblTasks(frkl.FrklCallback):
                     task_details[TASKS_META_KEY].pop(u"_dyn_task_id")
                     task_details[TASKS_META_KEY].pop("role-name")
                     task_details[TASKS_META_KEY].pop("task-type")
-                    if  task_details[TASKS_META_KEY]["task-desc"] == task_details[TASKS_META_KEY]["name"]:
+                    if task_details[TASKS_META_KEY][
+                            "task-desc"] == task_details[TASKS_META_KEY][
+                                "name"]:
                         task_details[TASKS_META_KEY].pop("task-desc")
-                    if  task_details[TASKS_META_KEY]["task-name"] == task_details[TASKS_META_KEY]["name"]:
+                    if task_details[TASKS_META_KEY][
+                            "task-name"] == task_details[TASKS_META_KEY][
+                                "name"]:
                         task_details[TASKS_META_KEY].pop("task-name")
                     if not task_details[TASKS_META_KEY]["task-roles"]:
                         task_details[TASKS_META_KEY].pop("task-roles")
@@ -671,7 +735,9 @@ class NsblTasks(frkl.FrklCallback):
                 # pprint.pprint(details)
                 temp["type"] = "trusted role"
                 temp["role name"] = details["task-name"]
-                temp["role_path"] = next((d["src"] for d in details[TASKS_META_KEY]["task-roles"] if d["name"] == details["task-name"]), "n/a")
+                temp["role_path"] = next(
+                    (d["src"] for d in details[TASKS_META_KEY]["task-roles"]
+                     if d["name"] == details["task-name"]), "n/a")
                 temp["vars"] = details[VARS_KEY]
             elif role_type == EXT_ROLE_TASK_TYPE:
                 temp["type"] = "external role"
@@ -732,12 +798,14 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
         meta_task_name = new_config[TASKS_META_KEY][TASK_META_NAME_KEY]
 
         meta_roles = []
-        add_roles(meta_roles, new_config[TASKS_META_KEY].get(TASK_ROLES_KEY, {}), self.role_repos)
+        add_roles(meta_roles, new_config[TASKS_META_KEY].get(
+            TASK_ROLES_KEY, {}), self.role_repos)
         meta_role_names = [role["name"] for role in meta_roles]
 
         for task_desc in self.task_descs:
 
-            task_desc_name = task_desc.get(TASKS_META_KEY, {}).get(TASK_META_NAME_KEY, None)
+            task_desc_name = task_desc.get(TASKS_META_KEY, {}).get(
+                TASK_META_NAME_KEY, None)
 
             if not task_desc_name == meta_task_name:
                 continue
@@ -762,12 +830,15 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
         if task_type in [INT_ROLE_TASK_TYPE, EXT_ROLE_TASK_TYPE]:
             if task_name not in task_role_names and task_name not in meta_role_names and not int_role_path:
                 raise NsblException(
-                    "Task name '{}' not found among role names, but task type is '{}'. This is invalid.".format(
-                        task_name, task_type))
+                    "Task name '{}' not found among role names, but task type is '{}'. This is invalid.".
+                    format(task_name, task_type))
         elif not task_type == TASK_TASK_TYPE:
             if int_role_path:
                 task_type = INT_ROLE_TASK_TYPE
-                add_roles(task_roles, {"src": int_role_path, "name": task_name}, self.role_repos)
+                add_roles(task_roles, {
+                    "src": int_role_path,
+                    "name": task_name
+                }, self.role_repos)
             elif task_name in task_role_names or task_name in meta_role_names:
                 task_type = EXT_ROLE_TASK_TYPE
             elif "." in task_name:
@@ -781,16 +852,19 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
 
         else:
             raise NsblException(
-                "Task type needs to be either '{}', '{}' or '{}': {}".format(EXT_ROLE_TASK_TYPE, INT_ROLE_TASK_TYPE,
-                                                                             TASK_TASK_TYPE, new_config))
+                "Task type needs to be either '{}', '{}' or '{}': {}".format(
+                    EXT_ROLE_TASK_TYPE, INT_ROLE_TASK_TYPE, TASK_TASK_TYPE,
+                    new_config))
 
         if VARS_KEY not in new_config.keys():
             new_config[VARS_KEY] = {}
 
         if task_type == TASK_TASK_TYPE:
             # in case this is a normal task, we need to make sure not to 'forward' vars that the task doesn't accept
-            if VAR_KEYS_KEY not in new_config[TASKS_META_KEY].keys() or new_config[TASKS_META_KEY][VAR_KEYS_KEY] == '*':
-                new_config[TASKS_META_KEY][VAR_KEYS_KEY] = list(new_config.get(VARS_KEY, {}).keys())
+            if VAR_KEYS_KEY not in new_config[TASKS_META_KEY].keys(
+            ) or new_config[TASKS_META_KEY][VAR_KEYS_KEY] == '*':
+                new_config[TASKS_META_KEY][VAR_KEYS_KEY] = list(
+                    new_config.get(VARS_KEY, {}).keys())
 
         split_key = new_config[TASKS_META_KEY].get(SPLIT_KEY_KEY, None)
         if split_key:
@@ -806,7 +880,8 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
             for split_token in split_key:
                 if not isinstance(split_value, dict):
                     raise NsblException(
-                        "Can't split config value using split key '{}': {}".format(split_key, new_config))
+                        "Can't split config value using split key '{}': {}".
+                        format(split_key, new_config))
                 split_value = split_value.get(split_token, None)
                 if not split_value:
                     break
@@ -878,8 +953,8 @@ class NsblRole(object):
         return self.meta_dict
 
     def __repr__(self):
-        return "NsblRole(name={}, role_name={}, type={}, role_id={})".format(self.name, self.role_name, self.role_type,
-                                                                             self.role_id)
+        return "NsblRole(name={}, role_name={}, type={}, role_id={})".format(
+            self.name, self.role_name, self.role_type, self.role_id)
 
 
 class NsblInternalRole(NsblRole):
@@ -947,13 +1022,16 @@ class NsblDynRole(NsblRole):
         self.task_names = []
         self.parse_tasks()
         self.name = self.role_name
-        add_roles(self.roles, {"src": "{}_{}".format(DYN_ROLE_TYPE, self.role_id), "name": self.role_name})
+        add_roles(
+            self.roles, {
+                "src": "{}_{}".format(DYN_ROLE_TYPE, self.role_id),
+                "name": self.role_name
+            })
 
     def __repr__(self):
-        return "NsblDynRole(name={}, role_name={}, type={}, role_id={}, task_names={})".format(self.name, self.role_name,
-                                                                                            self.role_type,
-                                                                                            self.role_id,
-                                                                                            self.task_names)
+        return "NsblDynRole(name={}, role_name={}, type={}, role_id={}, task_names={})".format(
+            self.name, self.role_name, self.role_type, self.role_id,
+            self.task_names)
 
     def get_lookup_dict(self):
         """Returns a dictionary that enables reverse lookup of roles by their id."""
@@ -979,9 +1057,11 @@ class NsblDynRole(NsblRole):
             task_id = "{}_{}".format(role_token, index_token)
             t[TASKS_META_KEY][DYN_TASK_ID_KEY] = task_id
             self.task_names.append(t[TASKS_META_KEY][TASK_META_NAME_KEY])
-            add_roles(self.roles, t[TASKS_META_KEY].get(TASK_ROLES_KEY, self.role_repos))
+            add_roles(self.roles, t[TASKS_META_KEY].get(
+                TASK_ROLES_KEY, self.role_repos))
             if TASK_DESC_KEY not in t[TASKS_META_KEY].keys():
-                t[TASKS_META_KEY][TASK_DESC_KEY] = t[TASKS_META_KEY][TASK_META_NAME_KEY]
+                t[TASKS_META_KEY][TASK_DESC_KEY] = t[TASKS_META_KEY][
+                    TASK_META_NAME_KEY]
             for key, value in t.get(VARS_KEY, {}).items():
                 self.vars_dict["{}_{}".format(task_id, key)] = value
 
@@ -993,7 +1073,8 @@ class NsblDynRole(NsblRole):
         if not os.path.exists(target_folder):
             os.makedirs(target_folder)
 
-        role_template_local_path = os.path.join(os.path.dirname(__file__), "external", "ansible-role-template")
+        role_template_local_path = os.path.join(
+            os.path.dirname(__file__), "external", "ansible-role-template")
         # cookiecutter doesn't like input lists, so converting to dict
         tasks = {}
 
@@ -1003,14 +1084,17 @@ class NsblDynRole(NsblRole):
             if VARS_KEY not in task.keys():
                 task[VARS_KEY] = {}
 
-            if VAR_KEYS_KEY not in task[TASKS_META_KEY].keys() or task[TASKS_META_KEY][VAR_KEYS_KEY] == '*':
-                task[TASKS_META_KEY][VAR_KEYS_KEY] = list(task.get(VARS_KEY, {}).keys())
+            if VAR_KEYS_KEY not in task[TASKS_META_KEY].keys(
+            ) or task[TASKS_META_KEY][VAR_KEYS_KEY] == '*':
+                task[TASKS_META_KEY][VAR_KEYS_KEY] = list(
+                    task.get(VARS_KEY, {}).keys())
                 # else:
                 # for key in task.get(VARS_KEY, {}).keys():
                 # task[TASKS_META_KEY][VAR_KEYS_KEY].append(key)
 
             # make var_keys items unique
-            task[TASKS_META_KEY][VAR_KEYS_KEY] = list(set(task[TASKS_META_KEY][VAR_KEYS_KEY]))
+            task[TASKS_META_KEY][VAR_KEYS_KEY] = list(
+                set(task[TASKS_META_KEY][VAR_KEYS_KEY]))
             if WITH_ITEMS_KEY in task[TASKS_META_KEY].keys():
                 with_items_key = task[TASKS_META_KEY][WITH_ITEMS_KEY]
 
@@ -1033,7 +1117,8 @@ class NsblDynRole(NsblRole):
             for var_key in role_details.get("vars", {}).keys():
                 role_details["vars"][var_key] = ""
 
-        cookiecutter(role_template_local_path, extra_context=role_dict, no_input=True)
+        cookiecutter(
+            role_template_local_path, extra_context=role_dict, no_input=True)
         os.chdir(current_dir)
 
 
@@ -1080,7 +1165,8 @@ class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
                 role_name = new_config[TASKS_META_KEY].get(ROLE_NAME_KEY, None)
                 if not role_name:
                     if not self.current_role_name:
-                        self.current_role_name = "{}_{}".format(DYN_ROLE_TYPE, NsblDynamicRoleProcessor.role_id)
+                        self.current_role_name = "{}_{}".format(
+                            DYN_ROLE_TYPE, NsblDynamicRoleProcessor.role_id)
                         NsblDynamicRoleProcessor.role_id += 1
                     role_name = self.current_role_name
                     new_config[TASKS_META_KEY][ROLE_NAME_KEY] = role_name
@@ -1089,8 +1175,10 @@ class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
                 else:
                     if role_name != self.current_role_name:
                         if self.current_tasks:
-                            dyn_role = NsblDynRole(self.current_tasks, NsblDynamicRoleProcessor.role_id,
-                                                   self.role_repos)
+                            dyn_role = NsblDynRole(
+                                self.current_tasks,
+                                NsblDynamicRoleProcessor.role_id,
+                                self.role_repos)
                             NsblDynamicRoleProcessor.role_id += 1
                             self.current_tasks = [new_config]
                             self.current_role_name = role_name
@@ -1103,21 +1191,28 @@ class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
                         self.current_tasks.append(new_config)
                         yield None
 
-            elif new_config[TASKS_META_KEY][TASK_TYPE_KEY] in [INT_ROLE_TASK_TYPE, EXT_ROLE_TASK_TYPE]:
+            elif new_config[TASKS_META_KEY][TASK_TYPE_KEY] in [
+                    INT_ROLE_TASK_TYPE, EXT_ROLE_TASK_TYPE
+            ]:
                 if len(self.current_tasks) > 0:
-                    dyn_role = NsblDynRole(self.current_tasks, NsblDynamicRoleProcessor.role_id, self.role_repos)
+                    dyn_role = NsblDynRole(self.current_tasks,
+                                           NsblDynamicRoleProcessor.role_id,
+                                           self.role_repos)
                     NsblDynamicRoleProcessor.role_id += 1
                     self.current_tasks = []
                     self.current_role_name = None
                     yield dyn_role
-                if new_config[TASKS_META_KEY][TASK_TYPE_KEY] == INT_ROLE_TASK_TYPE:
-                    role = NsblInternalRole(new_config[TASKS_META_KEY], new_config.get(VARS_KEY, {}),
+                if new_config[TASKS_META_KEY][
+                        TASK_TYPE_KEY] == INT_ROLE_TASK_TYPE:
+                    role = NsblInternalRole(new_config[TASKS_META_KEY],
+                                            new_config.get(VARS_KEY, {}),
                                             NsblDynamicRoleProcessor.role_id)
                     NsblDynamicRoleProcessor.role_id += 1
                     self.current_role_name = None
                     yield role
                 else:
-                    role = NsblExternalRole(new_config[TASKS_META_KEY], new_config.get(VARS_KEY, {}),
+                    role = NsblExternalRole(new_config[TASKS_META_KEY],
+                                            new_config.get(VARS_KEY, {}),
                                             NsblDynamicRoleProcessor.role_id)
                     NsblDynamicRoleProcessor.role_id += 1
                     self.current_role_name = None
@@ -1125,15 +1220,16 @@ class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
 
             else:
                 raise NsblException(
-                    "Task type needs to be either '{}', '{}' or '{}': {}".format(TASK_TASK_TYPE, EXT_ROLE_TASK_TYPE,
-                                                                                 INT_ROLE_TASK_TYPE,
-                                                                                 new_config[TASKS_META_KEY][
-                                                                                     TASK_TYPE_KEY]))
-
+                    "Task type needs to be either '{}', '{}' or '{}': {}".
+                    format(TASK_TASK_TYPE, EXT_ROLE_TASK_TYPE,
+                           INT_ROLE_TASK_TYPE,
+                           new_config[TASKS_META_KEY][TASK_TYPE_KEY]))
 
         else:
             if len(self.current_tasks) > 0:
-                role = NsblDynRole(self.current_tasks, NsblDynamicRoleProcessor.role_id, self.role_repos)
+                role = NsblDynRole(self.current_tasks,
+                                   NsblDynamicRoleProcessor.role_id,
+                                   self.role_repos)
                 yield role
             else:
                 yield None
