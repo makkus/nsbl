@@ -12,16 +12,18 @@ with open('HISTORY.rst') as history_file:
 requirements = [
     'Click>=6.7',
     'click-log>=0.1.8',
+    'click-completion==0.2.1',
     'cookiecutter==1.6.0',
-    'ansible==2.5.0',
+    'ansible==2.5.3',
     'frkl>=0.1.0',
+    'lucify>=0.1.0',
     'cursor>=1.2.0',
-    'six==1.11.0',
-    'pexpect'
+    'six>=1.11.0',
+    'pexpect==4.5.0'
 ]
 
 test_requirements = [
-    'pytest>=3.2.2'
+    'pytest>=3.6.0'
 ]
 
 setup(
