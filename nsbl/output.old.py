@@ -12,6 +12,7 @@ log = logging.getLogger("nsbl")
 
 
 class CursorOff(object):
+
     def __enter__(self):
         cursor.hide()
 
@@ -20,6 +21,7 @@ class CursorOff(object):
 
 
 class NsblPrintCallbackAdapter(object):
+
     def add_log_message(self, line):
         click.echo(line, nl=False)
 
@@ -28,6 +30,7 @@ class NsblPrintCallbackAdapter(object):
 
 
 class NsblLogCallbackAdapter(object):
+
     def __init__(self, lookup_dict, display_sub_tasks=True):
 
         self.display_utility_tasks = False
@@ -89,7 +92,11 @@ class NsblLogCallbackAdapter(object):
             dyn_task_id = self.current_dyn_task_id
 
         # print("role: {}, dyn_id: {} - {}, task_name: {} - {}".format(role_changed, self.current_dyn_task_id, dyn_task_id, self.current_task_name, task_name))
-        if role_changed or self.current_dyn_task_id != dyn_task_id or task_name != self.current_task_name:
+        if (
+            role_changed
+            or self.current_dyn_task_id != dyn_task_id
+            or task_name != self.current_task_name
+        ):
             task_changed = True
 
         if role_changed:
@@ -97,14 +104,18 @@ class NsblLogCallbackAdapter(object):
             self.current_role_id = role_id
             self.current_dyn_task_id = dyn_task_id
 
-            self.current_role = self.lookup_dict[self.current_env_id][self.current_role_id]
+            self.current_role = self.lookup_dict[self.current_env_id][
+                self.current_role_id
+            ]
             click.echo("new role: {}".format(self.current_role["name"]))
 
         if task_changed:
             self.current_task_name = task_name
             self.current_dyn_task_id = dyn_task_id
             if self.current_dyn_task_id != None:
-                self.current_task = self.current_role[TASKS_KEY][self.current_dyn_task_id]
+                self.current_task = self.current_role[TASKS_KEY][
+                    self.current_dyn_task_id
+                ]
                 self.current_task_is_dyn_role = True
             else:
                 self.current_task_is_dyn_role = False
@@ -173,7 +184,6 @@ class NsblLogCallbackAdapter(object):
         #     self.last_action = None
 
         # current_task_is_nsblized = action in NSBLIZED_TASKS
-
 
         # if category.startswith("nsbl") and current_task_is_nsblized:
         #     self.saved_item = None
@@ -253,7 +263,7 @@ class NsblLogCallbackAdapter(object):
             self.new_line = True
             click.echo(output)
         elif ev["category"] == "nsbl_item_failed":
-            msg = ev.get('msg', None)
+            msg = ev.get("msg", None)
             if not msg:
                 if ev.get("ignore_errors", False):
                     msg = "(but errors ignored)"
@@ -284,7 +294,7 @@ class NsblLogCallbackAdapter(object):
             click.echo(output)
             self.new_line = True
         elif ev["category"] == "item_failed":
-            msg = ev.get('msg', None)
+            msg = ev.get("msg", None)
             if not msg:
                 if ev.get("ignore_errors", False):
                     msg = "(but errors ignored)"

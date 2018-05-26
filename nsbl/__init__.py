@@ -4,5 +4,5 @@
 # from .inventory import NsblInventory
 
 __author__ = """Markus Binsteiner"""
-__email__ = 'makkus@frkl.io'
-__version__ = '0.3.7'
+__email__ = "makkus@frkl.io"
+__version__ = "0.3.7"

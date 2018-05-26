@@ -8,6 +8,7 @@ def to_yaml(var):
 
 
 class AnsibleFilterExtension(Extension):
+
     def __init__(self, environment):
         super(Extension, self).__init__()
         fm = FilterModule()

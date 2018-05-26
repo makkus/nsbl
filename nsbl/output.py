@@ -19,10 +19,11 @@ ENCODING = sys.stdout.encoding
 if not ENCODING:
     ENCODING = "utf-8"
 
+
 def reindent(s, numSpaces):
-    s = string.split(s, '\n')
-    s = [(numSpaces * ' ') + string.lstrip(line) for line in s]
-    s = string.join(s, '\n')
+    s = string.split(s, "\n")
+    s = [(numSpaces * " ") + string.lstrip(line) for line in s]
+    s = string.join(s, "\n")
     return s
 
 
@@ -32,6 +33,7 @@ def get_debug_value_string(value):
         return value
     else:
         return yaml.safe_dump(value, default_flow_style=False).strip()
+
 
 def print_coloured(tokens, nl=True):
 
@@ -50,6 +52,7 @@ def print_coloured(tokens, nl=True):
     if nl:
         click.echo()
 
+
 def print_debug_value(key, value, indentation):
 
     if key == "msg":
@@ -61,20 +64,22 @@ def print_debug_value(key, value, indentation):
 
     debug_value = get_debug_value_string(value)
 
-    if '\n' not in debug_value:
+    if "\n" not in debug_value:
         result = "{} {}".format(msg, debug_value)
     else:
-        debug_value = reindent(debug_value, indentation+3)
+        debug_value = reindent(debug_value, indentation + 3)
         result = "{}\n{}".format(msg, debug_value)
 
     return result
 
-def print_title(title_string, title_char='#'):
+
+def print_title(title_string, title_char="#"):
 
     click.secho("{} {}".format(title_char, title_string), bold=True)
 
 
 class CursorOff(object):
+
     def __enter__(self):
         cursor.hide()
 
@@ -119,8 +124,15 @@ class NsblPrintCallbackAdapter(object):
 
 
 class NsblLogCallbackAdapter(object):
-    def __init__(self, lookup_dict, display_sub_tasks=True, display_skipped_tasks=True, display_unchanged_tasks=True,
-                 display_ignore_tasks=[]):
+
+    def __init__(
+        self,
+        lookup_dict,
+        display_sub_tasks=True,
+        display_skipped_tasks=True,
+        display_unchanged_tasks=True,
+        display_ignore_tasks=[],
+    ):
 
         self.display_utility_tasks = False
         self.display_sub_tasks = display_sub_tasks
@@ -151,22 +163,29 @@ class NsblLogCallbackAdapter(object):
         self.skipped = True
         self.changed = False
 
-        self.output = ClickStdOutput(display_sub_tasks=self.display_sub_tasks,
-                                     display_skipped_tasks=self.display_skipped_tasks,
-                                     display_ignore_tasks=self.display_ignore_tasks)
+        self.output = ClickStdOutput(
+            display_sub_tasks=self.display_sub_tasks,
+            display_skipped_tasks=self.display_skipped_tasks,
+            display_ignore_tasks=self.display_ignore_tasks,
+        )
 
         self.current_line = ""
+
     def write(self, line):
 
         self.current_line = "{}{}".format(self.current_line, line)
 
-        lines = self.current_line.split('\n')
+        lines = self.current_line.split("\n")
         if len(lines) > 1:
             for line in lines[0:-1]:
                 self.add_log_message(line)
 
         last_token = lines[-1]
-        if last_token.startswith("{") and last_token.endswith("}") and last_token.count("") == last_token.count("}"):
+        if (
+            last_token.startswith("{")
+            and last_token.endswith("}")
+            and last_token.count("") == last_token.count("}")
+        ):
             self.add_log_message(lines[-1])
             self.current_line = ""
         else:
@@ -176,8 +195,8 @@ class NsblLogCallbackAdapter(object):
 
         # msg = "".join(self.current_lines)
         # if msg.strip():
-            # for line in msg.split('\n')[:-1]:
-                # self.add_log_message(line)
+        # for line in msg.split('\n')[:-1]:
+        # self.add_log_message(line)
 
         # self.current_lines = [self.current_lines[-1]]
         pass
@@ -196,7 +215,7 @@ class NsblLogCallbackAdapter(object):
         except (Exception) as e:
             if omit_errors:
                 return
-            if line.startswith('['):
+            if line.startswith("["):
                 click.echo(line.strip())
             else:
                 self.output.print_error(line, e)
@@ -212,9 +231,20 @@ class NsblLogCallbackAdapter(object):
         env_id = details.get(ENV_ID_KEY, None)
         if category == "play_start":
             if self.current_role_id != None:
-                self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item,
-                                                 self.current_task_is_dyn_role)
-                self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stdouts, self.stderrs)
+                self.output.process_task_changed(
+                    self.task_has_items,
+                    self.task_has_nsbl_items,
+                    self.saved_item,
+                    self.current_task_is_dyn_role,
+                )
+                self.output.process_role_changed(
+                    self.failed,
+                    self.skipped,
+                    self.changed,
+                    self.msgs,
+                    self.stdouts,
+                    self.stderrs,
+                )
                 self.output.start_new_line()
             self.current_role_id = None
             self.current_task = None
@@ -251,19 +281,36 @@ class NsblLogCallbackAdapter(object):
             dyn_task_id = self.current_dyn_task_id
 
         # print("role: {}, dyn_id: {} - {}, task_name: {} - {}".format(role_changed, self.current_dyn_task_id, dyn_task_id, self.current_task_name, task_name))
-        if role_changed or self.current_dyn_task_id != dyn_task_id or task_name != self.current_task_name:
+        if (
+            role_changed
+            or self.current_dyn_task_id != dyn_task_id
+            or task_name != self.current_task_name
+        ):
             task_changed = True
 
         if role_changed:
             if self.current_role_id != None:
-                self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item,
-                                                 self.current_task_is_dyn_role)
-                self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stdouts, self.stderrs)
+                self.output.process_task_changed(
+                    self.task_has_items,
+                    self.task_has_nsbl_items,
+                    self.saved_item,
+                    self.current_task_is_dyn_role,
+                )
+                self.output.process_role_changed(
+                    self.failed,
+                    self.skipped,
+                    self.changed,
+                    self.msgs,
+                    self.stdouts,
+                    self.stderrs,
+                )
             self.current_env_id = env_id
             self.current_role_id = role_id
             self.current_dyn_task_id = dyn_task_id
 
-            self.current_role = self.lookup_dict[self.current_env_id][TASKS_KEY][self.current_role_id]
+            self.current_role = self.lookup_dict[self.current_env_id][TASKS_KEY][
+                self.current_role_id
+            ]
 
             self.output.start_role(self.current_role)
 
@@ -280,18 +327,26 @@ class NsblLogCallbackAdapter(object):
 
         if task_changed:
             if self.current_task_name != None and not role_changed:
-                self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item,
-                                                 self.current_task_is_dyn_role)
+                self.output.process_task_changed(
+                    self.task_has_items,
+                    self.task_has_nsbl_items,
+                    self.saved_item,
+                    self.current_task_is_dyn_role,
+                )
 
             self.current_task_name = task_name
             self.current_dyn_task_id = dyn_task_id
             if self.current_dyn_task_id != None:
-                self.current_task = self.current_role[TASKS_KEY][self.current_dyn_task_id]
+                self.current_task = self.current_role[TASKS_KEY][
+                    self.current_dyn_task_id
+                ]
                 self.current_task_is_dyn_role = True
             else:
                 self.current_task_is_dyn_role = False
 
-            self.output.start_task(self.current_task_name, self.current_role, self.current_task_is_dyn_role)
+            self.output.start_task(
+                self.current_task_name, self.current_role, self.current_task_is_dyn_role
+            )
 
             self.saved_item = None
             self.msgs = []
@@ -303,40 +358,53 @@ class NsblLogCallbackAdapter(object):
 
         # task_desc = self.current_task[TASK_DESC_KEY]
         # task_name = self.current_task[TASK_NAME_KEY]
-        task_desc = details.get('name', None)
+        task_desc = details.get("name", None)
 
-        msg = details.get('msg', None)
-        stdout = details.get('stdout_lines', [])
-        stderr = details.get('stderr_lines', [])
-        item = details.get('item', None)
-        status = details.get('status', None)
-        skipped = details.get('skipped', None)
-        ignore_errors = details.get('ignore_errors', False)
-        action = details.get('action', self.last_action)
-        ansible_task_name = details.get('name', None)
+        msg = details.get("msg", None)
+        stdout = details.get("stdout_lines", [])
+        stderr = details.get("stderr_lines", [])
+        item = details.get("item", None)
+        status = details.get("status", None)
+        skipped = details.get("skipped", None)
+        ignore_errors = details.get("ignore_errors", False)
+        action = details.get("action", self.last_action)
+        ansible_task_name = details.get("name", None)
 
-        debug_key = details.get('debug_key', None)
-        debug_value = details.get('debug_value', None)
+        debug_key = details.get("debug_key", None)
+        debug_value = details.get("debug_value", None)
 
         if not isinstance(msg, string_types):
             msg = pprint.pformat(msg)
         if msg:
-            msg = msg.encode(ENCODING, errors='replace').strip()
+            msg = msg.encode(ENCODING, errors="replace").strip()
         if msg:
             self.msgs.append(msg)
 
         if stdout:
             for s in stdout:
-                s = s.encode(ENCODING, errors='replace').strip()
+                s = s.encode(ENCODING, errors="replace").strip()
                 self.stdouts.append(s)
         if stderr:
             for s in stderr:
-                s = s.encode(ENCODING, errors='replace').strip()
+                s = s.encode(ENCODING, errors="replace").strip()
                 self.stderrs.append(s)
 
-        event = {"category": category, "task_name": task_name, "task_desc": task_desc, "status": status, "item": item,
-                 "msg": msg, "skipped": skipped, "ignore_errors": ignore_errors, "ansible_task_name": ansible_task_name,
-                 "action": action, "stdout": stdout, "stderr": stderr, "debug_key": debug_key, "debug_value": debug_value}
+        event = {
+            "category": category,
+            "task_name": task_name,
+            "task_desc": task_desc,
+            "status": status,
+            "item": item,
+            "msg": msg,
+            "skipped": skipped,
+            "ignore_errors": ignore_errors,
+            "ansible_task_name": ansible_task_name,
+            "action": action,
+            "stdout": stdout,
+            "stderr": stderr,
+            "debug_key": debug_key,
+            "debug_value": debug_value,
+        }
 
         if status and status == "changed":
             self.changed = True
@@ -346,7 +414,11 @@ class NsblLogCallbackAdapter(object):
         if category == "failed" and not ignore_errors:
             self.failed = True
 
-        if category in ["ok", "failed", "skipped"] and not self.task_has_items and not self.task_has_nsbl_items:
+        if (
+            category in ["ok", "failed", "skipped"]
+            and not self.task_has_items
+            and not self.task_has_nsbl_items
+        ):
             self.saved_item = event
             return
         elif category.startswith("nsbl"):
@@ -360,14 +432,31 @@ class NsblLogCallbackAdapter(object):
 
     def finish_up(self):
 
-        self.output.process_task_changed(self.task_has_items, self.task_has_nsbl_items, self.saved_item,
-                                         self.current_task_is_dyn_role)
-        self.output.process_role_changed(self.failed, self.skipped, self.changed, self.msgs, self.stdouts, self.stderrs)
+        self.output.process_task_changed(
+            self.task_has_items,
+            self.task_has_nsbl_items,
+            self.saved_item,
+            self.current_task_is_dyn_role,
+        )
+        self.output.process_role_changed(
+            self.failed,
+            self.skipped,
+            self.changed,
+            self.msgs,
+            self.stdouts,
+            self.stderrs,
+        )
 
 
 class ClickStdOutput(object):
-    def __init__(self, display_sub_tasks=True, display_skipped_tasks=True, display_unchanged_tasks=True,
-                 display_ignore_tasks=[]):
+
+    def __init__(
+        self,
+        display_sub_tasks=True,
+        display_skipped_tasks=True,
+        display_unchanged_tasks=True,
+        display_ignore_tasks=[],
+    ):
 
         self.new_line = True
         self.debug = False
@@ -411,7 +500,11 @@ class ClickStdOutput(object):
     def print_task_string(self, task_str):
 
         if task_str.startswith("   - [") or any(
-            (task_str.startswith(u"   - {}".format(token)) for token in self.ignore_strings)):
+            (
+                task_str.startswith(u"   - {}".format(token))
+                for token in self.ignore_strings
+            )
+        ):
             self.last_string_ignored = True
             self.new_line = True
             return
@@ -419,7 +512,9 @@ class ClickStdOutput(object):
         if self.terminal_width > 0:
             reserve = 2
             if len(task_str) > self.terminal_width - reserve:
-                task_str = u"{}...".format(task_str[0:self.terminal_width - reserve - 3])
+                task_str = u"{}...".format(
+                    task_str[0 : self.terminal_width - reserve - 3]
+                )
         click.echo(task_str, nl=False)
         self.new_line = False
 
@@ -502,7 +597,7 @@ class ClickStdOutput(object):
             output = [("ok", "green"), (" ({})".format(msg),)]
             print_coloured(output)
         elif ev["category"] == "nsbl_item_failed":
-            msg = ev.get('msg', None)
+            msg = ev.get("msg", None)
             if not msg:
                 if ev.get("ignore_errors", False):
                     msg = "errors ignored"
@@ -528,7 +623,7 @@ class ClickStdOutput(object):
                     click.echo(u"\t\t{}".format(m.strip()))
                 except:
                     try:
-                        click.echo(u"\t\t{}".format(m.decode('utf-8').strip()))
+                        click.echo(u"\t\t{}".format(m.decode("utf-8").strip()))
                     except:
                         click.echo("... error decoding string ... ignoring ...")
 
@@ -558,10 +653,14 @@ class ClickStdOutput(object):
                         return
 
                     msg = "no change"
-            output = [("       - {} => ".format(item),), ("ok", "green"), (" ({})".format(msg),)]
+            output = [
+                ("       - {} => ".format(item),),
+                ("ok", "green"),
+                (" ({})".format(msg),),
+            ]
             print_coloured(output)
         elif ev["category"] == "item_failed":
-            msg = ev.get('msg', None)
+            msg = ev.get("msg", None)
             ignore = False
             if not msg:
                 if ev.get("ignore_errors", False):
@@ -570,7 +669,11 @@ class ClickStdOutput(object):
                 else:
                     msg = "no error details"
             if ignore:
-                output = [("       - {} => ".format(item),), ("failed", "yellow"), (":",)]
+                output = [
+                    ("       - {} => ".format(item),),
+                    ("failed", "yellow"),
+                    (":",),
+                ]
             else:
                 output = [("       - {} => ".format(item),), ("failed", "red"), (":",)]
             print_coloured(output)
@@ -609,7 +712,9 @@ class ClickStdOutput(object):
                         if self.debug:
                             debug_key = ev.get("debug_key", "n/a")
                             debug_value = ev.get("debug_value", "n/a")
-                            msg = [("\n"+print_debug_value(debug_key, debug_value, 9),)]
+                            msg = [
+                                ("\n" + print_debug_value(debug_key, debug_value, 9),)
+                            ]
                         else:
                             if not self.display_unchanged_tasks:
                                 click.echo(u"\u001b[2K\r", nl=False)
@@ -630,7 +735,7 @@ class ClickStdOutput(object):
                     else:
                         msg = "(no error details)"
                     output = u"failed: {}".format(msg)
-                    output = [("failed", "red"), (": {}".format(msg), )]
+                    output = [("failed", "red"), (": {}".format(msg),)]
                 print_coloured(output)
                 self.new_line = True
             elif ev["category"] == "skipped":
@@ -638,7 +743,7 @@ class ClickStdOutput(object):
                     click.echo(u"\u001b[2K\r", nl=False)
                     self.new_line = True
                     return
-                output = [("skipped", "yellow"),]
+                output = [("skipped", "yellow")]
                 print_coloured(output)
                 self.new_line = True
 
@@ -702,7 +807,9 @@ class ClickStdOutput(object):
 
             # click.echo("")
 
-    def process_task_changed(self, task_has_items, task_has_nsbl_items, saved_item, current_is_dyn_role):
+    def process_task_changed(
+        self, task_has_items, task_has_nsbl_items, saved_item, current_is_dyn_role
+    ):
 
         if task_has_items or task_has_nsbl_items:
             return

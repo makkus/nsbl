@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import copy
 import os
 
 from builtins import *
 from frkl.defaults import *
-from frkl.processors import FrklProcessor, UrlAbbrevProcessor, EnsurePythonObjectProcessor, EnsureUrlProcessor
+from frkl.processors import (
+    FrklProcessor,
+    UrlAbbrevProcessor,
+    EnsurePythonObjectProcessor,
+    EnsureUrlProcessor,
+)
 from frkl import Frkl
 
 from six import string_types
@@ -82,7 +86,8 @@ ROLE_NAME_KEY = "role-name"
 ROLE_META_FILENAME = "meta.yml"
 # path where nsbl default roles are located
 DEFAULT_ROLES_PATH = os.path.join(
-    os.path.dirname(__file__), "external", "default-roles")
+    os.path.dirname(__file__), "external", "default-roles"
+)
 # default task description filename
 TASK_DESC_DEFAULT_FILENAME = "task-aliases.yml"
 ANSIBLE_ROLE_CACHE_DIR = os.path.expanduser("~/.cache/ansible-roles")
@@ -95,8 +100,8 @@ NSBL_TASKS_TEMPLATE_INIT = {"use_environment_vars": True, "use_context": True}
 ID_NAME = "id"
 NSBL_TASKS_ID_INIT = {"id_key": TASKS_META_KEY, "id_name": ID_NAME}
 
-ENV_TYPE_HOST = 'host'
-ENV_TYPE_GROUP = 'group'
+ENV_TYPE_HOST = "host"
+ENV_TYPE_GROUP = "group"
 DEFAULT_ENV_TYPE = ENV_TYPE_GROUP
 
 # default timeout when the freckle password option is used
@@ -109,10 +114,8 @@ DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT = {
     CHILD_MARKER_NAME: TASKS_KEY,
     DEFAULT_LEAF_NAME: TASKS_META_KEY,
     DEFAULT_LEAFKEY_NAME: TASK_META_NAME_KEY,
-    KEY_MOVE_MAP_NAME: {
-        '*': (VARS_KEY, 'default')
-    },
-    "use_context": True
+    KEY_MOVE_MAP_NAME: {"*": (VARS_KEY, "default")},
+    "use_context": True,
 }
 DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
     FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
@@ -124,19 +127,20 @@ NSBL_INVENTORY_BOOTSTRAP_FORMAT = {
     DEFAULT_LEAF_NAME: ENV_META_KEY,
     DEFAULT_LEAFKEY_NAME: ENV_NAME_KEY,
     OTHER_KEYS_NAME: [VARS_KEY, TASKS_KEY],
-    KEY_MOVE_MAP_NAME: VARS_KEY
+    KEY_MOVE_MAP_NAME: VARS_KEY,
 }
 # bootstrap chain used for creating the inventory
 NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
     UrlAbbrevProcessor(),
     EnsureUrlProcessor(),
     EnsurePythonObjectProcessor(),
-    FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)
+    FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT),
 ]
 
 
 def generate_nsbl_tasks_format(
-        task_descs, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT):
+    task_descs, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT
+):
     """Utility method to populate the KEY_MOVE_MAP key for the tasks """
 
     result = copy.deepcopy(tasks_format)
@@ -144,9 +148,9 @@ def generate_nsbl_tasks_format(
     for task_desc in task_descs:
         if DEFAULT_KEY_KEY in task_desc[TASKS_META_KEY].keys():
             # TODO: check for duplicate keys?
-            result[KEY_MOVE_MAP_NAME][task_desc[TASKS_META_KEY][
-                TASK_META_NAME_KEY]] = "vars/{}".format(
-                    task_desc[TASKS_META_KEY][DEFAULT_KEY_KEY])
+            result[KEY_MOVE_MAP_NAME][
+                task_desc[TASKS_META_KEY][TASK_META_NAME_KEY]
+            ] = "vars/{}".format(task_desc[TASKS_META_KEY][DEFAULT_KEY_KEY])
 
     return result
 
@@ -195,9 +199,7 @@ def calculate_role_repos(role_repos):
     return role_repos
 
 
-def calculate_task_descs(task_descs,
-                         role_repos=[],
-                         add_upper_case_versions=True):
+def calculate_task_descs(task_descs, role_repos=[], add_upper_case_versions=True):
     """Utility method to calculate which task descriptions to use.
 
     Task descriptions are yaml files that translate task-names in a task config
@@ -224,13 +226,15 @@ def calculate_task_descs(task_descs,
         task_descs = [task_descs]
     elif not isinstance(task_descs, (list, tuple)):
         raise Exception(
-            "task_descs needs to be string or list: '{}'".format(task_descs))
+            "task_descs needs to be string or list: '{}'".format(task_descs)
+        )
 
     if role_repos:
         repo_task_descs = []
         for repo in role_repos:
             task_desc_file = os.path.join(
-                os.path.expanduser(repo), TASK_DESC_DEFAULT_FILENAME)
+                os.path.expanduser(repo), TASK_DESC_DEFAULT_FILENAME
+            )
             if os.path.exists(task_desc_file):
                 repo_task_descs.append(task_desc_file)
 
@@ -238,12 +242,15 @@ def calculate_task_descs(task_descs,
 
     # TODO: check whether paths exist
     frkl_format = generate_nsbl_tasks_format([])
-    task_desk_frkl = Frkl(task_descs, [
-        UrlAbbrevProcessor(),
-        EnsureUrlProcessor(),
-        EnsurePythonObjectProcessor(),
-        FrklProcessor(frkl_format)
-    ])
+    task_desk_frkl = Frkl(
+        task_descs,
+        [
+            UrlAbbrevProcessor(),
+            EnsureUrlProcessor(),
+            EnsurePythonObjectProcessor(),
+            FrklProcessor(frkl_format),
+        ],
+    )
 
     processed_task_descs = task_desk_frkl.process()
 
@@ -252,8 +259,9 @@ def calculate_task_descs(task_descs,
         for task in processed_task_descs:
             result.append(task)
             task_become = copy.deepcopy(task)
-            task_become[TASKS_META_KEY][TASK_META_NAME_KEY] = task[
-                TASKS_META_KEY][TASK_META_NAME_KEY].upper()
+            task_become[TASKS_META_KEY][TASK_META_NAME_KEY] = task[TASKS_META_KEY][
+                TASK_META_NAME_KEY
+            ].upper()
             task_become[TASKS_META_KEY][TASK_BECOME_KEY] = True
             result.append(task_become)
 

@@ -9,9 +9,9 @@ from .inventory import NsblInventory
 
 
 @click.command()
-@click.option('--list', help='list of all groups', required=False, is_flag=True)
-@click.option('--host', help='variables of a host', required=False, nargs=1)
-@click.option('--config', help='configuration file(s)', required=True, multiple=True)
+@click.option("--list", help="list of all groups", required=False, is_flag=True)
+@click.option("--host", help="variables of a host", required=False, nargs=1)
+@click.option("--config", help="configuration file(s)", required=True, multiple=True)
 def main(list, host, config):
     """Console script for nsbl"""
 

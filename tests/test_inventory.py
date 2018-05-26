@@ -16,13 +16,12 @@ import yaml
 from frkl import frkl
 
 
-@pytest.mark.parametrize("test_name", [
-    "localhost_inventory",
-    "groups_inventory"
-])
+@pytest.mark.parametrize("test_name", ["localhost_inventory", "groups_inventory"])
 def test_files(test_name):
 
-    folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "chain_tests", test_name)
+    folder = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "chain_tests", test_name
+    )
 
     input_files = []
     for child in os.listdir(folder):

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os
 import yaml
@@ -50,9 +49,18 @@ def parse_host_string(host_string):
 
     return result
 
+
 class NsblInventory(FrklCallback):
-    def create(config, default_env_type=DEFAULT_ENV_TYPE,
-               pre_chain=[UrlAbbrevProcessor(), EnsureUrlProcessor(), EnsurePythonObjectProcessor()]):
+
+    def create(
+        config,
+        default_env_type=DEFAULT_ENV_TYPE,
+        pre_chain=[
+            UrlAbbrevProcessor(),
+            EnsureUrlProcessor(),
+            EnsurePythonObjectProcessor(),
+        ],
+    ):
         """Convenience method to create a NsblInventory object out of the configs and a few optional parameters.
 
         Args:
@@ -92,7 +100,9 @@ class NsblInventory(FrklCallback):
 
     def validate_init(self):
 
-        self.default_env_type = self.init_params.get('default_env_type', DEFAULT_ENV_TYPE)
+        self.default_env_type = self.init_params.get(
+            "default_env_type", DEFAULT_ENV_TYPE
+        )
         return True
 
     def result(self):
@@ -110,8 +120,9 @@ class NsblInventory(FrklCallback):
                 continue
             group_dir = os.path.join(inventory_dir, "group_vars", group)
             var_file = os.path.join(group_dir, "{}.yml".format(group))
-            content = yaml.safe_dump(vars, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode(
-                'utf-8')
+            content = yaml.safe_dump(
+                vars, default_flow_style=False, encoding="utf-8", allow_unicode=True
+            ).decode("utf-8")
 
             os.makedirs(group_dir)
             with open(var_file, "w") as text_file:
@@ -123,8 +134,9 @@ class NsblInventory(FrklCallback):
                 continue
             host_dir = os.path.join(inventory_dir, "host_vars", host)
             var_file = os.path.join(host_dir, "{}.yml".format(host))
-            content = yaml.safe_dump(vars, default_flow_style=False, encoding='utf-8', allow_unicode=True).decode(
-                'utf-8')
+            content = yaml.safe_dump(
+                vars, default_flow_style=False, encoding="utf-8", allow_unicode=True
+            ).decode("utf-8")
 
             os.makedirs(host_dir)
             with open(var_file, "w") as text_file:
@@ -133,13 +145,15 @@ class NsblInventory(FrklCallback):
     def get_inventory_config_string(self):
         """Returns a string that can be used to write an ansible hosts file, including hosts, groups and child-groups."""
 
-        jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
-        template = jinja_env.get_template('hosts')
+        jinja_env = Environment(loader=PackageLoader("nsbl", "templates"))
+        template = jinja_env.get_template("hosts")
         output_text = template.render(groups=self.groups, hosts=self.hosts)
 
         return output_text
 
-    def write_inventory_file_or_script(self, inventory_dir, extract_vars=False, relative_paths=True):
+    def write_inventory_file_or_script(
+        self, inventory_dir, extract_vars=False, relative_paths=True
+    ):
         """Writes an ansible hosts file or dynamic inventory script into the provided directory.
 
         Writing a dynamic inventory script is not implemented yet.
@@ -154,7 +168,7 @@ class NsblInventory(FrklCallback):
             inventory_name = "hosts"
             inventory_file = os.path.join(inventory_dir, inventory_name)
             par_dir = os.path.dirname(inventory_file)
-            if  not os.path.exists(par_dir):
+            if not os.path.exists(par_dir):
                 os.makedirs(par_dir)
 
             with open(inventory_file, "w") as text_file:
@@ -182,7 +196,6 @@ class NsblInventory(FrklCallback):
             #         abs_path = os.path.abspath(path)
             #         abs_configs.append(abs_path)
             #     script_configs = " --config".join(abs_configs)
-
 
             # output_text = template.render(role_repo_paths=roles_repos_string, nsbl_script_configs=script_configs)
 
@@ -228,12 +241,16 @@ class NsblInventory(FrklCallback):
         if not host_vars:
             return
 
-        intersection = set(self.hosts[host_name].get(VARS_KEY, {}).keys()).intersection(host_vars.keys())
+        intersection = set(self.hosts[host_name].get(VARS_KEY, {}).keys()).intersection(
+            host_vars.keys()
+        )
 
         if intersection:
             raise NsblException(
                 "Adding host more than once with intersecting keys, this is not possible because it's not clear which vars should take precedence. Intersection: {}".format(
-                    intersection))
+                    intersection
+                )
+            )
 
         self.hosts[host_name][VARS_KEY].update(host_vars)
 
@@ -266,7 +283,10 @@ class NsblInventory(FrklCallback):
 
         if ENV_META_KEY not in env.keys():
             raise NsblException(
-                "Environment does not have metadata (missing '{}') key: {})".format(ENV_META_KEY, env))
+                "Environment does not have metadata (missing '{}') key: {})".format(
+                    ENV_META_KEY, env
+                )
+            )
         env_type = env[ENV_META_KEY].get(ENV_TYPE_KEY, False)
         if not env_type:
             if ENV_HOSTS_KEY in env[ENV_META_KEY].keys():
@@ -280,7 +300,9 @@ class NsblInventory(FrklCallback):
         if not env_name:
             raise NsblException(
                 "Environment metadata needs to contain a name (either host- or group-name): {}".format(
-                    env[ENV_META_KEY]))
+                    env[ENV_META_KEY]
+                )
+            )
 
         if env_type == ENV_TYPE_HOST:
 
@@ -288,7 +310,10 @@ class NsblInventory(FrklCallback):
 
             if ENV_HOSTS_KEY in env.get(ENV_META_KEY, {}).keys():
                 raise NsblException(
-                    "An environment of type {} can't contain the {} key".format(ENV_TYPE_HOST, ENV_HOSTS_KEY))
+                    "An environment of type {} can't contain the {} key".format(
+                        ENV_TYPE_HOST, ENV_HOSTS_KEY
+                    )
+                )
 
             for group in env[ENV_META_KEY].get(ENV_GROUPS_KEY, []):
                 self.add_host_to_group(env_name, group)
@@ -304,7 +329,11 @@ class NsblInventory(FrklCallback):
                 self.add_group_to_group(group, env_name)
 
         else:
-            raise NsblException("Environment type needs to be either 'host' or 'group': {}".format(env_type))
+            raise NsblException(
+                "Environment type needs to be either 'host' or 'group': {}".format(
+                    env_type
+                )
+            )
 
         if TASKS_KEY in env.keys():
             current_meta = copy.deepcopy(env[ENV_META_KEY])
@@ -313,23 +342,37 @@ class NsblInventory(FrklCallback):
             if not env_name:
                 raise NsblException(
                     "Environment metadata needs to contain a name (either host- or group-name): {}".format(
-                        env[ENV_META_KEY]))
+                        env[ENV_META_KEY]
+                    )
+                )
             current_meta[ENV_NAME_KEY] = env_name
             self.tasks.append(
-                {TASKS_META_KEY: current_meta, TASKS_KEY: env[TASKS_KEY], VARS_KEY: env.get(VARS_KEY, {})})
+                {
+                    TASKS_META_KEY: current_meta,
+                    TASKS_KEY: env[TASKS_KEY],
+                    VARS_KEY: env.get(VARS_KEY, {}),
+                }
+            )
             self.current_env_id += 1
 
     def finished(self):
-        if "localhost" in self.hosts.keys() and "ansible_connection" not in self.hosts["localhost"].get(VARS_KEY,
-                                                                                                        {}).keys():
+        if (
+            "localhost" in self.hosts.keys()
+            and "ansible_connection"
+            not in self.hosts["localhost"].get(VARS_KEY, {}).keys()
+        ):
             self.hosts["localhost"][VARS_KEY]["ansible_connection"] = "local"
 
-        if "localhost" in self.hosts.keys() and "ansible_python_interpreter" not in self.hosts["localhost"].get(VARS_KEY,
-                                                                                                        {}).keys():
+        if (
+            "localhost" in self.hosts.keys()
+            and "ansible_python_interpreter"
+            not in self.hosts["localhost"].get(VARS_KEY, {}).keys()
+        ):
 
             if not os.path.exists("/usr/bin/python"):
-                self.hosts["localhost"][VARS_KEY]["ansible_python_interpreter"] = sys.executable
-
+                self.hosts["localhost"][VARS_KEY][
+                    "ansible_python_interpreter"
+                ] = sys.executable
 
     def list(self):
         """Lists all groups in the format that is required for ansible dynamic inventories.
@@ -374,7 +417,9 @@ class NsblInventory(FrklCallback):
         elif env_name in self.hosts.keys():
             return self.hosts[env_name].get(VARS_KEY, {})
         else:
-            raise NsblException("Neither group or host with name '{}' exists".format(env_name))
+            raise NsblException(
+                "Neither group or host with name '{}' exists".format(env_name)
+            )
 
 
 class WrapTasksIntoLocalhostEnvProcessor(ConfigProcessor):
@@ -405,10 +450,16 @@ class WrapTasksIntoLocalhostEnvProcessor(ConfigProcessor):
         if not self.last_call:
             self.task_configs.append(config)
         else:
-            result = {"localhost": {TASKS_KEY: self.task_configs, TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST},
-                                  VARS_KEY: self.task_vars}}
+            result = {
+                "localhost": {
+                    TASKS_KEY: self.task_configs,
+                    TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST},
+                    VARS_KEY: self.task_vars,
+                }
+            }
 
             return result
+
 
 class WrapTasksIntoHostsProcessor(ConfigProcessor):
     """Wraps a list of tasks into a localhost environment.
@@ -432,7 +483,6 @@ class WrapTasksIntoHostsProcessor(ConfigProcessor):
 
         return True
 
-
     def process_current_config(self):
 
         config = self.current_input_config
@@ -450,7 +500,11 @@ class WrapTasksIntoHostsProcessor(ConfigProcessor):
                 elif isinstance(host, dict):
                     details = host
                 else:
-                    raise Exception("Can't parse host, unknown type (can only be string or dict): {}".format(host))
+                    raise Exception(
+                        "Can't parse host, unknown type (can only be string or dict): {}".format(
+                            host
+                        )
+                    )
 
                 temp_vars = copy.deepcopy(self.task_vars)
 
@@ -465,7 +519,10 @@ class WrapTasksIntoHostsProcessor(ConfigProcessor):
                 if "protocol" in details.keys():
                     temp_vars["ansible_connection"] = details["protocol"]
                 else:
-                    if temp_vars["host"] == "localhost" or temp_vars["host"] == "127.0.0.1":
+                    if (
+                        temp_vars["host"] == "localhost"
+                        or temp_vars["host"] == "127.0.0.1"
+                    ):
                         temp_vars["ansible_connection"] = "local"
                     else:
                         temp_vars["ansible_connection"] = "ssh"
@@ -473,11 +530,13 @@ class WrapTasksIntoHostsProcessor(ConfigProcessor):
                 if details.get("port", 0) > 0:
                     temp_vars["ansible_port"] = details["port"]
 
-                temp = { temp_vars["host"]:
-                           { TASKS_KEY: self.task_configs,
-                             TASKS_META_KEY: { ENV_TYPE_KEY: ENV_TYPE_HOST },
-                             VARS_KEY: temp_vars
-                           }}
+                temp = {
+                    temp_vars["host"]: {
+                        TASKS_KEY: self.task_configs,
+                        TASKS_META_KEY: {ENV_TYPE_KEY: ENV_TYPE_HOST},
+                        VARS_KEY: temp_vars,
+                    }
+                }
                 result.append(temp)
 
             return result

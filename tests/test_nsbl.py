@@ -7,4 +7,3 @@ test_nsbl
 
 Tests for `nsbl` module.
 """
-

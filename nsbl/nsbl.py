@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import logging
 import shutil
@@ -15,7 +14,12 @@ import click
 import pexpect
 from cookiecutter.main import cookiecutter
 from frkl.callbacks import FrklCallback
-from frkl.processors import EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, UrlAbbrevProcessor
+from frkl.processors import (
+    EnsureUrlProcessor,
+    EnsurePythonObjectProcessor,
+    FrklProcessor,
+    UrlAbbrevProcessor,
+)
 from frkl import Frkl
 from frutils import dict_merge
 
@@ -26,7 +30,13 @@ from .defaults import *
 from .exceptions import NsblException
 from .inventory import NsblInventory, WrapTasksIntoHostsProcessor
 from .output import CursorOff, NsblLogCallbackAdapter, NsblPrintCallbackAdapter
-from .tasks import NsblCapitalizedBecomeProcessor, NsblDynamicRoleProcessor, NsblTaskProcessor, NsblTasks, add_roles
+from .tasks import (
+    NsblCapitalizedBecomeProcessor,
+    NsblDynamicRoleProcessor,
+    NsblTaskProcessor,
+    NsblTasks,
+    add_roles,
+)
 
 try:
     set
@@ -46,14 +56,15 @@ def can_passwordless_sudo():
     if os.geteuid() == 0:
         return True
 
-    FNULL = open(os.devnull, 'w')
+    FNULL = open(os.devnull, "w")
     # use -k to ignore any existing sudo token
     p = subprocess.Popen(
-        'sudo -k -n true',
+        "sudo -k -n true",
         shell=True,
         stdout=FNULL,
         stderr=subprocess.STDOUT,
-        close_fds=True)
+        close_fds=True,
+    )
     r = p.wait()
     return r == 0
 
@@ -103,7 +114,8 @@ def ensure_git_repo_format(repo, dest=None, dest_is_parent=False):
     elif isinstance(repo, dict):
         if "repo" not in repo.keys():
             raise NsblException(
-                "Repo dictionary needs at least a 'repo' key: {}".format(repo))
+                "Repo dictionary needs at least a 'repo' key: {}".format(repo)
+            )
         if "dest" not in repo.keys():
             if dest:
                 if dest_is_parent:
@@ -116,8 +128,8 @@ def ensure_git_repo_format(repo, dest=None, dest_is_parent=False):
         return repo
     else:
         raise NsblException(
-            "Repo value needs to be either string or dict format: {}".format(
-                repo))
+            "Repo value needs to be either string or dict format: {}".format(repo)
+        )
 
 
 def get_local_role_desc(role_name, role_repos=[]):
@@ -146,8 +158,10 @@ def get_local_role_desc(role_name, role_repos=[]):
 
     if not url:
         raise NsblException(
-            "Can't find local role '{}' (neither as absolute path nor in any of the local role repos)".
-            format(role_name))
+            "Can't find local role '{}' (neither as absolute path nor in any of the local role repos)".format(
+                role_name
+            )
+        )
 
     return {"url": url}
 
@@ -177,8 +191,10 @@ def merge_roles(role_obj, role_repos=[]):
             role_dict.update(temp)
     else:
         raise NsblException(
-            "Role description needs to be either a list of strings or a dict. Value '{}' is not valid.".
-            format(role_obj))
+            "Role description needs to be either a list of strings or a dict. Value '{}' is not valid.".format(
+                role_obj
+            )
+        )
 
     return role_dict
 
@@ -237,19 +253,22 @@ def merge_roles(role_obj, role_repos=[]):
 
 
 class Nsbl(FrklCallback):
-    def create(config,
-               role_repos=[],
-               task_descs=[],
-               include_parent_meta=False,
-               include_parent_vars=False,
-               default_env_type=DEFAULT_ENV_TYPE,
-               pre_chain=[
-                   UrlAbbrevProcessor(),
-                   EnsureUrlProcessor(),
-                   EnsurePythonObjectProcessor()
-               ],
-               wrap_into_hosts=[],
-               additional_roles=[]):
+
+    def create(
+        config,
+        role_repos=[],
+        task_descs=[],
+        include_parent_meta=False,
+        include_parent_vars=False,
+        default_env_type=DEFAULT_ENV_TYPE,
+        pre_chain=[
+            UrlAbbrevProcessor(),
+            EnsureUrlProcessor(),
+            EnsurePythonObjectProcessor(),
+        ],
+        wrap_into_hosts=[],
+        additional_roles=[],
+    ):
         """"Utility method to create a Nsbl object out of the configuration and some metadata about how to process that configuration.
 
         Args:
@@ -272,24 +291,21 @@ class Nsbl(FrklCallback):
             "include_parent_meta": include_parent_meta,
             "include_parent_vars": include_parent_vars,
             "default_env_type": default_env_type,
-            "additional_roles": additional_roles
+            "additional_roles": additional_roles,
         }
         nsbl = Nsbl(init_params)
 
         # if not wrap_into_localhost_env:
         if not wrap_into_hosts:
-            chain = pre_chain + [
-                FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)
-            ]
+            chain = pre_chain + [FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
         else:
             # wrap_processor = WrapTasksIntoLocalhostEnvProcessor({})
-            wrap_processor = WrapTasksIntoHostsProcessor({
-                ENV_HOSTS_KEY:
-                wrap_into_hosts
-            })
+            wrap_processor = WrapTasksIntoHostsProcessor(
+                {ENV_HOSTS_KEY: wrap_into_hosts}
+            )
             chain = pre_chain + [
                 wrap_processor,
-                FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)
+                FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT),
             ]
         inv_frkl = Frkl(config, chain)
         temp = inv_frkl.process(nsbl)
@@ -320,19 +336,18 @@ class Nsbl(FrklCallback):
 
     def validate_init(self):
 
-        self.default_env_type = self.init_params.get('default_env_type',
-                                                     DEFAULT_ENV_TYPE)
-        self.role_repos = self.init_params.get('role_repos', [])
+        self.default_env_type = self.init_params.get(
+            "default_env_type", DEFAULT_ENV_TYPE
+        )
+        self.role_repos = self.init_params.get("role_repos", [])
         if not self.role_repos:
             self.role_repos = calculate_role_repos([], use_default_roles=True)
-        self.task_descs = self.init_params.get('task_descs', [])
+        self.task_descs = self.init_params.get("task_descs", [])
         if not self.task_descs:
             self.task_descs = calculate_task_descs(None, self.role_repos)
 
-        self.include_parent_meta = self.init_params.get(
-            "include_parent_meta", False)
-        self.include_parent_vars = self.init_params.get(
-            "include_parent_vars", False)
+        self.include_parent_meta = self.init_params.get("include_parent_meta", False)
+        self.include_parent_vars = self.init_params.get("include_parent_vars", False)
 
         self.additional_roles = self.init_params.get("additional_roles", [])
 
@@ -361,11 +376,14 @@ class Nsbl(FrklCallback):
                 "task_descs": self.task_descs,
                 "env_name": env_name,
                 "env_id": env_id,
-                TASKS_META_KEY: meta
+                TASKS_META_KEY: meta,
             }
             tasks_collector = NsblTasks(init_params)
-            add_roles(tasks_collector.all_ansible_roles, self.additional_roles,
-                      self.role_repos)
+            add_roles(
+                tasks_collector.all_ansible_roles,
+                self.additional_roles,
+                self.role_repos,
+            )
 
             self.plays["{}_{}".format(env_name, env_id)] = tasks_collector
             # we already have python objects as config items here, so no other ConfigProcessors necessary
@@ -373,7 +391,7 @@ class Nsbl(FrklCallback):
                 FrklProcessor(task_format),
                 NsblTaskProcessor(init_params),
                 NsblCapitalizedBecomeProcessor(),
-                NsblDynamicRoleProcessor(init_params)
+                NsblDynamicRoleProcessor(init_params),
             ]
 
             # chain = [FrklProcessor(task_format)]
@@ -398,21 +416,23 @@ class Nsbl(FrklCallback):
 
         return {"inventory": self.inventory, "plays": self.plays}
 
-    def render(self,
-               env_dir,
-               global_vars=None,
-               extra_plugins=None,
-               extract_vars=True,
-               force=False,
-               ask_become_pass=None,
-               password=None,
-               secure_vars=None,
-               ansible_args="",
-               callback='default',
-               force_update_roles=False,
-               add_timestamp_to_env=False,
-               add_symlink_to_env=False,
-               extra_paths=""):
+    def render(
+        self,
+        env_dir,
+        global_vars=None,
+        extra_plugins=None,
+        extract_vars=True,
+        force=False,
+        ask_become_pass=None,
+        password=None,
+        secure_vars=None,
+        ansible_args="",
+        callback="default",
+        force_update_roles=False,
+        add_timestamp_to_env=False,
+        add_symlink_to_env=False,
+        extra_paths="",
+    ):
         """Creates the ansible environment in the folder provided.
 
         Args:
@@ -441,13 +461,12 @@ class Nsbl(FrklCallback):
         env_dir = os.path.expanduser(env_dir)
         if add_timestamp_to_env:
             start_date = datetime.now()
-            date_string = start_date.strftime('%y%m%d_%H_%M_%S')
+            date_string = start_date.strftime("%y%m%d_%H_%M_%S")
             dirname, basename = os.path.split(env_dir)
-            env_dir = os.path.join(dirname, "{}_{}".format(
-                basename, date_string))
+            env_dir = os.path.join(dirname, "{}_{}".format(basename, date_string))
 
         result = {}
-        result['env_dir'] = env_dir
+        result["env_dir"] = env_dir
 
         if os.path.exists(env_dir) and force:
             shutil.rmtree(env_dir)
@@ -483,11 +502,11 @@ class Nsbl(FrklCallback):
 
         ansible_playbook_args = ansible_args
         result["ansible_playbook_cli_args"] = ansible_playbook_args
-        result["run_playbooks_script"] = os.path.join(env_dir,
-                                                      "run_all_plays.sh")
+        result["run_playbooks_script"] = os.path.join(env_dir, "run_all_plays.sh")
 
         try:
             import ara
+
             ara_base = os.path.dirname(ara.__file__)
         except:
             ara_base = None
@@ -495,11 +514,10 @@ class Nsbl(FrklCallback):
 
         if ara_base:
             callback_plugins_list = "callback_plugins:{}/plugins/callbacks".format(
-                ara_base)
-            action_plugins_list = "action_plugins:{}/plugins/actions".format(
-                ara_base)
-            library_plugins_list = "library:{}/plugins/modules".format(
-                ara_base)
+                ara_base
+            )
+            action_plugins_list = "action_plugins:{}/plugins/actions".format(ara_base)
+            library_plugins_list = "library:{}/plugins/modules".format(ara_base)
         else:
             callback_plugins_list = "callback_plugins"
             action_plugins_list = "action_plugins"
@@ -518,19 +536,17 @@ class Nsbl(FrklCallback):
             "playbook": all_plays_name,
             "callback_plugins": callback_plugins_list,
             "callback_plugin_name": callback,
-            "callback_whitelist": "default_to_file"
+            "callback_whitelist": "default_to_file",
         }
 
         log.debug("Creating build environment from template...")
-        log.debug(
-            "Using cookiecutter details: {}".format(cookiecutter_details))
+        log.debug("Using cookiecutter details: {}".format(cookiecutter_details))
 
         template_path = os.path.join(
-            os.path.dirname(__file__), "external",
-            "cookiecutter-ansible-environment")
+            os.path.dirname(__file__), "external", "cookiecutter-ansible-environment"
+        )
 
-        cookiecutter(
-            template_path, extra_context=cookiecutter_details, no_input=True)
+        cookiecutter(template_path, extra_context=cookiecutter_details, no_input=True)
 
         if add_symlink_to_env:
             link_path = os.path.expanduser(add_symlink_to_env)
@@ -548,7 +564,8 @@ class Nsbl(FrklCallback):
             self.inventory.extract_vars(inventory_dir)
 
         self.inventory.write_inventory_file_or_script(
-            inventory_dir, extract_vars=extract_vars)
+            inventory_dir, extract_vars=extract_vars
+        )
 
         # # write fault
         # if password is not None or secure_vars:
@@ -588,8 +605,7 @@ class Nsbl(FrklCallback):
         for play, tasks in self.plays.items():
 
             task_details.append(tasks)
-            playbook = tasks.render_playbook(
-                playbook_dir, global_vars=global_vars)
+            playbook = tasks.render_playbook(playbook_dir, global_vars=global_vars)
             all_playbooks.append(playbook)
             tasks.render_roles(roles_base_dir)
             if tasks.roles_to_copy:
@@ -599,8 +615,8 @@ class Nsbl(FrklCallback):
 
         result["task_details"] = task_details
 
-        jinja_env = Environment(loader=PackageLoader('nsbl', 'templates'))
-        template = jinja_env.get_template('play.yml')
+        jinja_env = Environment(loader=PackageLoader("nsbl", "templates"))
+        template = jinja_env.get_template("play.yml")
         output_text = template.render(playbooks=all_playbooks)
         all_plays_file = os.path.join(env_dir, "plays", all_plays_name)
         result["all_plays_file"] = all_plays_file
@@ -609,13 +625,14 @@ class Nsbl(FrklCallback):
 
         # copy extra_plugins
         library_path = os.path.join(
-            os.path.dirname(__file__), "external", "extra_plugins", "library")
+            os.path.dirname(__file__), "external", "extra_plugins", "library"
+        )
         action_plugins_path = os.path.join(
-            os.path.dirname(__file__), "external", "extra_plugins",
-            "action_plugins")
+            os.path.dirname(__file__), "external", "extra_plugins", "action_plugins"
+        )
         callback_plugins_path = os.path.join(
-            os.path.dirname(__file__), "external", "extra_plugins",
-            "callback_plugins")
+            os.path.dirname(__file__), "external", "extra_plugins", "callback_plugins"
+        )
         result["library_path"] = library_path
         result["callback_plugins_path"] = callback_plugins_path
         result["action_plugins_path"] = action_plugins_path
@@ -623,13 +640,14 @@ class Nsbl(FrklCallback):
         target_dir = playbook_dir
         if extra_plugins:
             dirs = [
-                o for o in os.listdir(extra_plugins)
+                o
+                for o in os.listdir(extra_plugins)
                 if os.path.isdir(os.path.join(extra_plugins, o))
             ]
             for d in dirs:
                 shutil.copytree(
-                    os.path.join(extra_plugins, d), os.path.join(
-                        target_dir, d))
+                    os.path.join(extra_plugins, d), os.path.join(target_dir, d)
+                )
 
         allow_external_roles = False
         if ext_roles:
@@ -639,15 +657,20 @@ class Nsbl(FrklCallback):
                 )
             # download external roles
             click.echo("\nDownloading external roles...")
-            role_requirement_file = os.path.join(env_dir, "roles",
-                                                 "roles_requirements.yml")
+            role_requirement_file = os.path.join(
+                env_dir, "roles", "roles_requirements.yml"
+            )
 
             if not os.path.exists(ANSIBLE_ROLE_CACHE_DIR):
                 os.makedirs(ANSIBLE_ROLE_CACHE_DIR)
 
             command = [
-                "ansible-galaxy", "install", "-r", role_requirement_file, "-p",
-                ANSIBLE_ROLE_CACHE_DIR
+                "ansible-galaxy",
+                "install",
+                "-r",
+                role_requirement_file,
+                "-p",
+                ANSIBLE_ROLE_CACHE_DIR,
             ]
             if force_update_roles:
                 command.append("--force")
@@ -655,18 +678,21 @@ class Nsbl(FrklCallback):
             my_env = os.environ.copy()
             my_env["PATH"] = "{}:{}:{}".format(
                 os.path.expanduser("~/.local/bin"),
-                os.path.expanduser("~/.local/inaugurate/bin"), my_env["PATH"])
+                os.path.expanduser("~/.local/inaugurate/bin"),
+                my_env["PATH"],
+            )
 
             res = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
-                env=my_env)
+                env=my_env,
+            )
             for line in iter(res.stdout.readline, ""):
                 if "already installed" not in line and "--force to change" not in line:
                     # log.debug("Installing role: {}".format(line.encode('utf8')))
-                    click.echo("  {}".format(line.encode('utf8')), nl=False)
+                    click.echo("  {}".format(line.encode("utf8")), nl=False)
 
         if roles_to_copy.get("internal", {}):
             for src, target in roles_to_copy["internal"].items():
@@ -689,7 +715,7 @@ class Nsbl(FrklCallback):
                 TASKS_KEY: tasks_lookup_dict,
                 ENV_NAME_KEY: tasks.env_name,
                 ENV_ID_KEY: tasks.env_id,
-                "play_name": play
+                "play_name": play,
             }
 
             result[id] = temp
@@ -698,6 +724,7 @@ class Nsbl(FrklCallback):
 
 
 class NsblRunner(object):
+
     def __init__(self, nsbl):
         """Class to kick off rendering and running the ansible environment in question.
 
@@ -706,24 +733,26 @@ class NsblRunner(object):
         """
         self.nsbl = nsbl
 
-    def run(self,
-            target,
-            global_vars=None,
-            force=True,
-            ansible_verbose="",
-            ask_become_pass=None,
-            password=None,
-            secure_vars=None,
-            extra_plugins=None,
-            callback=None,
-            add_timestamp_to_env=False,
-            add_symlink_to_env=False,
-            no_run=False,
-            display_sub_tasks=True,
-            display_skipped_tasks=True,
-            display_ignore_tasks=[],
-            pre_run_callback=None,
-            extra_paths=""):
+    def run(
+        self,
+        target,
+        global_vars=None,
+        force=True,
+        ansible_verbose="",
+        ask_become_pass=None,
+        password=None,
+        secure_vars=None,
+        extra_plugins=None,
+        callback=None,
+        add_timestamp_to_env=False,
+        add_symlink_to_env=False,
+        no_run=False,
+        display_sub_tasks=True,
+        display_skipped_tasks=True,
+        display_ignore_tasks=[],
+        pre_run_callback=None,
+        extra_paths="",
+    ):
         """Starts the ansible run, executing all generated playbooks.
 
         By default the 'nsbl_internal' ansible callback is used, which outputs easier to read outputs/results. You can, however,
@@ -760,7 +789,8 @@ class NsblRunner(object):
                 lookup_dict,
                 display_sub_tasks=display_sub_tasks,
                 display_skipped_tasks=display_skipped_tasks,
-                display_ignore_tasks=display_ignore_tasks)
+                display_ignore_tasks=display_ignore_tasks,
+            )
         else:
             callback_adapter = NsblPrintCallbackAdapter()
 
@@ -778,7 +808,8 @@ class NsblRunner(object):
                 callback=callback,
                 add_timestamp_to_env=add_timestamp_to_env,
                 add_symlink_to_env=add_symlink_to_env,
-                extra_paths=extra_paths)
+                extra_paths=extra_paths,
+            )
 
             env_dir = parameters["env_dir"]
             if pre_run_callback:
@@ -790,14 +821,14 @@ class NsblRunner(object):
 
             run_env = os.environ.copy()
             if callback.startswith("nsbl_internal"):
-                run_env['NSBL_ENVIRONMENT'] = "true"
+                run_env["NSBL_ENVIRONMENT"] = "true"
 
             def preexec_function():
                 # Ignore the SIGINT signal by setting the handler to the standard
                 # signal handler SIG_IGN.
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-            script = parameters['run_playbooks_script']
+            script = parameters["run_playbooks_script"]
 
             if password is None:
                 proc = subprocess.Popen(
@@ -807,11 +838,12 @@ class NsblRunner(object):
                     stdin=subprocess.PIPE,
                     shell=True,
                     env=run_env,
-                    preexec_fn=preexec_function)
+                    preexec_fn=preexec_function,
+                )
                 with CursorOff():
                     click.echo("")
 
-                    for line in iter(proc.stdout.readline, ''):
+                    for line in iter(proc.stdout.readline, ""):
                         callback_adapter.add_log_message(line)
 
                     callback_adapter.finish_up()
@@ -830,7 +862,8 @@ class NsblRunner(object):
                     proc = pexpect.spawn(
                         "/bin/bash -c {}".format(script),
                         env=run_env,
-                        preexec_fn=preexec_function)
+                        preexec_fn=preexec_function,
+                    )
                     proc.expect("SUDO password:")
                     proc.timeout = DEFAULT_TIMEOUT
                     proc.sendline(password)
@@ -854,7 +887,8 @@ class NsblRunner(object):
             print()
             print()
             callback_adapter.add_error_message(
-                "Keyboard interrupt received. Exiting...")
+                "Keyboard interrupt received. Exiting..."
+            )
             print()
             pass
 
