@@ -2,6 +2,7 @@
 
 import json
 import logging
+import pprint
 import sys
 
 import click

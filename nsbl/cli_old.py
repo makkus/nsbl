@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import pprint
 import sys
 
 import click

@@ -3,12 +3,13 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import os
 import yaml
-from frkl.frkl import (ConfigProcessor,
-                       EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
-                       FrklCallback, FrklProcessor, UrlAbbrevProcessor)
-from jinja2 import Environment, PackageLoader
+import sys
 
+from jinja2 import Environment, PackageLoader
+from frkl.callbacks import FrklCallback
+from frkl.processors import ConfigProcessor
 from .defaults import *
 from .exceptions import NsblException
 

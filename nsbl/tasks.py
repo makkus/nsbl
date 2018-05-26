@@ -16,10 +16,14 @@ from jinja2 import Environment, PackageLoader
 from .defaults import *
 from .exceptions import NsblException
 
+from frkl.processors import UrlAbbrevProcessor, EnsurePythonObjectProcessor, EnsureUrlProcessor, ConfigProcessor
+from frkl.callbacks import FrklCallback
+from frutils import dict_merge
+
 DEFAULT_TASKS_PRE_CHAIN = [
-    frkl.UrlAbbrevProcessor(),
-    frkl.EnsureUrlProcessor(),
-    frkl.EnsurePythonObjectProcessor()
+    UrlAbbrevProcessor(),
+    EnsureUrlProcessor(),
+    EnsurePythonObjectProcessor()
 ]
 DEFAULT_EXCLUDE_DIRS = [".git", ".tox", ".cache"]
 ROLE_MARKER_FOLDERNAME = "meta"
@@ -468,7 +472,7 @@ def get_internal_role_path(role, role_repos=[]):
     return False
 
 
-class NsblTasks(frkl.FrklCallback):
+class NsblTasks(FrklCallback):
     def create(config,
                role_repos,
                task_descs,
@@ -749,7 +753,7 @@ class NsblTasks(frkl.FrklCallback):
         return result
 
 
-class NsblCapitalizedBecomeProcessor(frkl.ConfigProcessor):
+class NsblCapitalizedBecomeProcessor(ConfigProcessor):
     """Processor that takes a list of frklized tasks, and converts tasks whose names are all uppercase to use the 'become' directive.
 
     The task names will be lowercased. This obviously only works for tasknames that are all lowercase.
@@ -775,7 +779,7 @@ class NsblCapitalizedBecomeProcessor(frkl.ConfigProcessor):
         return new_config
 
 
-class NsblTaskProcessor(frkl.ConfigProcessor):
+class NsblTaskProcessor(ConfigProcessor):
     """Processor to take a list of (unfrklized) tasks, and frklizes (expands) the data.
 
     In particular, this extracts roles and tags them with their types.
@@ -810,7 +814,7 @@ class NsblTaskProcessor(frkl.ConfigProcessor):
             if not task_desc_name == meta_task_name:
                 continue
 
-            new_config = frkl.dict_merge(task_desc, new_config, copy_dct=True)
+            new_config = dict_merge(task_desc, new_config, copy_dct=True)
 
         task_name = new_config.get(TASKS_META_KEY, {}).get(TASK_NAME_KEY, None)
         if not task_name:
@@ -1122,7 +1126,7 @@ class NsblDynRole(NsblRole):
         os.chdir(current_dir)
 
 
-class NsblDynamicRoleProcessor(frkl.ConfigProcessor):
+class NsblDynamicRoleProcessor(ConfigProcessor):
     role_id = 0
 
     def __init__(self, init_params=None):

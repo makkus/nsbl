@@ -7,7 +7,10 @@ import copy
 import os
 
 from builtins import *
-from frkl import frkl
+from frkl.defaults import *
+from frkl.processors import FrklProcessor, UrlAbbrevProcessor, EnsurePythonObjectProcessor, EnsureUrlProcessor
+from frkl import Frkl
+
 from six import string_types
 
 # from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, \
@@ -103,45 +106,45 @@ DEFAULT_TIMEOUT = 36000
 NSBLIZED_TASKS = ["install"]
 
 DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT = {
-    frkl.CHILD_MARKER_NAME: TASKS_KEY,
-    frkl.DEFAULT_LEAF_NAME: TASKS_META_KEY,
-    frkl.DEFAULT_LEAFKEY_NAME: TASK_META_NAME_KEY,
-    frkl.KEY_MOVE_MAP_NAME: {
+    CHILD_MARKER_NAME: TASKS_KEY,
+    DEFAULT_LEAF_NAME: TASKS_META_KEY,
+    DEFAULT_LEAFKEY_NAME: TASK_META_NAME_KEY,
+    KEY_MOVE_MAP_NAME: {
         '*': (VARS_KEY, 'default')
     },
     "use_context": True
 }
 DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
-    frkl.FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
+    FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
 ]
 
 # bootstrap frkl processor chain for creating the inventory hosts/groups lists
 NSBL_INVENTORY_BOOTSTRAP_FORMAT = {
-    frkl.CHILD_MARKER_NAME: ENVS_KEY,
-    frkl.DEFAULT_LEAF_NAME: ENV_META_KEY,
-    frkl.DEFAULT_LEAFKEY_NAME: ENV_NAME_KEY,
-    frkl.OTHER_KEYS_NAME: [VARS_KEY, TASKS_KEY],
-    frkl.KEY_MOVE_MAP_NAME: VARS_KEY
+    CHILD_MARKER_NAME: ENVS_KEY,
+    DEFAULT_LEAF_NAME: ENV_META_KEY,
+    DEFAULT_LEAFKEY_NAME: ENV_NAME_KEY,
+    OTHER_KEYS_NAME: [VARS_KEY, TASKS_KEY],
+    KEY_MOVE_MAP_NAME: VARS_KEY
 }
 # bootstrap chain used for creating the inventory
 NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
-    frkl.UrlAbbrevProcessor(),
-    frkl.EnsureUrlProcessor(),
-    frkl.EnsurePythonObjectProcessor(),
-    frkl.FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)
+    UrlAbbrevProcessor(),
+    EnsureUrlProcessor(),
+    EnsurePythonObjectProcessor(),
+    FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)
 ]
 
 
 def generate_nsbl_tasks_format(
         task_descs, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT):
-    """Utility method to populate the KEY_MOVE_MAP key for the tasks frkl."""
+    """Utility method to populate the KEY_MOVE_MAP key for the tasks """
 
     result = copy.deepcopy(tasks_format)
 
     for task_desc in task_descs:
         if DEFAULT_KEY_KEY in task_desc[TASKS_META_KEY].keys():
             # TODO: check for duplicate keys?
-            result[frkl.KEY_MOVE_MAP_NAME][task_desc[TASKS_META_KEY][
+            result[KEY_MOVE_MAP_NAME][task_desc[TASKS_META_KEY][
                 TASK_META_NAME_KEY]] = "vars/{}".format(
                     task_desc[TASKS_META_KEY][DEFAULT_KEY_KEY])
 
@@ -235,11 +238,11 @@ def calculate_task_descs(task_descs,
 
     # TODO: check whether paths exist
     frkl_format = generate_nsbl_tasks_format([])
-    task_desk_frkl = frkl.Frkl(task_descs, [
-        frkl.UrlAbbrevProcessor(),
-        frkl.EnsureUrlProcessor(),
-        frkl.EnsurePythonObjectProcessor(),
-        frkl.FrklProcessor(frkl_format)
+    task_desk_frkl = Frkl(task_descs, [
+        UrlAbbrevProcessor(),
+        EnsureUrlProcessor(),
+        EnsurePythonObjectProcessor(),
+        FrklProcessor(frkl_format)
     ])
 
     processed_task_descs = task_desk_frkl.process()

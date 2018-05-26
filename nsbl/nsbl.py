@@ -14,9 +14,12 @@ from datetime import datetime
 import click
 import pexpect
 from cookiecutter.main import cookiecutter
-from frkl.frkl import (EnsurePythonObjectProcessor, EnsureUrlProcessor, Frkl,
-                       FrklCallback, FrklProcessor, UrlAbbrevProcessor,
-                       dict_merge)
+from frkl.callbacks import FrklCallback
+from frkl.processors import EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, UrlAbbrevProcessor
+from frkl import Frkl
+from frutils import dict_merge
+
+
 from jinja2 import Environment, PackageLoader
 
 from .defaults import *
