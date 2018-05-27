@@ -3,28 +3,15 @@
 # python 3 compatibility
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import fnmatch
-import re
-from collections import OrderedDict
-
-import yaml
-from cookiecutter.main import cookiecutter
-from jinja2 import Environment, PackageLoader
-from frkl.utils import expand_string_to_git_details, expand_string_to_git_repo
-
-from .defaults import *
-from .exceptions import NsblException
-
-from .utils import *
-
+from frkl.callbacks import FrklCallback
 from frkl.processors import (
-    UrlAbbrevProcessor,
+    ConfigProcessor,
     EnsurePythonObjectProcessor,
     EnsureUrlProcessor,
-    ConfigProcessor,
+    UrlAbbrevProcessor,
 )
-from frkl.callbacks import FrklCallback
 from frutils import dict_merge
+from .utils import *
 
 DEFAULT_TASKS_PRE_CHAIN = [
     UrlAbbrevProcessor(),
@@ -82,7 +69,7 @@ class NsblTasks(FrklCallback):
 
         task_format = generate_nsbl_tasks_format(task_descs)
         chain = pre_chain + [
-                FrklProcessor(task_format),
+            FrklProcessor(task_format),
             NsblTaskProcessor(init_params),
             NsblCapitalizedBecomeProcessor(),
             NsblDynamicRoleProcessor(init_params),
@@ -354,7 +341,7 @@ class NsblCapitalizedBecomeProcessor(ConfigProcessor):
         return new_config
 
 
-class NsblTaskProcessor():
+class NsblTaskProcessor:
     """Processor to take a list of (unfrklized) tasks, and frklizes (expands) the data.
 
     In particular, this extracts roles and tags them with their types.

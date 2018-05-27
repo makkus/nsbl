@@ -2,11 +2,11 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os
-import yaml
 import sys
 
+import yaml
 from jinja2 import Environment, PackageLoader
+
 from frkl.callbacks import FrklCallback
 from frkl.processors import ConfigProcessor
 from .defaults import *

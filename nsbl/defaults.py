@@ -6,16 +6,16 @@ import copy
 import os
 
 from builtins import *
+from six import string_types
+
+from frkl import Frkl
 from frkl.defaults import *
 from frkl.processors import (
-    FrklProcessor,
-    UrlAbbrevProcessor,
     EnsurePythonObjectProcessor,
     EnsureUrlProcessor,
+    FrklProcessor,
+    UrlAbbrevProcessor,
 )
-from frkl import Frkl
-
-from six import string_types
 
 # from frkl import CHILD_MARKER_NAME, DEFAULT_LEAF_NAME, DEFAULT_LEAFKEY_NAME, KEY_MOVE_MAP_NAME, OTHER_KEYS_NAME, \
 # UrlAbbrevProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor, FrklProcessor, \
@@ -143,7 +143,8 @@ NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
 
 
 def generate_nsbl_tasks_format(
-    task_aliases=None, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT):
+    task_aliases=None, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT
+):
     """Utility method to populate the KEY_MOVE_MAP key for the tasks """
 
     if task_aliases is None:

@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import json
 import logging
-import pprint
 import sys
 
 import click
 import click_log
-import yaml
 
 from . import __version__ as VERSION
 from .nsbl import Nsbl, NsblRunner

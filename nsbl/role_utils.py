@@ -5,36 +5,18 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import fnmatch
 import logging
-import re
-from six import string_types
-from collections import OrderedDict
 
-import yaml
-from cookiecutter.main import cookiecutter
-from jinja2 import Environment, PackageLoader
-from frkl.utils import expand_string_to_git_details, expand_string_to_git_repo
-
-from .defaults import *
-from .exceptions import NsblException
-
-from .utils import *
-
-from frkl.processors import (
-    UrlAbbrevProcessor,
-    EnsurePythonObjectProcessor,
-    EnsureUrlProcessor,
-    ConfigProcessor,
-)
-from frkl.callbacks import FrklCallback
 from frutils import dict_merge
-
 from frutils.defaults import DEFAULT_EXCLUDE_DIRS
+from .defaults import *
+from .utils import *
 
 log = logging.getLogger("nsbl")
 
 ROLE_CACHE = {}
 ROLE_MARKER_FOLDERNAME = "meta"
 ROLE_META_FILENAME = "main.yml"
+
 
 def find_roles_in_repos(role_repos):
 
@@ -47,6 +29,7 @@ def find_roles_in_repos(role_repos):
         dict_merge(result, roles, copy_dct=False)
 
     return result
+
 
 def find_roles_in_repo(role_repo):
     """Utility function to find all roles in a role_repo.

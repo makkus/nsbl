@@ -3,31 +3,8 @@
 # python 3 compatibility
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import fnmatch
-import logging
-import re
-from collections import OrderedDict
-
-import yaml
-from cookiecutter.main import cookiecutter
-from jinja2 import Environment, PackageLoader
-from frkl.utils import expand_string_to_git_details, expand_string_to_git_repo
-
-from .defaults import *
-from .exceptions import NsblException
-
-from .utils import *
-
-from frkl.processors import (
-    UrlAbbrevProcessor,
-    EnsurePythonObjectProcessor,
-    EnsureUrlProcessor,
-    ConfigProcessor,
-)
-from frkl.callbacks import FrklCallback
-from frutils import dict_merge
-
 from frutils.defaults import DEFAULT_EXCLUDE_DIRS
+from .utils import *
 
 log = logging.getLogger("nsbl")
 
@@ -38,7 +15,32 @@ ROLE_META_FILENAME = "main.yml"
 ABBREV_VERBOSE = True
 ABBREV_WARN = True
 
-ANSIBLE_FORMAT_MARKER_KEYS = set(["when", "become", "name", "register", "with_items", "with_dict", "loop", "with_list", "until", "retries", "delay", "changed_when", "loop_control", "block", "become_user", "rescue", "always", "notify", "ignore_errors", "failed_when", "changed_when"])
+ANSIBLE_FORMAT_MARKER_KEYS = set(
+    [
+        "when",
+        "become",
+        "name",
+        "register",
+        "with_items",
+        "with_dict",
+        "loop",
+        "with_list",
+        "until",
+        "retries",
+        "delay",
+        "changed_when",
+        "loop_control",
+        "block",
+        "become_user",
+        "rescue",
+        "always",
+        "notify",
+        "ignore_errors",
+        "failed_when",
+        "changed_when",
+    ]
+)
+
 
 def find_roles_in_repo(role_repo):
     """Utility function to find all roles in a role_repo.
@@ -434,12 +436,20 @@ def get_task_list_format(task_list):
     for item in task_list:
 
         if isinstance(item, string_types):
-            log.debug("task item '{}' is string, determining this is a 'freckles' task list".format(item))
+            log.debug(
+                "task item '{}' is string, determining this is a 'freckles' task list".format(
+                    item
+                )
+            )
             return "freckles"
         elif isinstance(item, dict):
             keys = set(item.keys())
-            if (keys & ANSIBLE_FORMAT_MARKER_KEYS):
-                log.debug("task item keys ({}) contain at least one known Ansible keyword , determining this is 'ansible' task list format".format(keys))
+            if keys & ANSIBLE_FORMAT_MARKER_KEYS:
+                log.debug(
+                    "task item keys ({}) contain at least one known Ansible keyword , determining this is 'ansible' task list format".format(
+                        keys
+                    )
+                )
                 return "ansible"
         else:
             raise Exception("Not a valid task-list item: {}".format(item))
@@ -449,10 +459,18 @@ def get_task_list_format(task_list):
     # so figured I check for everything else first
     for item in task_list:
         if "meta" in item.keys():
-            log.debug("task item '{}' has 'meta' key, determining this is a 'freckles' task list".format(item["meta"].get("name", item)))
+            log.debug(
+                "task item '{}' has 'meta' key, determining this is a 'freckles' task list".format(
+                    item["meta"].get("name", item)
+                )
+            )
             return "freckles"
-        for key  in item.keys():
+        for key in item.keys():
             if key.isupper():
-                log.debug("task item key '{}' is all uppercase, determining this is a 'freckles' task list".format(key))
+                log.debug(
+                    "task item key '{}' is all uppercase, determining this is a 'freckles' task list".format(
+                        key
+                    )
+                )
                 return "freckles"
     return None

@@ -3,34 +3,22 @@
 # python 3 compatibility
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import fnmatch
 import logging
-import tempfile
-import re
-from collections import OrderedDict
 
 import yaml
-from cookiecutter.main import cookiecutter
-from frkl.frkl import Frkl, UrlAbbrevProcessor, FrklProcessor
-from jinja2 import Environment, PackageLoader
-
-from .defaults import *
-from .exceptions import NsblException
-
-from frkl.processors import (
-    UrlAbbrevProcessor,
-    EnsurePythonObjectProcessor,
-    EnsureUrlProcessor,
-    ConfigProcessor,
-)
-from frkl.callbacks import FrklCallback
-from frutils import dict_merge
-from .utils import get_task_list_format
-from .role_utils import find_roles_in_repos
-
 from ruamel.yaml.comments import CommentedMap
 
-from frutils import StringYAML
+from frkl.processors import (
+    ConfigProcessor,
+    EnsurePythonObjectProcessor,
+    EnsureUrlProcessor,
+    UrlAbbrevProcessor,
+)
+from frutils import StringYAML, dict_merge
+from .defaults import *
+from .exceptions import NsblException
+from .role_utils import find_roles_in_repos
+from .utils import get_task_list_format
 
 ANSIBLE_TASK_KEYWORDS = [
     "any_errors_fatal",
@@ -63,44 +51,46 @@ ANSIBLE_TASK_KEYWORDS = [
     "run_once",
     "tags",
     "until",
-    "when"
+    "when",
 ]
 
 GLOBAL_ENV_ID_COUNTER = 999999
+
 
 def GLOBAL_ENV_ID():
     global GLOBAL_ENV_ID_COUNTER
     GLOBAL_ENV_ID_COUNTER = GLOBAL_ENV_ID_COUNTER + 1
     return GLOBAL_ENV_ID_COUNTER
 
+
 yaml = StringYAML()
 yaml.default_flow_style = False
 
 log = logging.getLogger("nsbl")
 
+
 def to_nice_yaml(var):
     """util function to convert to yaml in a jinja template"""
     return yaml.dump(var)
 
+
 def get_import_task_item(task_list_name):
     """Small helper toget the task item for importing a task list."""
 
-    return {"meta": {
-        "name": "import_tasks",
-        "desc": "[importing tasks: {}]".format(task_list_name),
-        "type": "ansible-module"},
-        "vars": {
-            "freeform": task_list_name
-        }}
+    return {
+        "meta": {
+            "name": "import_tasks",
+            "desc": "[importing tasks: {}]".format(task_list_name),
+            "type": "ansible-module",
+        },
+        "vars": {"freeform": task_list_name},
+    }
+
 
 def generate_task_item_from_string(task_name):
     """Small helper to generate a task desc dict from a task name."""
 
-    return {
-        "meta": {
-            "name": task_name,
-        }
-    }
+    return {"meta": {"name": task_name}}
 
 
 def calculate_role_repos(role_repos):
@@ -250,8 +240,7 @@ class AugmentingTaskProcessor(ConfigProcessor):
 
         for task_alias in self.task_aliases:
 
-            task_desc_name = task_alias.get("meta", {}).get(
-            "name", None)
+            task_desc_name = task_alias.get("meta", {}).get("name", None)
 
             if not task_desc_name == meta_task_name:
                 continue
@@ -267,6 +256,7 @@ class AugmentingTaskProcessor(ConfigProcessor):
             new_config["vars"] = {}
 
         return new_config
+
 
 def augment_and_expand_task_list(task_lists, role_repos, task_aliases):
     """Augments a task list with defaults and/or task aliases.
@@ -285,9 +275,7 @@ def augment_and_expand_task_list(task_lists, role_repos, task_aliases):
         init_params["task_aliases"] = task_aliases
 
     task_format = generate_nsbl_tasks_format(task_aliases)
-    chain = [FrklProcessor(task_format),
-             AugmentingTaskProcessor(init_params),
-        ]
+    chain = [FrklProcessor(task_format), AugmentingTaskProcessor(init_params)]
     f = Frkl(task_lists, chain)
     new_list = f.process()
 
@@ -299,6 +287,7 @@ def augment_and_expand_task_list(task_lists, role_repos, task_aliases):
             task["meta"]["become"] = True
 
     return new_list
+
 
 def guess_task_type(task_item, available_roles):
     """Utility method to guess the type of a task.
@@ -312,10 +301,11 @@ def guess_task_type(task_item, available_roles):
 
     task_name = task_item["meta"]["task-name"]
 
-    if '.' in task_name:
+    if "." in task_name:
         return ROLE_TASK_TYPE
     else:
         return MODULE_TASK_TYPE
+
 
 def calculate_task_types(task_list, role_repos, allow_external_roles=False):
     """Parses the task list and auto-assigns task-types if necessary.
@@ -351,7 +341,11 @@ def calculate_task_types(task_list, role_repos, allow_external_roles=False):
                 if allow_external_roles:
                     external_roles.add(task_name)
                 else:
-                    raise NsblException("Role '{}' not available in local role repos ({}), and external roles download not allowed.".format(task_name, role_repos))
+                    raise NsblException(
+                        "Role '{}' not available in local role repos ({}), and external roles download not allowed.".format(
+                            task_name, role_repos
+                        )
+                    )
 
             else:
                 internal_roles.add(task_name)
@@ -378,11 +372,12 @@ def ensure_task_list_format(task_list, ansible_task_file):
     if task_list_format == "ansible":
         file_name = os.path.basename(ansible_task_file)
         task_list_new = [get_import_task_item(file_name)]
-        with open(ansible_task_file, 'w') as f:
+        with open(ansible_task_file, "w") as f:
             yaml.dump(task_list, f)
         return (task_list_new, {"type": "ansible-tasks", "path": ansible_task_file})
     else:
         return (task_list, None)
+
 
 class TaskList(object):
 
@@ -403,7 +398,8 @@ class TaskList(object):
         task_alias_files = run_metadata.get("task_alias_files", [])
 
         self.role_repos, self.task_aliases = get_default_role_repos_and_task_aliases(
-              role_repos, task_alias_files)
+            role_repos, task_alias_files
+        )
 
         self.allow_external_roles = run_metadata.get("allow_external_roles", False)
 
@@ -412,9 +408,15 @@ class TaskList(object):
 
         # TODO: validate task list?
         self.task_list_raw = task_list
-        self.task_list = augment_and_expand_task_list(task_list, self.role_repos, self.task_aliases)
+        self.task_list = augment_and_expand_task_list(
+            task_list, self.role_repos, self.task_aliases
+        )
         # be aware, only first level modules are listed here (for now)
-        self.internal_role_names, self.external_role_names, self.modules_used = calculate_task_types(self.task_list, self.role_repos, allow_external_roles=self.allow_external_roles)
+        self.internal_role_names, self.external_role_names, self.modules_used = calculate_task_types(
+            self.task_list,
+            self.role_repos,
+            allow_external_roles=self.allow_external_roles,
+        )
 
     def render_ansible_tasklist(self):
         """Renders the playbook into a file."""
@@ -453,4 +455,3 @@ class TaskList(object):
             tasklist.append(task_item)
 
         return tasklist
-

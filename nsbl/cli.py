@@ -1,23 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import json
 import logging
-import pprint
 import sys
 
 import click
-import click_log
 import click_completion
-import yaml
+import click_log
 
+from frutils.frutils_cli import output
 from . import __version__ as VERSION
 from .defaults import *
 from .inventory import NsblInventory
 from .nsbl import Nsbl
 from .tasks import NsblTasks
-from frutils.frutils_cli import output
-from frkl.processors import FrklProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor
-from frkl import Frkl
 
 logger = logging.getLogger("nsbl")
 click_log.basic_config(logger)
@@ -25,13 +20,13 @@ click_log.basic_config(logger)
 # optional shell completion
 click_completion.init()
 
+
 def raise_error(exc):
 
-    if hasattr(exc, 'message'):
+    if hasattr(exc, "message"):
         raise click.ClickException(exc.message)
     else:
         raise click.ClickException(exc)
-
 
 
 @click.group(invoke_without_command=True)
@@ -254,6 +249,7 @@ def print_available_tasks(ctx, pager, format):
 #     result = frkl_obj.process()
 #     output(result, format, pager)
 
+
 @cli.command("create-environment")
 @click.argument("config", required=True, nargs=-1)
 @click.option(
@@ -275,7 +271,9 @@ def create(ctx, config, target, force):
 
     try:
         nsbl = Nsbl.create(config, ctx.obj["role-repos"], ctx.obj["task-desc"])
-        nsbl.render(target, extract_vars=True, force=force, ansible_args="", callback="default")
+        nsbl.render(
+            target, extract_vars=True, force=force, ansible_args="", callback="default"
+        )
         click.echo("Ansible environment written to: {}".format(os.path.abspath(target)))
     except (Exception) as e:
         raise_error(e)
