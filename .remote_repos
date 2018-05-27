@@ -1,1 +1,2 @@
 tests/role_repos/example_roles=https://github.com/nsbl/example-roles.git
+tests/role_repos/example_roles_2=https://github.com/nsbl/example-roles-2.git
