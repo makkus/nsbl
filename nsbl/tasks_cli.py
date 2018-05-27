@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import logging
 import pprint
 import sys
 
@@ -12,6 +13,8 @@ from . import __version__ as VERSION
 from .defaults import *
 from .nsbl import Nsbl, NsblRunner
 
+logger = logging.getLogger("nsbl")
+click_log.basic_config(logger)
 
 def output(python_object, format="raw", pager=False):
     if format == "yaml":
@@ -54,7 +57,7 @@ def output(python_object, format="raw", pager=False):
 )
 @click_log.simple_verbosity_option()
 @click.pass_context
-@click_log.init("nsbl")
+@click_log.simple_verbosity_option(logger, "--verbosity", default="WARN")
 def cli(ctx, version, role_repo, task_desc):
     """Console script for nsbl"""
 
