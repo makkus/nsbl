@@ -341,7 +341,7 @@ class Nsbl(FrklCallback):
         )
         self.role_repos = self.init_params.get("role_repos", [])
         if not self.role_repos:
-            self.role_repos = calculate_role_repos([], use_default_roles=True)
+            self.role_repos = calculate_role_repos([])
         self.task_descs = self.init_params.get("task_descs", [])
         if not self.task_descs:
             self.task_descs = calculate_task_descs(None, self.role_repos)

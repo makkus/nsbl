@@ -139,13 +139,14 @@ NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
 
 
 def generate_nsbl_tasks_format(
-    task_descs, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT
-):
+    task_aliases=None, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT):
     """Utility method to populate the KEY_MOVE_MAP key for the tasks """
 
-    result = copy.deepcopy(tasks_format)
+    if task_aliases is None:
+        task_aliases = {}
 
-    for task_desc in task_descs:
+    result = copy.deepcopy(tasks_format)
+    for task_desc in task_aliases:
         if DEFAULT_KEY_KEY in task_desc[TASKS_META_KEY].keys():
             # TODO: check for duplicate keys?
             result[KEY_MOVE_MAP_NAME][
@@ -159,7 +160,7 @@ def get_default_role_repos_and_task_descs(role_repos, task_descs):
     if role_repos:
         role_repos = role_repos
     else:
-        role_repos = calculate_role_repos([], use_default_roles=True)
+        role_repos = calculate_role_repos([])
 
     if task_descs:
         task_descs = task_descs

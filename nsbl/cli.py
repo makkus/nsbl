@@ -7,6 +7,7 @@ import sys
 
 import click
 import click_log
+import click_completion
 import yaml
 
 from . import __version__ as VERSION
@@ -14,33 +15,23 @@ from .defaults import *
 from .inventory import NsblInventory
 from .nsbl import Nsbl
 from .tasks import NsblTasks
+from frutils.frutils_cli import output
+from frkl.processors import FrklProcessor, EnsureUrlProcessor, EnsurePythonObjectProcessor
+from frkl import Frkl
 
 logger = logging.getLogger("nsbl")
+click_log.basic_config(logger)
 
+# optional shell completion
+click_completion.init()
 
-def output(python_object, format="raw", pager=False):
-    if format == "yaml":
-        output_string = yaml.safe_dump(
-            python_object,
-            default_flow_style=False,
-            encoding="utf-8",
-            allow_unicode=True,
-        )
-    elif format == "json":
-        output_string = json.dumps(python_object, sort_keys=4, indent=4)
-    elif format == "raw":
-        output_string = str(python_object)
-    elif format == "pformat":
-        output_string = pprint.pformat(python_object)
+def raise_error(exc):
+
+    if hasattr(exc, 'message'):
+        raise click.ClickException(exc.message)
     else:
-        raise Exception(
-            "No valid output format provided. Supported: 'yaml', 'json', 'raw', 'pformat'"
-        )
+        raise click.ClickException(exc)
 
-    if pager:
-        click.echo_via_pager(output_string)
-    else:
-        click.echo(output_string)
 
 
 @click.group(invoke_without_command=True)
@@ -57,17 +48,17 @@ def output(python_object, format="raw", pager=False):
     help="path to a local task description yaml file",
     multiple=True,
 )
-@click_log.simple_verbosity_option(logger)
+@click_log.simple_verbosity_option(logger, "--verbosity", default="WARN")
 @click.pass_context
 def cli(ctx, version, role_repo, task_desc):
-    """Console script for nsbl"""
+    """'nsbl' is a wrapper framework for Ansible, trying to minimize configuration."""
 
     if version:
         click.echo(VERSION)
         sys.exit(0)
 
     ctx.obj = {}
-    ctx.obj["role-repos"] = calculate_role_repos(role_repo, use_default_roles=True)
+    ctx.obj["role-repos"] = calculate_role_repos(role_repo)
     ctx.obj["task-desc"] = calculate_task_descs(task_desc, ctx.obj["role-repos"])
 
 
@@ -90,7 +81,7 @@ def cli(ctx, version, role_repo, task_desc):
 )
 @click.pass_context
 def list_groups(ctx, config, format, pager):
-    """Lists all groups and their variables"""
+    """Lists all groups and their variables."""
 
     inventory = NsblInventory.create(config)
     if inventory.groups:
@@ -195,6 +186,8 @@ def extract_inventory(ctx, config, target):
     # if static:
     inventory.extract_vars(target)
     inventory.write_inventory_file_or_script(target, extract_vars=True)
+    click.echo("Inventory written to folder: {}".format(os.path.abspath(target)))
+
     # else:
     # os.makedirs("/tmp/inventory")
     # inventory.write_inventory_file_or_script("/tmp/inventory", extract_vars=False, relative_paths=relative)
@@ -210,7 +203,7 @@ def print_inventory(ctx, config, pager):
     inventory = NsblInventory.create(config)
 
     inv_string = inventory.get_inventory_config_string()
-    output(inv_string, format="raw", pager=pager)
+    output(inv_string, output_type="raw", pager=pager)
 
 
 @cli.command("print-available-tasks")
@@ -231,36 +224,35 @@ def print_available_tasks(ctx, pager, format):
     output(int_tasks, format, pager)
 
 
-@cli.command("expand-packages")
-@click.argument("config", required=True, nargs=-1)
-@click.option("--pager", "-p", required=False, default=False, help="output via pager")
-@click.option(
-    "--format",
-    "-f",
-    required=False,
-    default="yaml",
-    help="output format, either json or yaml (default)",
-)
-@click.pass_context
-def expand_packages(ctx, config, pager, format):
-    """Creates an expanded list of packages out of a package list (for debugging purposes)"""
-
-    frkl_format = {
-        "child_marker": "packages",
-        "default_leaf": "vars",
-        "default_leaf_key": "name",
-        "key_move_map": {"*": "vars"},
-    }
-    chain = [
-        frkl.EnsureUrlProcessor(),
-        frkl.EnsurePythonObjectProcessor(),
-        frkl.FrklProcessor(frkl_format),
-    ]
-
-    frkl_obj = frkl.Frkl(config, chain)
-    result = frkl_obj.process()
-    output(result, format, pager)
-
+# @cli.command("expand-packages")
+# @click.argument("config", required=True, nargs=-1)
+# @click.option("--pager", "-p", required=False, default=False, help="output via pager")
+# @click.option(
+#     "--format",
+#     "-f",
+#     required=False,
+#     default="yaml",
+#     help="output format, either json or yaml (default)",
+# )
+# @click.pass_context
+# def expand_packages(ctx, config, pager, format):
+#     """Creates an expanded list of packages out of a package list (for debugging purposes)"""
+#
+#     frkl_format = {
+#         "child_marker": "packages",
+#         "default_leaf": "vars",
+#         "default_leaf_key": "name",
+#         "key_move_map": {"*": "vars"},
+#     }
+#     chain = [
+#         EnsureUrlProcessor(),
+#         EnsurePythonObjectProcessor(),
+#         FrklProcessor(frkl_format),
+#     ]
+#
+#     frkl_obj = Frkl(config, chain)
+#     result = frkl_obj.process()
+#     output(result, format, pager)
 
 @cli.command("create-environment")
 @click.argument("config", required=True, nargs=-1)
@@ -280,11 +272,14 @@ def expand_packages(ctx, config, pager, format):
 )
 @click.pass_context
 def create(ctx, config, target, force):
-    nsbl = Nsbl.create(config, ctx.obj["role-repos"], ctx.obj["task-desc"])
 
-    nsbl.render(
-        target, extract_vars=True, force=force, ansible_args="", callback="default"
-    )
+    try:
+        nsbl = Nsbl.create(config, ctx.obj["role-repos"], ctx.obj["task-desc"])
+        nsbl.render(target, extract_vars=True, force=force, ansible_args="", callback="default")
+        click.echo("Ansible environment written to: {}".format(os.path.abspath(target)))
+    except (Exception) as e:
+        raise_error(e)
+
     # for play, tasks in result["plays"].items():
     # pprint.pprint(play)
     # pprint.pprint(tasks.roles)

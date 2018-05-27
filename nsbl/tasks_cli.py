@@ -63,7 +63,7 @@ def cli(ctx, version, role_repo, task_desc):
         sys.exit(0)
 
     ctx.obj = {}
-    ctx.obj["role-repos"] = calculate_role_repos(role_repo, use_default_roles=True)
+    ctx.obj["role-repos"] = calculate_role_repos(role_repo)
     ctx.obj["task-desc"] = calculate_task_descs(task_desc, ctx.obj["role-repos"])
 
 
