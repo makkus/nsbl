@@ -6,6 +6,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import fnmatch
 import logging
 import re
+from six import string_types
 from collections import OrderedDict
 
 import yaml
@@ -34,6 +35,18 @@ log = logging.getLogger("nsbl")
 ROLE_CACHE = {}
 ROLE_MARKER_FOLDERNAME = "meta"
 ROLE_META_FILENAME = "main.yml"
+
+def find_roles_in_repos(role_repos):
+
+    if isinstance(role_repos, string_types):
+        role_repos = [role_repos]
+
+    result = {}
+    for rr in role_repos:
+        roles = find_roles_in_repo(rr)
+        dict_merge(result, roles, copy_dct=False)
+
+    return result
 
 def find_roles_in_repo(role_repo):
     """Utility function to find all roles in a role_repo.

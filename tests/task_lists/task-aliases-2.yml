@@ -1,0 +1,7 @@
+tasks:
+  - install_zile:
+       meta:
+         task-name: 'apt'
+         become: true
+       vars:
+          name: 'zile'

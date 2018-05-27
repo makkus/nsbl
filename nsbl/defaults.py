@@ -80,6 +80,10 @@ EXT_ROLE_TASK_TYPE = "ext_role"
 DYN_ROLE_TYPE = "dyn_role"
 # indicator for task type ansible module
 TASK_TASK_TYPE = "ansible-task"
+
+ROLE_TASK_TYPE = "ansible-role"
+MODULE_TASK_TYPE = "ansible-module"
+
 # key to indicate what the generated role should be called
 ROLE_NAME_KEY = "role-name"
 # filename that contains meta information for internal roles

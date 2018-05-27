@@ -1,0 +1,9 @@
+- localhost:
+    meta:
+      type: host
+    vars:
+      ansible_user: markus
+
+    tasks:
+      - APT:
+          name: zile

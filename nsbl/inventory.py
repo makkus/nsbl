@@ -383,8 +383,10 @@ class NsblInventory(FrklCallback):
         dict: a dict containing all information about all hosts/groups
         """
 
-        result = copy.copy(self.groups)
-        result["_meta"] = {"hostvars": self.hosts}
+        result = copy.deepcopy(self.groups)
+        result["_meta"] = {"hostvars": {}}
+        for host, vars in self.hosts.items():
+            result["_meta"]["hostvars"][host] = vars.get(VARS_KEY, {})
 
         # return json.dumps(result, sort_keys=4, indent=4)
         return result
