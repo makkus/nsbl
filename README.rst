@@ -19,7 +19,7 @@ nsbl
            :target: https://pyup.io/repos/github/makkus/nsbl/
            :alt: updates
 
-.. image:: https://coveralls.io/repos/github/makkus/frkl/badge.svg?branch=develop
+.. image:: https://coveralls.io/repos/github/makkus/nsbl/badge.svg?branch=develop
            :target: https://coveralls.io/github/makkus/nsbl?branch=develop
            :alt: coveralls
 
