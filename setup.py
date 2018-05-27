@@ -36,9 +36,9 @@ setup(
     package_dir={"nsbl": "nsbl"},
     entry_points={
         "console_scripts": [
-            "nsbl=nsbl.nsbl.cli:cli",
+            "nsbl=nsbl.cli:cli",
             "nsbl-inventory=nsbl.inventory_cli:main",
-            "nsbl-playbook=nsbl.playbook_cli:cli",
+            "nsbl-plbk=nsbl.playbook_cli:cli",
             "nsbl-tasks=nsbl.tasks_cli:cli",
         ],
         "frkl.frk": [

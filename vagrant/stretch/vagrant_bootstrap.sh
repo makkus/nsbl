@@ -12,32 +12,36 @@ set -e
 
 # create freckles virtualenv
 BASE_DIR="$HOME/.local/opt"
-NSBL_DIR="$BASE_DIR/nsbl"
-NSBL_VIRTUALENV_BASE="$NSBL_DIR/venv/"
-NSBL_VIRTUALENV="$NSBL_VIRTUALENV_BASE/nsbl"
-NSBL_VIRTUALENV_ACTIVATE="$NSBL_VIRTUALENV/bin/activate"
-export WORKON_HOME="$NSBL_VIRTUALENV"
+FRECKLES_DIR="$BASE_DIR/freckles"
+FRECKLES_VIRTUALENV_BASE="$FRECKLES_DIR/venv/"
+FRECKLES_VIRTUALENV="$FRECKLES_VIRTUALENV_BASE/freckles"
+FRECKLES_VIRTUALENV_ACTIVATE="$FRECKLES_VIRTUALENV/bin/activate"
+export WORKON_HOME="$FRECKLES_VIRTUALENV"
 
-sudo apt-get update
-sudo apt-get install -y build-essential git python-dev python-virtualenv libssl-dev libffi-dev stow libsqlite3-dev
+sudo apt-get update || sudo apt-get update
+sudo apt-get install -y build-essential git python-dev python-virtualenv libssl-dev libffi-dev libsqlite3-dev
 
-mkdir -p "$NSBL_VIRTUALENV"
-cd "$NSBL_VIRTUALENV_BASE"
-virtualenv nsbl
+sudo mkdir -p "$FRECKLES_VIRTUALENV"
+sudo chown -R vagrant "$FRECKLES_VIRTUALENV"
+cd "$FRECKLES_VIRTUALENV_BASE"
+virtualenv freckles
 
 # install freckles & requirements
-source nsbl/bin/activate
+source freckles/bin/activate
 pip install --upgrade pip
 pip install --upgrade setuptools wheel
 
 
-echo source "$NSBL_VIRTUALENV_ACTIVATE" >> "$HOME/.bashrc"
+echo source "$FRECKLES_VIRTUALENV_ACTIVATE" >> "$HOME/.bashrc"
 
-# install nsbl
-source "$NSBL_VIRTUALENV_ACTIVATE"
-cd /nsbl
+# install freckles
+source "$FRECKLES_VIRTUALENV_ACTIVATE"
+cd /freckles
 pip install -r requirements_dev.txt
+python setup.py develop
+if [ -d "/nsbl" ]; then
+    pip install -e "/nsbl"
+fi
 if [ -d "/frkl" ]; then
     pip install -e "/frkl"
 fi
-python setup.py develop

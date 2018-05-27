@@ -1,10 +1,9 @@
-- 10.20.30.41:
+- localhost:
     meta:
       type: host
     vars:
-      ansible_user: root
+      ansible_user: markus
 
     tasks:
-      - apt:
+      - APT:
           name: zile
-      - install-gitea
