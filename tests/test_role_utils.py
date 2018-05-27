@@ -25,3 +25,17 @@ def test_find_roles_in_repo(repo_path, expected):
     result = find_roles_in_repo(repo_path)
 
     assert result == expected
+
+REPO_LIST = [
+    (os.path.join(PATH_RR, "example_roles"), {"ansiblebit.oracle-java": os.path.join(PATH_RR, "example_roles", "languages/java/ansiblebit.oracle-java")}),
+    ([os.path.join(PATH_RR, "example_roles")], {"ansiblebit.oracle-java": os.path.join(PATH_RR, "example_roles", "languages/java/ansiblebit.oracle-java")}),
+    ([os.path.join(PATH_RR, "example_roles_2"), os.path.join(PATH_RR, "example_roles")], {"ansiblebit.oracle-java": os.path.join(PATH_RR, "example_roles", "languages/java/ansiblebit.oracle-java")}),
+    ([os.path.join(PATH_RR, "example_roles"), os.path.join(PATH_RR, "example_roles_2")], {"ansiblebit.oracle-java": os.path.join(PATH_RR, "example_roles_2", "programming-languages/java/ansiblebit.oracle-java")}),
+]
+
+@pytest.mark.parametrize("repo_paths, expected", REPO_LIST)
+def test_find_roles_in_repos(repo_paths, expected):
+
+    result = find_roles_in_repos(repo_paths)
+
+    assert result == expected
