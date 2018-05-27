@@ -3,6 +3,12 @@
 # python 3 compatibility
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import cookiecutter
+
+from collections import OrderedDict
+from jinja2 import Environment, PackageLoader
+
+
 from frkl.callbacks import FrklCallback
 from frkl.processors import (
     ConfigProcessor,

@@ -3,8 +3,18 @@
 # python 3 compatibility
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from frutils.defaults import DEFAULT_EXCLUDE_DIRS
-from .utils import *
+import fnmatch
+import logging
+import os
+import re
+import yaml
+
+from frutils import DEFAULT_EXCLUDE_DIRS
+from frkl.utils import expand_string_to_git_details
+from six import string_types
+
+from .defaults import *
+from .exceptions import NsblException
 
 log = logging.getLogger("nsbl")
 
