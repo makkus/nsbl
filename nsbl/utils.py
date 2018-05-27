@@ -9,7 +9,7 @@ import os
 import re
 import yaml
 
-from frutils import DEFAULT_EXCLUDE_DIRS
+from frutils.defaults import DEFAULT_EXCLUDE_DIRS
 from frkl.utils import expand_string_to_git_details
 from six import string_types
 
