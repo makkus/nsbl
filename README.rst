@@ -4,18 +4,28 @@ nsbl
 
 
 .. image:: https://img.shields.io/pypi/v/nsbl.svg
-        :target: https://pypi.python.org/pypi/nsbl
+           :target: https://pypi.python.org/pypi/nsbl
+           :alt: pypi
 
 .. image:: https://img.shields.io/travis/makkus/nsbl.svg
-        :target: https://travis-ci.org/makkus/nsbl
+           :target: https://travis-ci.org/makkus/nsbl
+           :alt: travis
 
 .. image:: https://readthedocs.org/projects/nsbl/badge/?version=latest
-        :target: https://nsbl.readthedocs.io/en/latest/?badge=latest
-        :alt: Documentation Status
+           :target: https://nsbl.readthedocs.io/en/latest/?badge=latest
+           :alt: documentation
 
 .. image:: https://pyup.io/repos/github/makkus/nsbl/shield.svg
-     :target: https://pyup.io/repos/github/makkus/nsbl/
-     :alt: Updates
+           :target: https://pyup.io/repos/github/makkus/nsbl/
+           :alt: updates
+
+.. image:: https://coveralls.io/repos/github/makkus/frkl/badge.svg?branch=develop
+           :target: https://coveralls.io/github/makkus/nsbl?branch=develop
+           :alt: coveralls
+
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+           :target: https://github.com/ambv/black
+           :alt: codestyle
 
 
 elastic ansible configuration
@@ -36,4 +46,3 @@ This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypack
 
 .. _Cookiecutter: https://github.com/audreyr/cookiecutter
 .. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
-
