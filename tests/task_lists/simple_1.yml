@@ -1,0 +1,7 @@
+- meta:
+    name: apt
+    become: true
+    type: ansible-module
+    desc: installing zile
+  vars:
+    name: zile
