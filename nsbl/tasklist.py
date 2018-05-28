@@ -357,12 +357,14 @@ def calculate_task_types(task_list, role_repos, allow_external_roles=False):
     return (list(internal_roles), list(external_roles), list(modules_used))
 
 
-def ensure_task_list_format(task_list, ansible_task_file):
+def ensure_task_list_format(task_list, ansible_task_file, env_id, task_list_id):
     """Make sure the task list is in 'freckles' format, if not, convert and add additional task file.
 
     Args:
         task_list (list): the task list
         ansible_task_file (str): the path to the external task file to be created (if necessary), if None a temporary one will be created
+        env_id: the id of the environment (used to calculate the variable name)
+        task_list_id: the id of the task_list inside the environment (used to calculate the variable name)
     Returns:
         tuple: tuple in the form of (final_task_list, external_files_dict)
     """
@@ -374,34 +376,36 @@ def ensure_task_list_format(task_list, ansible_task_file):
         task_list_new = [get_import_task_item(file_name)]
         with open(ansible_task_file, "w") as f:
             yaml.dump(task_list, f)
-        return (task_list_new, {"type": "ansible-tasks", "path": ansible_task_file})
+        return (task_list_new, {ansible_task_file: {"type": ADD_TYPE_TASK_LIST, "file_name": "task_list_{}_{}.yml".format(env_id, task_list_id), "var_name": "task_list_{}_{}".format(env_id, task_list_id)}})
     else:
         return (task_list, None)
 
 
 class TaskList(object):
 
-    def __init__(self, task_list, external_files=None, run_metadata=None):
+    def __init__(self, task_list, additional_files=None, run_metadata=None):
 
-        if external_files is None:
-            external_files = {}
+        if additional_files is None:
+            additional_files = {}
+
+        self.additional_files = additional_files
 
         # runtime metadata
         if run_metadata is None:
             run_metadata = {}
         self.env_name = run_metadata.get("env_name", "localhost")
         self.env_id = run_metadata.get("env_id", None)
+        self.allow_external_roles = run_metadata.get("allow_external_roles", False)
+
         if self.env_id is None:
             self.env_id = GLOBAL_ENV_ID()
         self.global_vars = run_metadata.get("vars", {})
-        role_repos = run_metadata.get("role_repos", [])
+        role_repos = run_metadata.get("role_repo_paths", [])
         task_alias_files = run_metadata.get("task_alias_files", [])
 
         self.role_repos, self.task_aliases = get_default_role_repos_and_task_aliases(
             role_repos, task_alias_files
         )
-
-        self.allow_external_roles = run_metadata.get("allow_external_roles", False)
 
         log.debug("Task list repos: {}".format(self.role_repos))
         log.debug("Task list aliases: {}".format(self.task_aliases))

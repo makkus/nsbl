@@ -10,9 +10,11 @@ import click_log
 from frutils.frutils_cli import output
 from . import __version__ as VERSION
 from .defaults import *
+from .exceptions import NsblException
 from .inventory import NsblInventory
 from .nsbl import Nsbl
 from .tasks import NsblTasks
+from .nsbl_config import create_config
 
 logger = logging.getLogger("nsbl")
 click_log.basic_config(logger)
@@ -43,9 +45,12 @@ def raise_error(exc):
     help="path to a local task description yaml file",
     multiple=True,
 )
+@click.option(
+    "--allow-external-roles", "-a", help="try to download roles from Ansible Galaxy if not available locally",
+    is_flag=True)
 @click_log.simple_verbosity_option(logger, "--verbosity", default="WARN")
 @click.pass_context
-def cli(ctx, version, role_repo, task_desc):
+def cli(ctx, version, role_repo, task_desc, allow_external_roles):
     """'nsbl' is a wrapper framework for Ansible, trying to minimize configuration."""
 
     if version:
@@ -55,6 +60,7 @@ def cli(ctx, version, role_repo, task_desc):
     ctx.obj = {}
     ctx.obj["role-repos"] = calculate_role_repos(role_repo)
     ctx.obj["task-desc"] = calculate_task_descs(task_desc, ctx.obj["role-repos"])
+    ctx.obj["allow-external-roles"] = allow_external_roles
 
 
 @cli.command("list-groups")
@@ -270,13 +276,24 @@ def print_available_tasks(ctx, pager, format):
 def create(ctx, config, target, force):
 
     try:
-        nsbl = Nsbl.create(config, ctx.obj["role-repos"], ctx.obj["task-desc"])
-        nsbl.render(
-            target, extract_vars=True, force=force, ansible_args="", callback="default"
-        )
-        click.echo("Ansible environment written to: {}".format(os.path.abspath(target)))
+        role_repos = ctx.obj["role-repos"]
+        task_aliases_paths = ctx.obj["task-desc"]
+        allow_external_roles = ctx.obj["allow-external-roles"]
+        config = create_config(config, role_repo_paths=role_repos, task_aliases_paths=task_aliases_paths, allow_external_roles=allow_external_roles)
+
+        config.render(target, extract_vars=True, force=force, ansible_args="", callback="default")
     except (Exception) as e:
-        raise_error(e)
+        logger.debug(e)
+        raise click.ClickException(e.message)
+
+    # try:
+    #     nsbl = Nsbl.create(config, ctx.obj["role-repos"], ctx.obj["task-desc"])
+    #     nsbl.render(
+    #         target, extract_vars=True, force=force, ansible_args="", callback="default"
+    #     )
+    #     click.echo("Ansible environment written to: {}".format(os.path.abspath(target)))
+    # except (Exception) as e:
+    #     raise_error(e)
 
     # for play, tasks in result["plays"].items():
     # pprint.pprint(play)
