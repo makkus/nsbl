@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import copy
 import datetime
 import logging
 import shutil
@@ -93,7 +94,6 @@ class Nsbl(object):
         nsbl_context=None,
         default_env_type=DEFAULT_ENV_TYPE,
         additional_files=None,
-        allow_external_roles=False,
     ):
 
         self.plays = CommentedMap()
@@ -102,8 +102,12 @@ class Nsbl(object):
             nsbl_context = NsblContext()
         self.nsbl_context = nsbl_context
         self.default_env_type = default_env_type
-        self.additional_files = additional_files
-        self.allow_external_roles = allow_external_roles
+
+        if additional_files is None:
+            additional_files = {}
+
+        self.additional_files = copy.deepcopy(additional_files)
+
 
         if additional_files is None:
             additional_files = {}
@@ -113,6 +117,8 @@ class Nsbl(object):
         self.inventory = NsblInventory.create(
             self.config, default_env_type=self.default_env_type, pre_chain=[]
         )
+
+        tl_id = 0
         for tasks in self.inventory.tasks:
 
             task_list_meta = tasks["meta"]
@@ -129,9 +135,8 @@ class Nsbl(object):
                 task_list,
                 nsbl_context=self.nsbl_context,
                 additional_files=None,
-                env_name=env_name,
+                tasklist_id=tl_id,
                 env_id=env_id,
-                allow_external_roles=allow_external_roles,
                 task_list_vars=task_list_vars,
                 run_metadata=run_metadata,
             )
@@ -139,6 +144,8 @@ class Nsbl(object):
                 "task_list": tl,
                 "meta": task_list_meta,
             }
+
+            tl_id = tl_id + 1
 
     def render(
         self,
@@ -343,11 +350,11 @@ class Nsbl(object):
         roles_target = os.path.join("roles", "internal")
         task_lists_target = "task_lists"
 
-        for path, details in self.additional_files:
+        for path, details in self.additional_files.items():
 
             file_type = details["type"]
-            playbook_var_name = details["var_name"]
-            file_name = details["file_name"]
+            playbook_var_name = details.get("var_name", None)
+            file_name = details["target_name"]
 
             if file_type == ADD_TYPE_TASK_LIST:
                 target = os.path.join(env_dir, task_lists_target, file_name)

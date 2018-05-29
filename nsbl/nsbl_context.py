@@ -194,10 +194,12 @@ class NsblContext(object):
     """Class to hold information about available roles, task-lists and task-aliases."""
 
     def __init__(
-        self, role_repo_paths=None, task_list_paths=None, task_alias_paths=None
-    ):
+        self, role_repo_paths=None, task_list_paths=None, task_alias_paths=None, allow_external_roles=False,
+        allow_external_tasklists=False, task_list_search_paths=None):
 
         self.add_uppercase_task_descs = True
+        self.allow_external_roles = allow_external_roles
+        self.allow_external_tasklists = allow_external_tasklists
 
         if role_repo_paths is None:
             role_repo_paths = []
@@ -211,6 +213,9 @@ class NsblContext(object):
             task_alias_paths = []
         if isinstance(task_alias_paths, string_types):
             task_alias_paths = [task_alias_paths]
+
+        if task_list_search_paths is None:
+            task_list_search_paths = []
 
         self.task_list_repo_paths = calculate_task_list_repos(task_list_paths)
         self.role_repo_paths = calculate_role_repos(role_repo_paths)

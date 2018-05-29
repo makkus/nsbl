@@ -78,8 +78,7 @@ TASK_TASK_TYPE = "ansible-task"
 
 ROLE_TASK_TYPE = "ansible-role"
 MODULE_TASK_TYPE = "ansible-module"
-ANSIBLE_TASK_LIST_TASK_TYPE = "ansible-tasklist"
-NSBL_TASK_LIST_TASK_TYPE = "nsbl-tasklist"
+TASK_LIST_TASK_TYPE = "tasklist"
 
 ADD_TYPE_TASK_LIST = "TASK_LIST"
 ADD_TYPE_ROLE = "ROLE"
