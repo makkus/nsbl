@@ -11,7 +11,7 @@ from frutils.frutils_cli import output
 from . import __version__ as VERSION
 from .defaults import *
 from .inventory import NsblInventory
-from .nsbl_config import create_config
+from .nsbl import create
 from .nsbl_context import NsblContext
 
 logger = logging.getLogger("nsbl")
@@ -282,7 +282,7 @@ def create(ctx, config, target, force):
     nsbl_context = ctx.obj["nsbl-context"]
     try:
         allow_external_roles = ctx.obj["allow-external-roles"]
-        config = create_config(config, nsbl_context, allow_external_roles=allow_external_roles)
+        config = create(config, nsbl_context, allow_external_roles=allow_external_roles)
 
         config.render(target, extract_vars=True, force=force, ansible_args="", callback="default")
 

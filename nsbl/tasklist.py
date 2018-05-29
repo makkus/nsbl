@@ -306,7 +306,7 @@ def create_task_list(urls, role_repo_paths=None, task_alias_files=None, addition
     if not isinstance(urls, string_types):
         raise NsblException("Only single files supported for creating a task list: {}".format(urls))
 
-    urls = [urls]  # we always want a list of lists as input for the NsblConfig object
+    urls = [urls]  # we always want a list of lists as input for the Nsbl object
     task_lists = load_from_url_or_path(urls)
     tl = TaskList(task_lists, role_repo_paths=role_repo_paths, task_alias_files=task_alias_files, additional_files=additional_files, env_name=env_name, env_id=env_id, allow_external_roles=allow_external_roies, task_list_vars=task_list_vars, run_metadata=run_metadata)
 

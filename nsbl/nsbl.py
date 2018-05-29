@@ -30,7 +30,7 @@ log = logging.getLogger("nsbl")
 yaml = YAML()
 yaml.default_flow_style = False
 
-def create_config(urls, nsbl_context=None, default_env_type=DEFAULT_ENV_TYPE, additional_files=None, allow_external_roles=False):
+def create(urls, nsbl_context=None, default_env_type=DEFAULT_ENV_TYPE, additional_files=None, allow_external_roles=False):
 
     if nsbl_context is None:
         nsbl_context = NsblContext()
@@ -38,10 +38,10 @@ def create_config(urls, nsbl_context=None, default_env_type=DEFAULT_ENV_TYPE, ad
         additional_files = {}
 
     if isinstance(urls, string_types):
-        urls = [urls]  # we always want a list of lists as input for the NsblConfig object
+        urls = [urls]  # we always want a list of lists as input for the Nsbl object
     config_dicts = load_from_url_or_path(urls)
 
-    config = NsblConfig(config_dicts, nsbl_context, default_env_type, additional_files, allow_external_roles)
+    config = Nsbl(config_dicts, nsbl_context, default_env_type, additional_files, allow_external_roles)
 
     return config
 
@@ -60,7 +60,7 @@ def create_config(urls, nsbl_context=None, default_env_type=DEFAULT_ENV_TYPE, ad
 
 DEFAULT_ASK_BECOME = True
 
-class NsblConfig(object):
+class Nsbl(object):
     """Holds and parses configuration to generate Ansible task lists and inventories.
 
     Args:

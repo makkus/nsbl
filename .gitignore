@@ -68,3 +68,4 @@ out/
 *.iml
 .pytest_cache
 *~
+nsbl_env
