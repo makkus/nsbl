@@ -17,6 +17,7 @@ from frutils import can_passwordless_sudo, dict_merge
 from .defaults import *
 from .exceptions import NsblException
 from .inventory import NsblInventory
+from .nsbl_context import NsblContext
 from .tasklist import TaskList
 
 try:
@@ -29,8 +30,10 @@ log = logging.getLogger("nsbl")
 yaml = YAML()
 yaml.default_flow_style = False
 
-def create_config(urls, role_repo_paths=[], task_aliases_paths=[], default_env_type=DEFAULT_ENV_TYPE, additional_files=None, allow_external_roles=False):
+def create_config(urls, nsbl_context=None, default_env_type=DEFAULT_ENV_TYPE, additional_files=None, allow_external_roles=False):
 
+    if nsbl_context is None:
+        nsbl_context = NsblContext()
     if additional_files is None:
         additional_files = {}
 
@@ -38,7 +41,7 @@ def create_config(urls, role_repo_paths=[], task_aliases_paths=[], default_env_t
         urls = [urls]  # we always want a list of lists as input for the NsblConfig object
     config_dicts = load_from_url_or_path(urls)
 
-    config = NsblConfig(config_dicts, role_repo_paths, task_aliases_paths, default_env_type, additional_files, allow_external_roles)
+    config = NsblConfig(config_dicts, nsbl_context, default_env_type, additional_files, allow_external_roles)
 
     return config
 
@@ -62,19 +65,19 @@ class NsblConfig(object):
 
     Args:
         config (list): a list of configuration items
-        role_repo_paths (list): a list of paths to local folders that contain (trusted) Ansible roles
-        task_aliases_paths (list): a list of paths to files containing task aliases (in addition to the ones contained in role_repos)
+        nsbl_context (NsblContext): the context for this environment
         default_env_type (str): the type a environment is if it is not explicitely specified, either ENV_TYPE_HOST or ENV_TYPE_GROUP
         additional_files (dict): a dict of additional files to copy into the Ansible environment
         allow_external_roles (bool): whether to allow the downloading of external roles
     """
 
-    def __init__(self, config, role_repo_paths=[], task_alias_files=[], default_env_type=DEFAULT_ENV_TYPE, additional_files=None, allow_external_roles=False):
+    def __init__(self, config, nsbl_context=None, default_env_type=DEFAULT_ENV_TYPE, additional_files=None, allow_external_roles=False):
 
         self.plays = CommentedMap()
         self.config = config
-        self.role_repo_paths = role_repo_paths
-        self.task_alias_files = task_alias_files
+        if nsbl_context is None:
+            nsbl_context = NsblContext()
+        self.nsbl_context = nsbl_context
         self.default_env_type = default_env_type
         self.additional_files = additional_files
         self.allow_external_roles = allow_external_roles
@@ -97,7 +100,7 @@ class NsblConfig(object):
 
             run_metadata = {}
 
-            tl = TaskList(task_list, role_repo_paths=self.role_repo_paths, task_alias_files=self.task_alias_files, additional_files=None, env_name=env_name, env_id=env_id, allow_external_roles=allow_external_roles, task_list_vars=task_list_vars, run_metadata=run_metadata)
+            tl = TaskList(task_list, nsbl_context=self.nsbl_context, additional_files=None, env_name=env_name, env_id=env_id, allow_external_roles=allow_external_roles, task_list_vars=task_list_vars, run_metadata=run_metadata)
             self.plays["{}_{}".format(env_name, env_id)] = {"task_list": tl, "meta": task_list_meta}
 
 

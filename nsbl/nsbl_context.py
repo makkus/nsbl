@@ -201,6 +201,9 @@ class NsblContext(object):
         self.task_list_repo_paths = calculate_task_list_repos(task_list_paths)
         self.role_repo_paths = calculate_role_repos(role_repo_paths)
 
-        self.task_aliases = calculate_task_aliases(self.role_repo_paths + task_alias_paths)
+        temp_paths = []
+        temp_paths.extend(self.role_repo_paths)
+        temp_paths.extend(task_alias_paths)
+        self.task_aliases = calculate_task_aliases(temp_paths)
         self.available_roles =  find_roles_in_repos(self.role_repo_paths)
 

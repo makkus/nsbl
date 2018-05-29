@@ -279,13 +279,14 @@ def list_task_aliases(ctx, pager, format):
 @click.pass_context
 def create(ctx, config, target, force):
 
+    nsbl_context = ctx.obj["nsbl-context"]
     try:
-        role_repos = ctx.obj["role-repos"]
-        task_aliases_paths = ctx.obj["task-desc"]
         allow_external_roles = ctx.obj["allow-external-roles"]
-        config = create_config(config, role_repo_paths=role_repos, task_aliases_paths=task_aliases_paths, allow_external_roles=allow_external_roles)
+        config = create_config(config, nsbl_context, allow_external_roles=allow_external_roles)
 
         config.render(target, extract_vars=True, force=force, ansible_args="", callback="default")
+
+        click.echo("Ansible environment written to: {}".format(os.path.abspath(target)))
     except (Exception) as e:
         logger.debug(e)
         raise click.ClickException(e.message)
