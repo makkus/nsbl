@@ -83,6 +83,8 @@ TASK_TASK_TYPE = "ansible-task"
 
 ROLE_TASK_TYPE = "ansible-role"
 MODULE_TASK_TYPE = "ansible-module"
+ANSIBLE_TASK_LIST_TASK_TYPE = "ansible-tasklist"
+NSBL_TASK_LIST_TASK_TYPE = "nsbl-tasklist"
 
 ADD_TYPE_TASK_LIST = "TASK_LIST"
 ADD_TYPE_ROLE = "ROLE"
@@ -123,12 +125,13 @@ DEFAULT_TIMEOUT = 36000
 NSBLIZED_TASKS = ["install"]
 
 DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT = {
-    CHILD_MARKER_NAME: TASKS_KEY,
-    DEFAULT_LEAF_NAME: TASKS_META_KEY,
-    DEFAULT_LEAFKEY_NAME: TASK_META_NAME_KEY,
-    KEY_MOVE_MAP_NAME: {"*": (VARS_KEY, "default")},
+    CHILD_MARKER_NAME: "tasks",
+    DEFAULT_LEAF_NAME: "task",
+    DEFAULT_LEAFKEY_NAME: "name",
+    KEY_MOVE_MAP_NAME: {"*": ("vars", "default")},
     "use_context": True,
 }
+
 DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
     FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
 ]
@@ -149,136 +152,40 @@ NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
     FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT),
 ]
 
-
-def generate_nsbl_tasks_format(
-    task_aliases=None, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT
-):
-    """Utility method to populate the KEY_MOVE_MAP key for the tasks """
-
-    if task_aliases is None:
-        task_aliases = {}
-
-    result = copy.deepcopy(tasks_format)
-    for task_desc in task_aliases:
-        if DEFAULT_KEY_KEY in task_desc[TASKS_META_KEY].keys():
-            # TODO: check for duplicate keys?
-            result[KEY_MOVE_MAP_NAME][
-                task_desc[TASKS_META_KEY][TASK_META_NAME_KEY]
-            ] = "vars/{}".format(task_desc[TASKS_META_KEY][DEFAULT_KEY_KEY])
-
-    return result
-
-
-def get_default_role_repos_and_task_descs(role_repos, task_descs):
-    if role_repos:
-        role_repos = role_repos
-    else:
-        role_repos = calculate_role_repos([])
-
-    if task_descs:
-        task_descs = task_descs
-    else:
-        task_descs = calculate_task_descs(None, role_repos)
-
-    return (role_repos, task_descs)
-
-
-def calculate_role_repos(role_repos):
-    """Utility method to calculate which role repos to use.
-
-    Role repos are folders containing ansible roles, and an (optional) task
-    description file which is used to translate task-names in a task config
-    file into roles or ansible tasks.
-
-    Args:
-      role_repos (list): a string or list of strings of local folders containing ansible roles
-
-    Returns:
-      list: a list of all local role repos to be used
-    """
-
-    if not role_repos:
-        role_repos = []
-
-    if isinstance(role_repos, string_types):
-        role_repos = [role_repos]
-    else:
-        role_repos = role_repos
-
-    # if not role_repos:
-    # role_repos.append(DEFAULT_ROLES_PATH)
-    # elif use_default_roles:
-    # role_repos.insert(0, DEFAULT_ROLES_PATH)
-
-    return role_repos
+ANSIBLE_TASK_KEYWORDS = [
+    "any_errors_fatal",
+    "async",
+    "become",
+    "become_flags",
+    "become_method",
+    "become_user",
+    "changed_when",
+    "check_mode",
+    "connection",
+    "debugger",
+    "delay",
+    "delegate_facts",
+    "delegate_to",
+    "diff",
+    "environment",
+    "failed_when",
+    "ignore_errors",
+    "loop",
+    "loop_control",
+    "name",
+    "no_log",
+    "notify",
+    "poll",
+    "port",
+    "register",
+    "remote_user",
+    "retries",
+    "run_once",
+    "tags",
+    "until",
+    "when",
+]
 
 
-def calculate_task_descs(task_descs, role_repos=[], add_upper_case_versions=True):
-    """Utility method to calculate which task descriptions to use.
-
-    Task descriptions are yaml files that translate task-names in a task config
-    into roles or ansible tasks, optionally with extra default parameters.
-
-    If additional role_repos are provided, we will check whether each of them
-    contains a file with the value of TASK_DESC_DEFAULT_FILENAME. If so, those
-    will be added to the beginning of the resulting list.
-
-    Args:
-      task_descs (list): a string or list of strings of local files
-      role_repos (list): a list of role repos (see 'calculate_role_repos' method)
-      add_upper_case_versions (bool): if true, will add an upper-case version of every task desc that includes a meta/become = true entry
-
-    Returns:
-      list: a list of dicts of all task description configs to be used
-
-    """
-
-    if not task_descs:
-        task_descs = []
-
-    if isinstance(task_descs, string_types):
-        task_descs = [task_descs]
-    elif not isinstance(task_descs, (list, tuple)):
-        raise Exception(
-            "task_descs needs to be string or list: '{}'".format(task_descs)
-        )
-
-    if role_repos:
-        repo_task_descs = []
-        for repo in role_repos:
-            task_desc_file = os.path.join(
-                os.path.expanduser(repo), TASK_DESC_DEFAULT_FILENAME
-            )
-            if os.path.exists(task_desc_file):
-                repo_task_descs.append(task_desc_file)
-
-        task_descs = repo_task_descs + task_descs
-
-    # TODO: check whether paths exist
-    frkl_format = generate_nsbl_tasks_format([])
-    task_desk_frkl = Frkl(
-        task_descs,
-        [
-            UrlAbbrevProcessor(),
-            EnsureUrlProcessor(),
-            EnsurePythonObjectProcessor(),
-            FrklProcessor(frkl_format),
-        ],
-    )
-
-    processed_task_descs = task_desk_frkl.process()
-
-    if add_upper_case_versions:
-        result = []
-        for task in processed_task_descs:
-            result.append(task)
-            task_become = copy.deepcopy(task)
-            task_become[TASKS_META_KEY][TASK_META_NAME_KEY] = task[TASKS_META_KEY][
-                TASK_META_NAME_KEY
-            ].upper()
-            task_become[TASKS_META_KEY][TASK_BECOME_KEY] = True
-            result.append(task_become)
-
-        return result
-    else:
-        return processed_task_descs
+# global vars that may be changed
+DEFAULT_TASK_LIST_BASE_PATH = os.path.join(os.path.expanduser("~"), ".nsbl", "task-lists")

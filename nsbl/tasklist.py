@@ -6,6 +6,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import logging
 
 import yaml
+from collections import OrderedDict
 from ruamel.yaml.comments import CommentedMap
 
 from frkl.processors import (
@@ -15,44 +16,13 @@ from frkl.processors import (
     UrlAbbrevProcessor,
 )
 from frutils import StringYAML, dict_merge
+from frkl import load_from_url_or_path
 from .defaults import *
 from .exceptions import NsblException
-from .role_utils import find_roles_in_repos
-from .utils import get_task_list_format
+from .nsbl_context import NsblContext
+from .tasklist_utils import get_task_list_format
 
-ANSIBLE_TASK_KEYWORDS = [
-    "any_errors_fatal",
-    "async",
-    "become",
-    "become_flags",
-    "become_method",
-    "become_user",
-    "changed_when",
-    "check_mode",
-    "connection",
-    "debugger",
-    "delay",
-    "delegate_facts",
-    "delegate_to",
-    "diff",
-    "environment",
-    "failed_when",
-    "ignore_errors",
-    "loop",
-    "loop_control",
-    "name",
-    "no_log",
-    "notify",
-    "poll",
-    "port",
-    "register",
-    "remote_user",
-    "retries",
-    "run_once",
-    "tags",
-    "until",
-    "when",
-]
+
 
 GLOBAL_ENV_ID_COUNTER = 999999
 
@@ -92,120 +62,6 @@ def generate_task_item_from_string(task_name):
 
     return {"meta": {"name": task_name}}
 
-
-def calculate_role_repos(role_repos):
-    """Utility method to calculate which role repos to use.
-
-    Role repos are folders containing ansible roles, and an (optional) task
-    description file which is used to translate task-names in a task config
-    file into roles or ansible tasks.
-
-    Args:
-      role_repos (list): a string or list of strings of local folders containing ansible roles
-
-    Returns:
-      list: a list of all local role repos to be used
-    """
-
-    if not role_repos:
-        role_repos = []
-
-    if isinstance(role_repos, string_types):
-        role_repos = [role_repos]
-    else:
-        role_repos = role_repos
-
-    # if not role_repos:
-    # role_repos.append(DEFAULT_ROLES_PATH)
-    # elif use_default_roles:
-    # role_repos.insert(0, DEFAULT_ROLES_PATH)
-
-    return role_repos
-
-
-def calculate_task_aliases(task_aliases, role_repos=[], add_upper_case_versions=True):
-    """Utility method to calculate which task descriptions to use.
-
-    Task descriptions are yaml files that translate task-names in a task config
-    into roles or ansible tasks, optionally with extra default parameters.
-
-    If additional role_repos are provided, we will check whether each of them
-    contains a file with the value of TASK_DESC_DEFAULT_FILENAME. If so, those
-    will be added to the beginning of the resulting list.
-
-    Args:
-      task_aliases (list): a string or list of strings of local files
-      role_repos (list): a list of role repos (see 'calculate_role_repos' method)
-      add_upper_case_versions (bool): if true, will add an upper-case version of every task desc that includes a meta/become = true entry
-
-    Returns:
-      list: a list of dicts of all task description configs to be used
-
-    """
-
-    if not task_aliases:
-        task_aliases = []
-
-    if isinstance(task_aliases, string_types):
-        task_aliases = [task_aliases]
-    elif not isinstance(task_aliases, (list, tuple)):
-        raise Exception(
-            "task_descs needs to be string or list: '{}'".format(task_aliases)
-        )
-
-    if role_repos:
-        repo_task_descs = []
-        for repo in role_repos:
-            task_desc_file = os.path.join(
-                os.path.expanduser(repo), TASK_DESC_DEFAULT_FILENAME
-            )
-            if os.path.exists(task_desc_file):
-                repo_task_descs.append(task_desc_file)
-
-        task_aliases = repo_task_descs + task_aliases
-
-    # TODO: check whether paths exist
-    frkl_format = generate_nsbl_tasks_format([])
-    task_desk_frkl = Frkl(
-        task_aliases,
-        [
-            UrlAbbrevProcessor(),
-            EnsureUrlProcessor(),
-            EnsurePythonObjectProcessor(),
-            FrklProcessor(frkl_format),
-        ],
-    )
-
-    processed_task_descs = task_desk_frkl.process()
-
-    if add_upper_case_versions:
-        result = []
-        for task in processed_task_descs:
-            result.append(task)
-            task_become = copy.deepcopy(task)
-            task_become[TASKS_META_KEY][TASK_META_NAME_KEY] = task[TASKS_META_KEY][
-                TASK_META_NAME_KEY
-            ].upper()
-            task_become[TASKS_META_KEY][TASK_BECOME_KEY] = True
-            result.append(task_become)
-
-        return result
-    else:
-        return processed_task_descs
-
-
-def get_default_role_repos_and_task_aliases(role_repos, task_aliases):
-    """Returns the default role repos and task aliases to use.
-
-    role_repos is a list of local paths, task_aliases is
-    """
-
-    role_repos = calculate_role_repos(role_repos)
-    task_aliases = calculate_task_aliases(task_aliases, role_repos)
-
-    return (role_repos, task_aliases)
-
-
 class AugmentingTaskProcessor(ConfigProcessor):
     """Processor to augment a basic task list.
 
@@ -217,40 +73,28 @@ class AugmentingTaskProcessor(ConfigProcessor):
 
     def __init__(self, init_params=None):
 
-        self.role_repos = None
-        self.task_aliases = None
-        self.ignore_case = None
+        self.nsbl_context = None
         super(AugmentingTaskProcessor, self).__init__(init_params)
 
     def validate_init(self):
 
-        self.role_repos = self.init_params.get("role_repos", [])
-        if not self.role_repos:
-            self.role_repos = calculate_role_repos([])
-        self.task_aliases = self.init_params.get("task_aliases", [])
-        self.ignore_case = self.init_params.get("ignore_case", True)
-        if not self.task_aliases:
-            self.task_aliases = calculate_task_descs(None, self.role_repos)
+        self.nsbl_context = self.init_params.get("context", NsblContext())
         return True
 
     def process_current_config(self):
 
         new_config = self.current_input_config
-        meta_task_name = new_config["meta"]["name"]
 
-        for task_alias in self.task_aliases:
+        meta_task_name = new_config["task"]["name"]
 
-            task_desc_name = task_alias.get("meta", {}).get("name", None)
+        md = self.nsbl_context.task_aliases.get(meta_task_name, None)
+        if md is not None:
+            new_config = dict_merge(md, new_config, copy_dct=True)
 
-            if not task_desc_name == meta_task_name:
-                continue
-
-            new_config = dict_merge(task_alias, new_config, copy_dct=True)
-
-        task_name = new_config.get(TASKS_META_KEY, {}).get("task-name", None)
+        task_name = new_config.get("task", {}).get("task-name", None)
         if not task_name:
             task_name = meta_task_name
-            new_config["meta"]["task-name"] = task_name
+            new_config["task"]["task-name"] = task_name
 
         if "vars" not in new_config.keys():
             new_config["vars"] = {}
@@ -258,7 +102,28 @@ class AugmentingTaskProcessor(ConfigProcessor):
         return new_config
 
 
-def augment_and_expand_task_list(task_lists, role_repos, task_aliases):
+def generate_nsbl_tasks_format(
+    task_aliases=None, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT
+):
+    """Utility method to populate the KEY_MOVE_MAP key for the tasks """
+
+    if task_aliases is None:
+        task_aliases = {}
+
+    result = copy.deepcopy(tasks_format)
+    for alias, task_desc in task_aliases.items():
+        import pprint
+        pprint.pprint(task_desc)
+        if DEFAULT_KEY_KEY in task_desc["task"].keys():
+            # TODO: check for duplicate keys?
+            result[KEY_MOVE_MAP_NAME][
+                task_desc["task"]["name"]
+            ] = "vars/{}".format(task_desc["task"][DEFAULT_KEY_KEY])
+
+    return result
+
+
+def augment_and_expand_task_list(task_lists, nsbl_context):
     """Augments a task list with defaults and/or task aliases.
 
     Args:
@@ -268,23 +133,19 @@ def augment_and_expand_task_list(task_lists, role_repos, task_aliases):
         list: the augmented task list
     """
 
-    init_params = {}
-    if role_repos:
-        init_params["role_repos"] = role_repos
-    if task_aliases:
-        init_params["task_aliases"] = task_aliases
+    init_params = {"context": nsbl_context}
 
-    task_format = generate_nsbl_tasks_format(task_aliases)
+    task_format = generate_nsbl_tasks_format(nsbl_context.task_aliases)
     chain = [FrklProcessor(task_format), AugmentingTaskProcessor(init_params)]
     f = Frkl(task_lists, chain)
     new_list = f.process()
 
     for task in new_list:
-        name = task["meta"]["task-name"]
+        name = task["task"]["task-name"]
 
         if name.isupper():
-            task["meta"]["task-name"] = name.lower()
-            task["meta"]["become"] = True
+            task["task"]["task-name"] = name.lower()
+            task["task"]["become"] = True
 
     return new_list
 
@@ -299,7 +160,7 @@ def guess_task_type(task_item, available_roles):
         str: the task type
     """
 
-    task_name = task_item["meta"]["task-name"]
+    task_name = task_item["task"]["task-name"]
 
     if "." in task_name:
         return ROLE_TASK_TYPE
@@ -307,17 +168,21 @@ def guess_task_type(task_item, available_roles):
         return MODULE_TASK_TYPE
 
 
-def calculate_task_types(task_list, role_repos, allow_external_roles=False):
+def calculate_task_types(task_list, nsbl_context, allow_external_roles=False, relative_base_path=None):
     """Parses the task list and auto-assigns task-types if necessary.
 
     Args:
-        roles_repos (list): list of available local role repos
+        nsbl_context (NsblContext): the nsbl context object for this run
         allow_external_roles (bool): whether to allow (and auto-download) external ansible roles
+        relative_base_path (str): if a task item contains an import for a relative task list, this base path is used
     Returns:
         tuple: tuple in the form of (internal_role_names(list), external_role_names(list), modules_used(list))
     """
 
-    available_roles = find_roles_in_repos(role_repos)
+    if relative_base_path is None:
+        relative_base_path = DEFAULT_TASK_LIST_BASE_PATH
+
+    available_roles = nsbl_context.available_roles
 
     typed_list = []
 
@@ -326,16 +191,16 @@ def calculate_task_types(task_list, role_repos, allow_external_roles=False):
     modules_used = set()
 
     for task in task_list:
-        task_type = task["meta"].get("task-type", None)
+        task_type = task["task"].get("task-type", None)
 
         if task_type is None:
             task_type = guess_task_type(task, available_roles)
-            task["meta"]["task-type"] = task_type
+            task["task"]["task-type"] = task_type
 
-        if task_type not in [ROLE_TASK_TYPE, MODULE_TASK_TYPE]:
+        if task_type not in [ROLE_TASK_TYPE, MODULE_TASK_TYPE, ANSIBLE_TASK_LIST_TASK_TYPE]:
             raise NsblException("Unknown task type: {}".format(task_type))
 
-        task_name = task["meta"]["task-name"]
+        task_name = task["task"]["task-name"]
         if task_type == ROLE_TASK_TYPE:
             if task_name not in available_roles.keys():
                 if allow_external_roles:
@@ -343,7 +208,7 @@ def calculate_task_types(task_list, role_repos, allow_external_roles=False):
                 else:
                     raise NsblException(
                         "Role '{}' not available in local role repos ({}), and external roles download not allowed.".format(
-                            task_name, role_repos
+                            task_name, nsbl_context.role_repo_paths
                         )
                     )
 
@@ -351,8 +216,29 @@ def calculate_task_types(task_list, role_repos, allow_external_roles=False):
                 internal_roles.add(task_name)
         elif task_type == MODULE_TASK_TYPE:
             modules_used.add(task_name)
+        elif task_type == ANSIBLE_TASK_LIST_TASK_TYPE:
+            if task_name != "import_tasks" and task_name != "include_tasks":
+                raise NsblException("'task-name' value for the {} task type needs to be either 'import_tasks' or 'include_tasks': {}".format(ANSIBLE_TASK_LIST_TASK_TYPE), task)
+            free_form = task.get("vars", {}).get("free_form", None)
+            if free_form is None:
+                raise NsblException("task item of type {} needs the 'free_form' variable key: {}".format(ANSIBLE_TASK_LIST_TASK_TYPE), task)
+
         else:
             raise NsblException("Invalid task type: {}".format(task_type))
+
+        task_roles = task["task"].get("task-roles", [])
+        for tr in task_roles:
+            if tr not in available_roles.keys():
+                if allow_external_roles:
+                    external_roles.add(tr)
+                else:
+                    raise NsblException(
+                        "Role '{}' not available in local role repos ({}), and external roles download not allowed.".format(
+                            task_name, nsbl_context.role_repo_paths
+                        )
+                    )
+            else:
+                internal_roles.add(task_name)
 
     return (list(internal_roles), list(external_roles), list(modules_used))
 
@@ -381,9 +267,72 @@ def ensure_task_list_format(task_list, ansible_task_file, env_id, task_list_id):
         return (task_list, None)
 
 
-class TaskList(object):
 
-    def __init__(self, task_list, additional_files=None, run_metadata=None):
+class TaskItem(object):
+    """Class for a single task item.
+
+    Args:
+        task_desc (dict): a string or dict to describe the task
+    """
+
+    def __init__(self, task_desc):
+
+        log.debug("Parsing task description: {}".format(task_desc))
+        self.task_desc_orig = copy.deepcopy(task_desc)
+        self.generic_desc = None
+        self.ansible_desc = None
+
+        if isinstance(task_desc, string_types):
+            log.debug(
+                "task item '{}' is string, determining this is a 'freckles' task item".format(
+                    task_desc
+                )
+            )
+            self.generic_desc = task_desc
+        elif not isinstance(task_desc, (dict, CommentedMap, OrderedDict)):
+            raise Exception("not a valid task item type: {}".format(task_desc))
+
+        else:
+            keys = set(task_desc.keys())
+            if "task" in keys:
+                log.debug("task item contains 'task' key, this means this is a 'freckles' task item")
+                self.generic_desc = task_desc
+            elif len(keys) == 1:
+                pass
+
+
+def create_task_list(urls, role_repo_paths=None, task_alias_files=None, additional_files=None, env_name=None, env_id=None, allow_external_roies=False, task_list_vars=None, run_metadata=None):
+
+    if not isinstance(urls, string_types):
+        raise NsblException("Only single files supported for creating a task list: {}".format(urls))
+
+    urls = [urls]  # we always want a list of lists as input for the NsblConfig object
+    task_lists = load_from_url_or_path(urls)
+    tl = TaskList(task_lists, role_repo_paths=role_repo_paths, task_alias_files=task_alias_files, additional_files=additional_files, env_name=env_name, env_id=env_id, allow_external_roles=allow_external_roies, task_list_vars=task_list_vars, run_metadata=run_metadata)
+
+    return tl
+
+class TaskList(object):
+    """Class to hold a list of tasks.
+
+    Args:
+        task_list (list): a list of task items
+        relative_base_path (str): if relative task-list imports are used, this is the base path for them
+        role_repo_paths (list): a list of local folders that contain trusted Ansible roles
+        task_alias_files (list): a list of paths to task-alias files
+        additional_files (dict): additional files for this task list (e.g. task lists)
+        env_name (str): the name of the environment for this task list
+        env_id (int): the id of the environment for this task list
+        allow_external_roles (bool): whether to allow external roles to be downloaded from Ansible galaxy if not found in one of the local role repos
+        task_list_vars (dict): 'global' vars for this task list, those can be used in the task list using the '{{ var_name }}' template format
+        run_metadata (dict): freestyle additional metadata, not used currently
+    """
+
+    def __init__(self, task_list, relative_base_path=None, nsbl_context=None, additional_files=None, env_name=None, env_id=None, allow_external_roles=False, task_list_vars=None, run_metadata=None):
+
+        if relative_base_path is None:
+            relative_base_path = DEFAULT_TASK_LIST_BASE_PATH
+        self.relative_base_path = relative_base_path
 
         if additional_files is None:
             additional_files = {}
@@ -393,33 +342,35 @@ class TaskList(object):
         # runtime metadata
         if run_metadata is None:
             run_metadata = {}
-        self.env_name = run_metadata.get("env_name", "localhost")
-        self.env_id = run_metadata.get("env_id", None)
-        self.allow_external_roles = run_metadata.get("allow_external_roles", False)
 
-        if self.env_id is None:
-            self.env_id = GLOBAL_ENV_ID()
-        self.global_vars = run_metadata.get("vars", {})
-        role_repos = run_metadata.get("role_repo_paths", [])
-        task_alias_files = run_metadata.get("task_alias_files", [])
+        if env_name is None:
+            env_name = "localhost"
+        self.env_name = env_name
+        self.allow_external_roles = allow_external_roles
 
-        self.role_repos, self.task_aliases = get_default_role_repos_and_task_aliases(
-            role_repos, task_alias_files
-        )
+        if env_id is None:
+            env_id = GLOBAL_ENV_ID()
+        self.env_id = env_id
+        if task_list_vars is None:
+            task_list_vars = {}
+        self.global_vars = task_list_vars
 
-        log.debug("Task list repos: {}".format(self.role_repos))
-        log.debug("Task list aliases: {}".format(self.task_aliases))
+        if nsbl_context is None:
+            nsbl_context = NsblContext()
+
+        self.nsbl_context = nsbl_context
 
         # TODO: validate task list?
         self.task_list_raw = task_list
         self.task_list = augment_and_expand_task_list(
-            task_list, self.role_repos, self.task_aliases
+            [task_list], self.nsbl_context
         )
         # be aware, only first level modules are listed here (for now)
         self.internal_role_names, self.external_role_names, self.modules_used = calculate_task_types(
             self.task_list,
-            self.role_repos,
+            self.nsbl_context,
             allow_external_roles=self.allow_external_roles,
+            relative_base_path=self.relative_base_path
         )
 
     def render_ansible_tasklist(self):
@@ -431,12 +382,12 @@ class TaskList(object):
 
             task = copy.deepcopy(t)
             log.debug("Task item: {}".format(task))
-            name = task["meta"].pop("name")
-            task_name = task["meta"].pop("task-name")
-            task_type = task["meta"].pop("task-type")
-            desc = task["meta"].pop("desc", None)
+            name = task["task"].pop("name")
+            task_name = task["task"].pop("task-name")
+            task_type = task["task"].pop("task-type")
+            desc = task["task"].pop("desc", None)
             # legacy
-            task_desc = task["meta"].pop("task-desc", None)
+            task_desc = task["task"].pop("task-desc", None)
             if desc is None:
                 desc = task_desc
             if desc is None:
@@ -451,7 +402,7 @@ class TaskList(object):
 
             # add the remaining key/value pairs
             unknown_keys = []
-            for key, value in task["meta"].items():
+            for key, value in task["task"].items():
                 if key in ANSIBLE_TASK_KEYWORDS:
                     task_item[key] = value
                 else:

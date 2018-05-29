@@ -10,11 +10,9 @@ import click_log
 from frutils.frutils_cli import output
 from . import __version__ as VERSION
 from .defaults import *
-from .exceptions import NsblException
 from .inventory import NsblInventory
-from .nsbl import Nsbl
-from .tasks import NsblTasks
 from .nsbl_config import create_config
+from .nsbl_context import NsblContext
 
 logger = logging.getLogger("nsbl")
 click_log.basic_config(logger)
@@ -40,17 +38,22 @@ def raise_error(exc):
     multiple=True,
 )
 @click.option(
-    "--task-desc",
-    "-t",
-    help="path to a local task description yaml file",
+    "--task-aliases",
+    "-a",
+    help="path to a local task alias files or repos",
     multiple=True,
+)
+@click.option(
+    "--task-lists",
+    "-l",
+    help="path to a local task-list or task-list repo"
 )
 @click.option(
     "--allow-external-roles", "-a", help="try to download roles from Ansible Galaxy if not available locally",
     is_flag=True)
 @click_log.simple_verbosity_option(logger, "--verbosity", default="WARN")
 @click.pass_context
-def cli(ctx, version, role_repo, task_desc, allow_external_roles):
+def cli(ctx, version, role_repo, task_aliases, task_lists, allow_external_roles):
     """'nsbl' is a wrapper framework for Ansible, trying to minimize configuration."""
 
     if version:
@@ -58,8 +61,8 @@ def cli(ctx, version, role_repo, task_desc, allow_external_roles):
         sys.exit(0)
 
     ctx.obj = {}
-    ctx.obj["role-repos"] = calculate_role_repos(role_repo)
-    ctx.obj["task-desc"] = calculate_task_descs(task_desc, ctx.obj["role-repos"])
+    nsbl_context = NsblContext(role_repo_paths=role_repo, task_list_paths=task_lists, task_alias_paths=task_aliases)
+    ctx.obj["nsbl-context"] = nsbl_context
     ctx.obj["allow-external-roles"] = allow_external_roles
 
 
@@ -115,33 +118,33 @@ def list_hosts(ctx, config, format, pager):
         output(inventory.hosts, format)
 
 
-@cli.command("list-roles")
-@click.argument("config", required=True, nargs=-1)
-@click.option(
-    "--format",
-    "-f",
-    required=False,
-    default="yaml",
-    help="output format, either json or yaml (default)",
-)
-@click.option(
-    "--pager",
-    "-p",
-    required=False,
-    default=False,
-    is_flag=True,
-    help="output via pager",
-)
-@click.pass_context
-def list_roles(ctx, config, format, pager):
-    """Lists all roles from a task list"""
-
-    tasks = NsblTasks.create(config, ctx.obj["role-repos"], ctx.obj["task-desc"])
-    result = []
-    for role in tasks.roles:
-        result.append(role.details())
-
-    output(result, format, pager)
+# @cli.command("list-roles")
+# @click.argument("config", required=True, nargs=-1)
+# @click.option(
+#     "--format",
+#     "-f",
+#     required=False,
+#     default="yaml",
+#     help="output format, either json or yaml (default)",
+# )
+# @click.option(
+#     "--pager",
+#     "-p",
+#     required=False,
+#     default=False,
+#     is_flag=True,
+#     help="output via pager",
+# )
+# @click.pass_context
+# def list_roles(ctx, config, format, pager):
+#     """Lists all roles from a task list"""
+#
+#     tasks = NsblTasks.create(config, ctx.obj["role-repos"], ctx.obj["task-desc"])
+#     result = []
+#     for role in tasks.roles:
+#         result.append(role.details())
+#
+#     output(result, format, pager)
 
 
 # @cli.command('describe-tasks')
@@ -207,7 +210,7 @@ def print_inventory(ctx, config, pager):
     output(inv_string, output_type="raw", pager=pager)
 
 
-@cli.command("print-available-tasks")
+@cli.command("list-task-aliases")
 @click.option("--pager", "-p", required=False, default=False, help="output via pager")
 @click.option(
     "--format",
@@ -217,12 +220,13 @@ def print_inventory(ctx, config, pager):
     help="output format, either json or yaml (default)",
 )
 @click.pass_context
-def print_available_tasks(ctx, pager, format):
+def list_task_aliases(ctx, pager, format):
     """Prints all available tasks included in the included (or specified) task-desc files"""
 
-    nsbl = Nsbl.create([], ctx.obj["role-repos"], ctx.obj["task-desc"])
-    int_tasks = nsbl.task_descs
-    output(int_tasks, format, pager)
+    context = ctx.obj["nsbl-context"]
+
+    alias_names = context.task_aliases.keys()
+    output(alias_names, format, pager)
 
 
 # @cli.command("expand-packages")

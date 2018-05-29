@@ -69,7 +69,7 @@ class NsblConfig(object):
         allow_external_roles (bool): whether to allow the downloading of external roles
     """
 
-    def __init__(self, config, role_repo_paths=[], task_alias_files=[], default_env_type=DEFAULT_ENV_TYPE, additional_files=None, allow_external_roies=False):
+    def __init__(self, config, role_repo_paths=[], task_alias_files=[], default_env_type=DEFAULT_ENV_TYPE, additional_files=None, allow_external_roles=False):
 
         self.plays = CommentedMap()
         self.config = config
@@ -77,7 +77,7 @@ class NsblConfig(object):
         self.task_alias_files = task_alias_files
         self.default_env_type = default_env_type
         self.additional_files = additional_files
-        self.allow_external_roles = allow_external_roies
+        self.allow_external_roles = allow_external_roles
 
         if additional_files is None:
             additional_files = {}
@@ -95,16 +95,9 @@ class NsblConfig(object):
 
             task_list = tasks["tasks"]
 
-            run_metadata = {
-                "env_name": env_name,
-                "env_id": env_id,
-                "allow_external_roles": self.allow_external_roles,
-                "vars": task_list_vars,
-                "role_repo_paths": self.role_repo_paths,
-                "task_alias_files": self.task_alias_files
-            }
+            run_metadata = {}
 
-            tl = TaskList(task_list, run_metadata=run_metadata)
+            tl = TaskList(task_list, role_repo_paths=self.role_repo_paths, task_alias_files=self.task_alias_files, additional_files=None, env_name=env_name, env_id=env_id, allow_external_roles=allow_external_roles, task_list_vars=task_list_vars, run_metadata=run_metadata)
             self.plays["{}_{}".format(env_name, env_id)] = {"task_list": tl, "meta": task_list_meta}
 
 
@@ -370,7 +363,7 @@ class NsblConfig(object):
             dict_merge(playbook_dict.setdefault("vars", {}), external_files_vars, copy_dct=False)
 
             with open(playbook_file, 'w') as pf:
-                yaml.dump(playbook_dict, pf)
+                yaml.dump([playbook_dict], pf)
 
 
         result["task_details"] = task_details
@@ -403,17 +396,17 @@ class NsblConfig(object):
             for role in ext_roles:
                 role_src = os.path.join(ANSIBLE_ROLE_CACHE_DIR, role)
                 target = os.path.join(ext_roles_target, role)
-                roles_to_copy[role_src, target]
+                roles_to_copy[role_src] = target
 
                 template = jinja_env.get_template("external_role.yml")
-                output_text = template.render(role={"name": role, "src": role_src})
+                output_text = template.render(role={"src": role, "name": role})
                 with open(roles_requirements_file, "a") as myfile:
                     myfile.write(output_text)
 
             # download external roles
             click.echo("\nDownloading external roles...")
             role_requirement_file = os.path.join(
-                env_dir, "roles", "roles_requirements.yml"
+                env_dir, "roles", "external", "roles_requirements.yml"
             )
 
             if not os.path.exists(ANSIBLE_ROLE_CACHE_DIR):
@@ -445,12 +438,18 @@ class NsblConfig(object):
                 env=my_env,
             )
             for line in iter(res.stdout.readline, ""):
-                if "already installed" not in line and "--force to change" not in line:
+                if "already installed" not in line and "--force to change" not in line and "unspecified" not in line:
                     # log.debug("Installing role: {}".format(line.encode('utf8')))
                     click.echo("  {}".format(line.encode("utf8")), nl=False)
 
             if roles_to_copy:
-                for src, target in roles_to_copy["external"].items():
+                if len(ext_roles) == 1:
+                    click.echo("Copying role from Ansible cache: {}".format(ext_roles[0]))
+                else:
+                    click.echo("Copying roles from Ansible cache:")
+                    for r in ext_roles:
+                        click.echo("  - {}".format(r))
+                for src, target in roles_to_copy.items():
                     log.debug("Coping external role: {} -> {}".format(src, target))
                     shutil.copytree(src, target)
 
