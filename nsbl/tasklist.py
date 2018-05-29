@@ -3,25 +3,21 @@
 # python 3 compatibility
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import copy
 import logging
+from collections import OrderedDict
 
 import yaml
-from collections import OrderedDict
 from ruamel.yaml.comments import CommentedMap
+from six import string_types
 
-from frkl.processors import (
-    ConfigProcessor,
-    EnsurePythonObjectProcessor,
-    EnsureUrlProcessor,
-    UrlAbbrevProcessor,
-)
+from frkl import load_from_url_or_path, Frkl
+from frkl.processors import ConfigProcessor
 from frutils import StringYAML, dict_merge
-from frkl import load_from_url_or_path
 from .defaults import *
 from .exceptions import NsblException
 from .nsbl_context import NsblContext
 from .tasklist_utils import get_task_list_format
-
 
 
 GLOBAL_ENV_ID_COUNTER = 999999
@@ -61,6 +57,7 @@ def generate_task_item_from_string(task_name):
     """Small helper to generate a task desc dict from a task name."""
 
     return {"meta": {"name": task_name}}
+
 
 class AugmentingTaskProcessor(ConfigProcessor):
     """Processor to augment a basic task list.
@@ -113,12 +110,13 @@ def generate_nsbl_tasks_format(
     result = copy.deepcopy(tasks_format)
     for alias, task_desc in task_aliases.items():
         import pprint
+
         pprint.pprint(task_desc)
         if DEFAULT_KEY_KEY in task_desc["task"].keys():
             # TODO: check for duplicate keys?
-            result[KEY_MOVE_MAP_NAME][
-                task_desc["task"]["name"]
-            ] = "vars/{}".format(task_desc["task"][DEFAULT_KEY_KEY])
+            result[KEY_MOVE_MAP_NAME][task_desc["task"]["name"]] = "vars/{}".format(
+                task_desc["task"][DEFAULT_KEY_KEY]
+            )
 
     return result
 
@@ -168,7 +166,9 @@ def guess_task_type(task_item, available_roles):
         return MODULE_TASK_TYPE
 
 
-def calculate_task_types(task_list, nsbl_context, allow_external_roles=False, relative_base_path=None):
+def calculate_task_types(
+    task_list, nsbl_context, allow_external_roles=False, relative_base_path=None
+):
     """Parses the task list and auto-assigns task-types if necessary.
 
     Args:
@@ -197,7 +197,11 @@ def calculate_task_types(task_list, nsbl_context, allow_external_roles=False, re
             task_type = guess_task_type(task, available_roles)
             task["task"]["task-type"] = task_type
 
-        if task_type not in [ROLE_TASK_TYPE, MODULE_TASK_TYPE, ANSIBLE_TASK_LIST_TASK_TYPE]:
+        if task_type not in [
+            ROLE_TASK_TYPE,
+            MODULE_TASK_TYPE,
+            ANSIBLE_TASK_LIST_TASK_TYPE,
+        ]:
             raise NsblException("Unknown task type: {}".format(task_type))
 
         task_name = task["task"]["task-name"]
@@ -218,10 +222,20 @@ def calculate_task_types(task_list, nsbl_context, allow_external_roles=False, re
             modules_used.add(task_name)
         elif task_type == ANSIBLE_TASK_LIST_TASK_TYPE:
             if task_name != "import_tasks" and task_name != "include_tasks":
-                raise NsblException("'task-name' value for the {} task type needs to be either 'import_tasks' or 'include_tasks': {}".format(ANSIBLE_TASK_LIST_TASK_TYPE), task)
+                raise NsblException(
+                    "'task-name' value for the {} task type needs to be either 'import_tasks' or 'include_tasks': {}".format(
+                        ANSIBLE_TASK_LIST_TASK_TYPE
+                    ),
+                    task,
+                )
             free_form = task.get("vars", {}).get("free_form", None)
             if free_form is None:
-                raise NsblException("task item of type {} needs the 'free_form' variable key: {}".format(ANSIBLE_TASK_LIST_TASK_TYPE), task)
+                raise NsblException(
+                    "task item of type {} needs the 'free_form' variable key: {}".format(
+                        ANSIBLE_TASK_LIST_TASK_TYPE
+                    ),
+                    task,
+                )
 
         else:
             raise NsblException("Invalid task type: {}".format(task_type))
@@ -262,10 +276,18 @@ def ensure_task_list_format(task_list, ansible_task_file, env_id, task_list_id):
         task_list_new = [get_import_task_item(file_name)]
         with open(ansible_task_file, "w") as f:
             yaml.dump(task_list, f)
-        return (task_list_new, {ansible_task_file: {"type": ADD_TYPE_TASK_LIST, "file_name": "task_list_{}_{}.yml".format(env_id, task_list_id), "var_name": "task_list_{}_{}".format(env_id, task_list_id)}})
+        return (
+            task_list_new,
+            {
+                ansible_task_file: {
+                    "type": ADD_TYPE_TASK_LIST,
+                    "file_name": "task_list_{}_{}.yml".format(env_id, task_list_id),
+                    "var_name": "task_list_{}_{}".format(env_id, task_list_id),
+                }
+            },
+        )
     else:
         return (task_list, None)
-
 
 
 class TaskItem(object):
@@ -295,22 +317,47 @@ class TaskItem(object):
         else:
             keys = set(task_desc.keys())
             if "task" in keys:
-                log.debug("task item contains 'task' key, this means this is a 'freckles' task item")
+                log.debug(
+                    "task item contains 'task' key, this means this is a 'freckles' task item"
+                )
                 self.generic_desc = task_desc
             elif len(keys) == 1:
                 pass
 
 
-def create_task_list(urls, role_repo_paths=None, task_alias_files=None, additional_files=None, env_name=None, env_id=None, allow_external_roies=False, task_list_vars=None, run_metadata=None):
+def create_task_list(
+    urls,
+    role_repo_paths=None,
+    task_alias_files=None,
+    additional_files=None,
+    env_name=None,
+    env_id=None,
+    allow_external_roies=False,
+    task_list_vars=None,
+    run_metadata=None,
+):
 
     if not isinstance(urls, string_types):
-        raise NsblException("Only single files supported for creating a task list: {}".format(urls))
+        raise NsblException(
+            "Only single files supported for creating a task list: {}".format(urls)
+        )
 
     urls = [urls]  # we always want a list of lists as input for the Nsbl object
     task_lists = load_from_url_or_path(urls)
-    tl = TaskList(task_lists, role_repo_paths=role_repo_paths, task_alias_files=task_alias_files, additional_files=additional_files, env_name=env_name, env_id=env_id, allow_external_roles=allow_external_roies, task_list_vars=task_list_vars, run_metadata=run_metadata)
+    tl = TaskList(
+        task_lists,
+        role_repo_paths=role_repo_paths,
+        task_alias_files=task_alias_files,
+        additional_files=additional_files,
+        env_name=env_name,
+        env_id=env_id,
+        allow_external_roles=allow_external_roies,
+        task_list_vars=task_list_vars,
+        run_metadata=run_metadata,
+    )
 
     return tl
+
 
 class TaskList(object):
     """Class to hold a list of tasks.
@@ -328,7 +375,18 @@ class TaskList(object):
         run_metadata (dict): freestyle additional metadata, not used currently
     """
 
-    def __init__(self, task_list, relative_base_path=None, nsbl_context=None, additional_files=None, env_name=None, env_id=None, allow_external_roles=False, task_list_vars=None, run_metadata=None):
+    def __init__(
+        self,
+        task_list,
+        relative_base_path=None,
+        nsbl_context=None,
+        additional_files=None,
+        env_name=None,
+        env_id=None,
+        allow_external_roles=False,
+        task_list_vars=None,
+        run_metadata=None,
+    ):
 
         if relative_base_path is None:
             relative_base_path = DEFAULT_TASK_LIST_BASE_PATH
@@ -362,15 +420,13 @@ class TaskList(object):
 
         # TODO: validate task list?
         self.task_list_raw = task_list
-        self.task_list = augment_and_expand_task_list(
-            [task_list], self.nsbl_context
-        )
+        self.task_list = augment_and_expand_task_list([task_list], self.nsbl_context)
         # be aware, only first level modules are listed here (for now)
         self.internal_role_names, self.external_role_names, self.modules_used = calculate_task_types(
             self.task_list,
             self.nsbl_context,
             allow_external_roles=self.allow_external_roles,
-            relative_base_path=self.relative_base_path
+            relative_base_path=self.relative_base_path,
         )
 
     def render_ansible_tasklist(self):

@@ -42,7 +42,9 @@ def test_task_list_format(
 
     tf_file = tmpdir.join("task_list_name")
 
-    task_list_new, task_list_file = ensure_task_list_format(task_list, str(tf_file), 0, 0)
+    task_list_new, task_list_file = ensure_task_list_format(
+        task_list, str(tf_file), 0, 0
+    )
 
     assert task_list_new == expected_task_list
     if task_list_file is not None:
@@ -110,10 +112,12 @@ AUGMENT_LISTS = [
 )
 def test_augment_task_list(task_list, role_repos, task_alias_files, expected):
 
-    #role_repos, task_aliases = get_default_role_repos_and_task_aliases(
+    # role_repos, task_aliases = get_default_role_repos_and_task_aliases(
     #    role_repos, task_alias_files
-    #)
-    nsbl_context = NsblContext(role_repo_paths=role_repos, task_alias_paths=task_alias_files)
+    # )
+    nsbl_context = NsblContext(
+        role_repo_paths=role_repos, task_alias_paths=task_alias_files
+    )
     result = augment_and_expand_task_list(task_list, nsbl_context)
 
     assert result == expected
@@ -199,6 +203,7 @@ def test_calculate_task_types(
 
     nsbl_context = NsblContext(role_repo_paths=role_repos)
     import pprint
+
     pprint.pprint(nsbl_context.task_aliases)
     internal_roles, external_roles, modules_used = calculate_task_types(
         task_list, nsbl_context, allow_external_roles
@@ -220,7 +225,11 @@ def test_calculate_task_types_fail(task_list, role_repos, allow_external_roles):
 
     nsbl_context = NsblContext(role_repo_paths=role_repos)
     with pytest.raises(NsblException):
-        calculate_task_types(task_list, nsbl_context=nsbl_context, allow_external_roles=allow_external_roles)
+        calculate_task_types(
+            task_list,
+            nsbl_context=nsbl_context,
+            allow_external_roles=allow_external_roles,
+        )
 
 
 CTL_1 = ["apt"]
@@ -256,15 +265,16 @@ def test_tasklist_class_init(
     exp_mod,
 ):
 
-    nsbl_context = NsblContext(role_repo_paths=role_repos, task_alias_paths=task_alias_files)
+    nsbl_context = NsblContext(
+        role_repo_paths=role_repos, task_alias_paths=task_alias_files
+    )
 
     tl = TaskList(
         task_list,
         nsbl_context=nsbl_context,
         additional_files=None,
         allow_external_roles=allow_external_roles,
-        run_metadata={
-        },
+        run_metadata={},
     )
 
     assert tl.task_list == expected
@@ -278,7 +288,10 @@ TL1_EX = [{"name": "apt", "apt": {"name": "zile"}}]
 TL1_b = [{"apt": {"vars": {"name": "zile"}}}]
 TL1_c = [{"apt": {"vars": {"name": "zile"}, "task": {}}}]
 TL2 = [{"apt": {"name": "zile"}}, {"file": {"path": "/tmp", "state": "present"}}]
-TL2_EX = [{"name": "apt", "apt": {"name": "zile"}}, {"name": "file", "file": {"path": "/tmp", "state": "present"}}]
+TL2_EX = [
+    {"name": "apt", "apt": {"name": "zile"}},
+    {"name": "file", "file": {"path": "/tmp", "state": "present"}},
+]
 TL3 = [{"task": {"name": "install zile", "task-name": "apt"}, "vars": {"name": "zile"}}]
 TL3_EX = [{"name": "install zile", "apt": {"name": "zile"}}]
 TASK_LISTS = [
@@ -286,8 +299,10 @@ TASK_LISTS = [
     (TL1_b, [], [], False, TL1_EX),
     (TL1_c, [], [], False, TL1_EX),
     (TL2, [], [], False, TL2_EX),
-    (TL3, [], [], False, TL3_EX)
+    (TL3, [], [], False, TL3_EX),
 ]
+
+
 @pytest.mark.parametrize(
     "task_list, role_repos, task_alias_files, allow_external_roles, expected",
     TASK_LISTS,
@@ -296,19 +311,21 @@ def test_tasklist(
     task_list, role_repos, task_alias_files, allow_external_roles, expected
 ):
 
-    nsbl_context = NsblContext(role_repo_paths=role_repos, task_alias_paths=task_alias_files)
+    nsbl_context = NsblContext(
+        role_repo_paths=role_repos, task_alias_paths=task_alias_files
+    )
 
     tl = TaskList(
         task_list,
         nsbl_context=nsbl_context,
         additional_files=None,
         allow_external_roles=allow_external_roles,
-        run_metadata={
-        },
+        run_metadata={},
     )
 
     result = tl.render_ansible_tasklist()
     import pprint
+
     print("----------")
     pprint.pprint(list_of_special_dicts_to_list_of_dicts(result))
     print("----------")

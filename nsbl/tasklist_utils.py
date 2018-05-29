@@ -3,10 +3,13 @@
 # python 3 compatibility
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from .defaults import *
+from six import string_types
 import logging
 
+from .defaults import *
+
 log = logging.getLogger("nsbl")
+
 
 def get_task_list_format(task_list):
     """This is a not quite 100% method to check whether a task list is in ansbile format, or freckle.

@@ -6,3 +6,5 @@
 __author__ = """Markus Binsteiner"""
 __email__ = "makkus@frkl.io"
 __version__ = "0.3.7"
+
+from .nsbl import Nsbl, create

@@ -11,6 +11,8 @@ import click
 import cursor
 import yaml
 
+from six import string_types
+
 from .defaults import *
 
 log = logging.getLogger("nsbl")

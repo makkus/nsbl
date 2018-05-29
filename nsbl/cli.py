@@ -43,14 +43,13 @@ def raise_error(exc):
     help="path to a local task alias files or repos",
     multiple=True,
 )
+@click.option("--task-lists", "-l", help="path to a local task-list or task-list repo")
 @click.option(
-    "--task-lists",
-    "-l",
-    help="path to a local task-list or task-list repo"
+    "--allow-external-roles",
+    "-a",
+    help="try to download roles from Ansible Galaxy if not available locally",
+    is_flag=True,
 )
-@click.option(
-    "--allow-external-roles", "-a", help="try to download roles from Ansible Galaxy if not available locally",
-    is_flag=True)
 @click_log.simple_verbosity_option(logger, "--verbosity", default="WARN")
 @click.pass_context
 def cli(ctx, version, role_repo, task_aliases, task_lists, allow_external_roles):
@@ -61,7 +60,11 @@ def cli(ctx, version, role_repo, task_aliases, task_lists, allow_external_roles)
         sys.exit(0)
 
     ctx.obj = {}
-    nsbl_context = NsblContext(role_repo_paths=role_repo, task_list_paths=task_lists, task_alias_paths=task_aliases)
+    nsbl_context = NsblContext(
+        role_repo_paths=role_repo,
+        task_list_paths=task_lists,
+        task_alias_paths=task_aliases,
+    )
     ctx.obj["nsbl-context"] = nsbl_context
     ctx.obj["allow-external-roles"] = allow_external_roles
 
@@ -284,7 +287,9 @@ def create(ctx, config, target, force):
         allow_external_roles = ctx.obj["allow-external-roles"]
         config = create(config, nsbl_context, allow_external_roles=allow_external_roles)
 
-        config.render(target, extract_vars=True, force=force, ansible_args="", callback="default")
+        config.render(
+            target, extract_vars=True, force=force, ansible_args="", callback="default"
+        )
 
         click.echo("Ansible environment written to: {}".format(os.path.abspath(target)))
     except (Exception) as e:

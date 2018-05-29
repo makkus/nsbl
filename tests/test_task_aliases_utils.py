@@ -29,11 +29,8 @@ REPO_PATHS = [
     ),
     (
         os.path.join(PATH_TA, "task-aliases-other-filename.yml"),
-        [
-            "install-oracle-java-4",
-            "install-oracle-java-5"
-        ]
-    )
+        ["install-oracle-java-4", "install-oracle-java-5"],
+    ),
 ]
 
 
@@ -46,6 +43,7 @@ def test_task_alias_single_repo(path, expected):
 
 
 REPO_PATHS_DUP = [(os.path.join(PATH_TA, "duplicate_alias"))]
+
 
 @pytest.mark.parametrize("path", REPO_PATHS_DUP)
 def test_task_alias_single_repo_duplicate_alias(path):
@@ -71,6 +69,8 @@ REPO_PATHS_MULTI = [
         ],
     )
 ]
+
+
 @pytest.mark.parametrize("paths, expected", REPO_PATHS_MULTI)
 def test_task_alias_multi_repo(paths, expected):
     repo = TaskAliasLucifier()
@@ -82,7 +82,10 @@ def test_task_alias_multi_repo(paths, expected):
 
 REPO_PATHS_MULTI_DUP = [
     (
-        [os.path.join(PATH_TA, "multi_dup", "r1"), os.path.join(PATH_TA, "multi_dup", "r2")],
+        [
+            os.path.join(PATH_TA, "multi_dup", "r1"),
+            os.path.join(PATH_TA, "multi_dup", "r2"),
+        ],
         [
             "install-oracle-java-4",
             "install-oracle-java-5",
@@ -94,6 +97,8 @@ REPO_PATHS_MULTI_DUP = [
         ],
     )
 ]
+
+
 @pytest.mark.parametrize("paths, expected", REPO_PATHS_MULTI_DUP)
 def test_task_alias_multi_repo(paths, expected):
     repo = TaskAliasLucifier()

@@ -3,22 +3,22 @@
 # python 3 compatibility
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from frutils import dict_merge
-from .task_alias_utils import assemble_task_aliases
-
-import logging
-from six import string_types
-from .defaults import *
-from frutils.defaults import DEFAULT_EXCLUDE_DIRS
+import copy
 import fnmatch
-from .exceptions import NsblException
+import logging
+
+from six import string_types
+
+from frutils import dict_merge
+from frutils.defaults import DEFAULT_EXCLUDE_DIRS
+from .defaults import *
+from .task_alias_utils import assemble_task_aliases
 
 log = logging.getLogger("nsbl")
 
 ROLE_CACHE = {}
 ROLE_MARKER_FOLDERNAME = "meta"
 ROLE_META_FILENAME = "main.yml"
-
 
 
 def find_roles_in_repos(role_repos):
@@ -80,7 +80,6 @@ def find_roles_in_repo(role_repo):
     return result
 
 
-
 def calculate_task_list_repos(task_list_paths):
     """Utility method to calculate which task-list repos to use.
 
@@ -93,9 +92,15 @@ def calculate_task_list_repos(task_list_paths):
     if isinstance(task_list_paths, string_types):
         task_list_paths = [task_list_paths]
 
-    task_list_paths[:] = [os.path.realpath(os.path.expanduser(tlp)) for tlp in task_list_paths]
+    task_list_paths[:] = [
+        os.path.realpath(os.path.expanduser(tlp)) for tlp in task_list_paths
+    ]
 
-    task_list_paths[:] = [tlp for tlp in task_list_paths if os.path.exists(tlp) and os.path.isdir(os.path.realpath(tlp))]
+    task_list_paths[:] = [
+        tlp
+        for tlp in task_list_paths
+        if os.path.exists(tlp) and os.path.isdir(os.path.realpath(tlp))
+    ]
     log.debug("final task-list-paths: {}".format(task_list_paths))
 
     return task_list_paths
@@ -123,7 +128,11 @@ def calculate_role_repos(role_repos):
 
     role_repos[:] = [os.path.realpath(os.path.expanduser(rr)) for rr in role_repos]
 
-    role_repos[:] = [rr for rr in role_repos if os.path.exists(rr) and os.path.isdir(os.path.realpath(rr))]
+    role_repos[:] = [
+        rr
+        for rr in role_repos
+        if os.path.exists(rr) and os.path.isdir(os.path.realpath(rr))
+    ]
     log.debug("final role_repos: {}".format(role_repos))
 
     return role_repos
@@ -155,11 +164,14 @@ def calculate_task_aliases(task_alias_files_or_repos, add_upper_case_versions=Tr
         task_alias_files_or_repos = [task_alias_files_or_repos]
     elif not isinstance(task_alias_files_or_repos, (list, tuple)):
         raise Exception(
-            "task_descs needs to be string or list: '{}'".format(task_alias_files_or_repos)
+            "task_descs needs to be string or list: '{}'".format(
+                task_alias_files_or_repos
+            )
         )
 
     task_aliases = assemble_task_aliases(task_alias_files_or_repos)
     import pprint
+
     pprint.pprint(task_aliases)
     if add_upper_case_versions:
 
@@ -181,7 +193,9 @@ class NsblContext(object):
 
     """Class to hold information about available roles, task-lists and task-aliases."""
 
-    def __init__(self, role_repo_paths=None, task_list_paths=None, task_alias_paths=None):
+    def __init__(
+        self, role_repo_paths=None, task_list_paths=None, task_alias_paths=None
+    ):
 
         self.add_uppercase_task_descs = True
 
@@ -205,5 +219,4 @@ class NsblContext(object):
         temp_paths.extend(self.role_repo_paths)
         temp_paths.extend(task_alias_paths)
         self.task_aliases = calculate_task_aliases(temp_paths)
-        self.available_roles =  find_roles_in_repos(self.role_repo_paths)
-
+        self.available_roles = find_roles_in_repos(self.role_repo_paths)

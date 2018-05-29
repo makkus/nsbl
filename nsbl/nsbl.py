@@ -5,6 +5,7 @@ import logging
 import shutil
 import subprocess
 from datetime import datetime
+from six import string_types
 
 import click
 from cookiecutter.main import cookiecutter
@@ -30,7 +31,14 @@ log = logging.getLogger("nsbl")
 yaml = YAML()
 yaml.default_flow_style = False
 
-def create(urls, nsbl_context=None, default_env_type=DEFAULT_ENV_TYPE, additional_files=None, allow_external_roles=False):
+
+def create(
+    urls,
+    nsbl_context=None,
+    default_env_type=DEFAULT_ENV_TYPE,
+    additional_files=None,
+    allow_external_roles=False,
+):
 
     if nsbl_context is None:
         nsbl_context = NsblContext()
@@ -41,9 +49,16 @@ def create(urls, nsbl_context=None, default_env_type=DEFAULT_ENV_TYPE, additiona
         urls = [urls]  # we always want a list of lists as input for the Nsbl object
     config_dicts = load_from_url_or_path(urls)
 
-    config = Nsbl(config_dicts, nsbl_context, default_env_type, additional_files, allow_external_roles)
+    config = Nsbl(
+        config_dicts,
+        nsbl_context,
+        default_env_type,
+        additional_files,
+        allow_external_roles,
+    )
 
     return config
+
 
 # def expand_nsbl_config(configs):
 #     """Expands the nsbl configuration.
@@ -60,6 +75,7 @@ def create(urls, nsbl_context=None, default_env_type=DEFAULT_ENV_TYPE, additiona
 
 DEFAULT_ASK_BECOME = True
 
+
 class Nsbl(object):
     """Holds and parses configuration to generate Ansible task lists and inventories.
 
@@ -71,7 +87,14 @@ class Nsbl(object):
         allow_external_roles (bool): whether to allow the downloading of external roles
     """
 
-    def __init__(self, config, nsbl_context=None, default_env_type=DEFAULT_ENV_TYPE, additional_files=None, allow_external_roles=False):
+    def __init__(
+        self,
+        config,
+        nsbl_context=None,
+        default_env_type=DEFAULT_ENV_TYPE,
+        additional_files=None,
+        allow_external_roles=False,
+    ):
 
         self.plays = CommentedMap()
         self.config = config
@@ -86,8 +109,10 @@ class Nsbl(object):
             additional_files = {}
         self.additional_files = additional_files
 
-        #self.config = expand_nsbl_config(self.config_raw)
-        self.inventory = NsblInventory.create(self.config, default_env_type=self.default_env_type, pre_chain=[])
+        # self.config = expand_nsbl_config(self.config_raw)
+        self.inventory = NsblInventory.create(
+            self.config, default_env_type=self.default_env_type, pre_chain=[]
+        )
         for tasks in self.inventory.tasks:
 
             task_list_meta = tasks["meta"]
@@ -100,9 +125,20 @@ class Nsbl(object):
 
             run_metadata = {}
 
-            tl = TaskList(task_list, nsbl_context=self.nsbl_context, additional_files=None, env_name=env_name, env_id=env_id, allow_external_roles=allow_external_roles, task_list_vars=task_list_vars, run_metadata=run_metadata)
-            self.plays["{}_{}".format(env_name, env_id)] = {"task_list": tl, "meta": task_list_meta}
-
+            tl = TaskList(
+                task_list,
+                nsbl_context=self.nsbl_context,
+                additional_files=None,
+                env_name=env_name,
+                env_id=env_id,
+                allow_external_roles=allow_external_roles,
+                task_list_vars=task_list_vars,
+                run_metadata=run_metadata,
+            )
+            self.plays["{}_{}".format(env_name, env_id)] = {
+                "task_list": tl,
+                "meta": task_list_meta,
+            }
 
     def render(
         self,
@@ -264,7 +300,7 @@ class Nsbl(object):
 
         for play, task_list_details in self.plays.items():
 
-            #td = copy.deepcopy(task_list_details)
+            # td = copy.deepcopy(task_list_details)
             tasks = task_list_details["task_list"]
             id = tasks.env_id
             name = tasks.env_name
@@ -284,8 +320,10 @@ class Nsbl(object):
             playbook_dict["vars"] = playbook_vars
             playbook_dict["tasks"] = task_list
 
-            #td["playbook"] = playbook_dict
-            all_playbooks.append({"name": playbook_name, "dict": playbook_dict, "file": playbook_file})
+            # td["playbook"] = playbook_dict
+            all_playbooks.append(
+                {"name": playbook_name, "dict": playbook_dict, "file": playbook_file}
+            )
             all_playbook_names.append(playbook_name)
 
             dict_merge(self.additional_files, tasks.additional_files, copy_dct=False)
@@ -313,7 +351,9 @@ class Nsbl(object):
 
             if file_type == ADD_TYPE_TASK_LIST:
                 target = os.path.join(env_dir, task_lists_target, file_name)
-                playbook_var_value = os.path.join("{{ playbook_dir }}", "..", task_lists_target, file_name)
+                playbook_var_value = os.path.join(
+                    "{{ playbook_dir }}", "..", task_lists_target, file_name
+                )
                 copy_source_type = "file"
             elif file_type == ADD_TYPE_ROLE:
                 target = os.path.join(env_dir, roles_target, file_name)
@@ -343,7 +383,9 @@ class Nsbl(object):
             if not os.path.exists(target_parent):
                 os.makedirs(target_parent)
             if not os.path.isdir(os.path.realpath(target_parent)):
-                raise NsblException("Can't copy files to '{}': not a directory".format(target_parent))
+                raise NsblException(
+                    "Can't copy files to '{}': not a directory".format(target_parent)
+                )
 
             if copy_source_type == "file":
                 shutil.copyfile(path, target)
@@ -352,8 +394,14 @@ class Nsbl(object):
 
             if playbook_var_value:
                 if playbook_var_name in external_files_vars.keys():
-                    raise NsblException("Duplicate key for external files: {}".format(playbook_var_name))
-                log.debug("Setting variable '{}' to: {}".format(playbook_var_name, playbook_var_value))
+                    raise NsblException(
+                        "Duplicate key for external files: {}".format(playbook_var_name)
+                    )
+                log.debug(
+                    "Setting variable '{}' to: {}".format(
+                        playbook_var_name, playbook_var_value
+                    )
+                )
                 external_files_vars[playbook_var_name] = playbook_var_value
 
         # render all playbooks
@@ -363,11 +411,14 @@ class Nsbl(object):
             playbook_dict = playbook["dict"]
 
             # adding external files vars
-            dict_merge(playbook_dict.setdefault("vars", {}), external_files_vars, copy_dct=False)
+            dict_merge(
+                playbook_dict.setdefault("vars", {}),
+                external_files_vars,
+                copy_dct=False,
+            )
 
-            with open(playbook_file, 'w') as pf:
+            with open(playbook_file, "w") as pf:
                 yaml.dump([playbook_dict], pf)
-
 
         result["task_details"] = task_details
         result["additional_files"] = self.additional_files
@@ -390,7 +441,9 @@ class Nsbl(object):
             ext_roles_target = os.path.join(env_dir, "roles", "external")
             # render roles_requirements.yml
             jinja_env = Environment(loader=PackageLoader("nsbl", "templates"))
-            roles_requirements_file = os.path.join(ext_roles_target, "roles_requirements.yml")
+            roles_requirements_file = os.path.join(
+                ext_roles_target, "roles_requirements.yml"
+            )
 
             if not os.path.exists(ext_roles_target):
                 os.makedirs(ext_roles_target)
@@ -441,13 +494,19 @@ class Nsbl(object):
                 env=my_env,
             )
             for line in iter(res.stdout.readline, ""):
-                if "already installed" not in line and "--force to change" not in line and "unspecified" not in line:
+                if (
+                    "already installed" not in line
+                    and "--force to change" not in line
+                    and "unspecified" not in line
+                ):
                     # log.debug("Installing role: {}".format(line.encode('utf8')))
                     click.echo("  {}".format(line.encode("utf8")), nl=False)
 
             if roles_to_copy:
                 if len(ext_roles) == 1:
-                    click.echo("Copying role from Ansible cache: {}".format(ext_roles[0]))
+                    click.echo(
+                        "Copying role from Ansible cache: {}".format(ext_roles[0])
+                    )
                 else:
                     click.echo("Copying roles from Ansible cache:")
                     for r in ext_roles:

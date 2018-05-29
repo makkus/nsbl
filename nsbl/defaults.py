@@ -2,13 +2,8 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import copy
 import os
 
-from builtins import *
-from six import string_types
-
-from frkl import Frkl
 from frkl.defaults import *
 from frkl.processors import (
     EnsurePythonObjectProcessor,
@@ -92,7 +87,14 @@ ADD_TYPE_CALLBACK = "CALLBACK_PLUGIN"
 ADD_TYPE_ACTION = "ACTION_PLUGIN"
 ADD_TYPE_LIBRARY = "LIBRARY_PLUGIN"
 ADD_TYPE_FILTER = "FILTER_PLUGIN"
-ADD_FILE_TYPES = [ADD_TYPE_TASK_LIST, ADD_TYPE_ROLE, ADD_TYPE_CALLBACK, ADD_TYPE_ACTION, ADD_TYPE_LIBRARY, ADD_TYPE_FILTER]
+ADD_FILE_TYPES = [
+    ADD_TYPE_TASK_LIST,
+    ADD_TYPE_ROLE,
+    ADD_TYPE_CALLBACK,
+    ADD_TYPE_ACTION,
+    ADD_TYPE_LIBRARY,
+    ADD_TYPE_FILTER,
+]
 
 # key to indicate what the generated role should be called
 ROLE_NAME_KEY = "role-name"
@@ -188,4 +190,6 @@ ANSIBLE_TASK_KEYWORDS = [
 
 
 # global vars that may be changed
-DEFAULT_TASK_LIST_BASE_PATH = os.path.join(os.path.expanduser("~"), ".nsbl", "task-lists")
+DEFAULT_TASK_LIST_BASE_PATH = os.path.join(
+    os.path.expanduser("~"), ".nsbl", "task-lists"
+)

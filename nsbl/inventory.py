@@ -4,13 +4,20 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import sys
 
-import yaml
+import copy
 from jinja2 import Environment, PackageLoader
-
+from six import string_types
+from frutils import StringYAML
+from frkl import Frkl
 from frkl.callbacks import FrklCallback
 from frkl.processors import ConfigProcessor
 from .defaults import *
 from .exceptions import NsblException
+
+yaml = StringYAML(typ="safe")
+yaml.default_flow_style = False
+yaml.encoding = "utf-8"
+yaml.allow_unicode = True
 
 
 def parse_host_string(host_string):
@@ -120,9 +127,10 @@ class NsblInventory(FrklCallback):
                 continue
             group_dir = os.path.join(inventory_dir, "group_vars", group)
             var_file = os.path.join(group_dir, "{}.yml".format(group))
-            content = yaml.safe_dump(
-                vars, default_flow_style=False, encoding="utf-8", allow_unicode=True
-            ).decode("utf-8")
+            # content = yaml.safe_dump(
+            #    vars, default_flow_style=False, encoding="utf-8", allow_unicode=True
+            # ).decode("utf-8")
+            content = yaml.dump(vars).decode("utf-8")
 
             os.makedirs(group_dir)
             with open(var_file, "w") as text_file:
@@ -134,9 +142,10 @@ class NsblInventory(FrklCallback):
                 continue
             host_dir = os.path.join(inventory_dir, "host_vars", host)
             var_file = os.path.join(host_dir, "{}.yml".format(host))
-            content = yaml.safe_dump(
-                vars, default_flow_style=False, encoding="utf-8", allow_unicode=True
-            ).decode("utf-8")
+            # content = yaml.safe_dump(
+            #    vars, default_flow_style=False, encoding="utf-8", allow_unicode=True
+            # ).decode("utf-8")
+            content = yaml.dump(vars).decode("utf-8")
 
             os.makedirs(host_dir)
             with open(var_file, "w") as text_file:
