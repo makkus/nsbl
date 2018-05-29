@@ -7,6 +7,7 @@ import pytest
 from ruamel.yaml import YAML
 from frutils import *
 from nsbl.defaults import *
+from nsbl.exceptions import NsblException
 
 CWD = os.path.dirname(os.path.realpath(__file__))
 PATH_TL = os.path.join(CWD, "task_lists")
@@ -17,7 +18,7 @@ yaml.default_flow_style = False
 
 TL1 = [
     {
-        "meta": {
+        "task": {
             "name": "apt",
             "become": True,
             "type": "ansible-module",
@@ -41,7 +42,7 @@ def test_task_list_format(
 
     tf_file = tmpdir.join("task_list_name")
 
-    task_list_new, task_list_file = ensure_task_list_format(task_list, str(tf_file))
+    task_list_new, task_list_file = ensure_task_list_format(task_list, str(tf_file), 0, 0)
 
     assert task_list_new == expected_task_list
     if task_list_file is not None:
@@ -52,44 +53,44 @@ def test_task_list_format(
 
 
 ETL1 = [{"apt": {"name": "zile"}}]
-ETL1_R = [{"meta": {"name": "apt", "task-name": "apt"}, "vars": {"name": "zile"}}]
-ETL2 = [{"apt": {"meta": {"become": True}, "vars": {"name": "zile"}}}]
+ETL1_R = [{"task": {"name": "apt", "task-name": "apt"}, "vars": {"name": "zile"}}]
+ETL2 = [{"apt": {"task": {"become": True}, "vars": {"name": "zile"}}}]
 ETL2_R = [
     {
-        "meta": {"name": "apt", "task-name": "apt", "become": True},
+        "task": {"name": "apt", "task-name": "apt", "become": True},
         "vars": {"name": "zile"},
     }
 ]
 EXPAND_LISTS = [(ETL1, ETL1_R), (ETL2, ETL2_R)]
 
 OTL1 = ["apt"]
-OTL1_R = [{"meta": {"name": "apt", "task-name": "apt", "vars": {}}}]
+OTL1_R = [{"task": {"name": "apt", "task-name": "apt", "vars": {}}}]
 OTL2 = ["APT"]
-OTL2_R = [{"meta": {"name": "APT", "task-name": "apt", "become": True}, "vars": {}}]
+OTL2_R = [{"task": {"name": "APT", "task-name": "apt", "become": True}, "vars": {}}]
 OTL3 = ["install_zile"]
 OTL3_TA = os.path.join(PATH_TL, "task-aliases-1.yml")
 OTL3_R = [
     {
-        "meta": {"task-name": "apt", "name": "install_zile", "become": True},
+        "task": {"task-name": "apt", "name": "install_zile", "become": True},
         "vars": {"name": "zile"},
     }
 ]
 OTL3_b = ["INSTALL_ZILE"]
 OTL3_b_R = [
     {
-        "meta": {"task-name": "apt", "name": "INSTALL_ZILE", "become": True},
+        "task": {"task-name": "apt", "name": "INSTALL_ZILE", "become": True},
         "vars": {"name": "zile"},
     }
 ]
 OTL4 = ["install_zile"]
 OTL4_TA = os.path.join(PATH_TL, "task-aliases-2.yml")
 OTL4_R = [
-    {"meta": {"task-name": "apt", "name": "install_zile"}, "vars": {"name": "zile"}}
+    {"task": {"task-name": "apt", "name": "install_zile"}, "vars": {"name": "zile"}}
 ]
 OTL4_b = ["INSTALL_ZILE"]
 OTL4_b_R = [
     {
-        "meta": {"task-name": "apt", "name": "INSTALL_ZILE", "become": True},
+        "task": {"task-name": "apt", "name": "INSTALL_ZILE", "become": True},
         "vars": {"name": "zile"},
     }
 ]
@@ -109,17 +110,18 @@ AUGMENT_LISTS = [
 )
 def test_augment_task_list(task_list, role_repos, task_alias_files, expected):
 
-    role_repos, task_aliases = get_default_role_repos_and_task_aliases(
-        role_repos, task_alias_files
-    )
-    result = augment_and_expand_task_list(task_list, role_repos, task_aliases)
+    #role_repos, task_aliases = get_default_role_repos_and_task_aliases(
+    #    role_repos, task_alias_files
+    #)
+    nsbl_context = NsblContext(role_repo_paths=role_repos, task_alias_paths=task_alias_files)
+    result = augment_and_expand_task_list(task_list, nsbl_context)
 
     assert result == expected
 
 
 TTL1 = [
     {
-        "meta": {
+        "task": {
             "name": "ansiblebit.oracle-java",
             "task-name": "ansiblebit.oracle-java",
             "task-type": "ansible-role",
@@ -128,7 +130,7 @@ TTL1 = [
 ]
 TTL1_R = [
     {
-        "meta": {
+        "task": {
             "name": "ansiblebit.oracle-java",
             "task-name": "ansiblebit.oracle-java",
             "task-type": "ansible-role",
@@ -137,7 +139,7 @@ TTL1_R = [
 ]
 TTL2 = [
     {
-        "meta": {
+        "task": {
             "name": "ansiblebit.oracle-java2",
             "task-name": "ansiblebit.oracle-java2",
             "task-type": "ansible-role",
@@ -146,16 +148,16 @@ TTL2 = [
 ]
 TTL2_R = [
     {
-        "meta": {
+        "task": {
             "name": "ansiblebit.oracle-java2",
             "task-name": "ansiblebit.oracle-java2",
             "task-type": "ansible-role",
         }
     }
 ]
-TTL3 = [{"meta": {"name": "apt-task", "task-name": "apt"}}]
+TTL3 = [{"task": {"name": "apt-task", "task-name": "apt"}}]
 TTL3_R = [
-    {"meta": {"name": "apt-task", "task-name": "apt", "task-type": "ansible-module"}}
+    {"task": {"name": "apt-task", "task-name": "apt", "task-type": "ansible-module"}}
 ]
 
 TASK_TYPE_LIST = [
@@ -195,8 +197,11 @@ def test_calculate_task_types(
     modules_expected,
 ):
 
+    nsbl_context = NsblContext(role_repo_paths=role_repos)
+    import pprint
+    pprint.pprint(nsbl_context.task_aliases)
     internal_roles, external_roles, modules_used = calculate_task_types(
-        task_list, role_repos, allow_external_roles
+        task_list, nsbl_context, allow_external_roles
     )
 
     assert task_list == expected
@@ -213,14 +218,15 @@ TASK_TYPE_LIST_FAIL = [(TTL2, os.path.join(PATH_RR, "example_roles"), False)]
 )
 def test_calculate_task_types_fail(task_list, role_repos, allow_external_roles):
 
+    nsbl_context = NsblContext(role_repo_paths=role_repos)
     with pytest.raises(NsblException):
-        calculate_task_types(task_list, role_repos, allow_external_roles)
+        calculate_task_types(task_list, nsbl_context=nsbl_context, allow_external_roles=allow_external_roles)
 
 
 CTL_1 = ["apt"]
 CTL_1_EX = [
     {
-        "meta": {"name": "apt", "task-name": "apt", "task-type": "ansible-module"},
+        "task": {"name": "apt", "task-name": "apt", "task-type": "ansible-module"},
         "vars": {},
     }
 ]
@@ -250,13 +256,14 @@ def test_tasklist_class_init(
     exp_mod,
 ):
 
+    nsbl_context = NsblContext(role_repo_paths=role_repos, task_alias_paths=task_alias_files)
+
     tl = TaskList(
         task_list,
-        external_files=None,
+        nsbl_context=nsbl_context,
+        additional_files=None,
+        allow_external_roles=allow_external_roles,
         run_metadata={
-            "role_repos": role_repos,
-            "task_alias_files": task_alias_files,
-            "allow_external_roles": allow_external_roles,
         },
     )
 
@@ -269,14 +276,18 @@ def test_tasklist_class_init(
 TL1 = [{"apt": {"name": "zile"}}]
 TL1_EX = [{"name": "apt", "apt": {"name": "zile"}}]
 TL1_b = [{"apt": {"vars": {"name": "zile"}}}]
-TL1_c = [{"apt": {"vars": {"name": "zile"}, "meta": {}}}]
+TL1_c = [{"apt": {"vars": {"name": "zile"}, "task": {}}}]
+TL2 = [{"apt": {"name": "zile"}}, {"file": {"path": "/tmp", "state": "present"}}]
+TL2_EX = [{"name": "apt", "apt": {"name": "zile"}}, {"name": "file", "file": {"path": "/tmp", "state": "present"}}]
+TL3 = [{"task": {"name": "install zile", "task-name": "apt"}, "vars": {"name": "zile"}}]
+TL3_EX = [{"name": "install zile", "apt": {"name": "zile"}}]
 TASK_LISTS = [
     (TL1, [], [], False, TL1_EX),
     (TL1_b, [], [], False, TL1_EX),
     (TL1_c, [], [], False, TL1_EX),
+    (TL2, [], [], False, TL2_EX),
+    (TL3, [], [], False, TL3_EX)
 ]
-
-
 @pytest.mark.parametrize(
     "task_list, role_repos, task_alias_files, allow_external_roles, expected",
     TASK_LISTS,
@@ -285,16 +296,21 @@ def test_tasklist(
     task_list, role_repos, task_alias_files, allow_external_roles, expected
 ):
 
+    nsbl_context = NsblContext(role_repo_paths=role_repos, task_alias_paths=task_alias_files)
+
     tl = TaskList(
         task_list,
-        external_files=None,
+        nsbl_context=nsbl_context,
+        additional_files=None,
+        allow_external_roles=allow_external_roles,
         run_metadata={
-            "role_repos": role_repos,
-            "task_alias_files": task_alias_files,
-            "allow_external_roles": allow_external_roles,
         },
     )
 
     result = tl.render_ansible_tasklist()
-
+    import pprint
+    print("----------")
+    pprint.pprint(list_of_special_dicts_to_list_of_dicts(result))
+    print("----------")
+    pprint.pprint(expected)
     assert list_of_special_dicts_to_list_of_dicts(result) == expected

@@ -1,5 +1,5 @@
 install-oracle-java-10:
-      meta:
+      task:
         task-type: ansible-role
         task-desc: installing oracle java
         task-name: ansiblebit.oracle-java
@@ -8,8 +8,8 @@ install-oracle-java-10:
         become: yes
       vars:
         oracle_java_version: 10
-install-oracle-java-11:
-      meta:
+install-oracle-java-4:
+      task:
         task-type: ansible-role
         task-desc: installing oracle java
         task-name: ansiblebit.oracle-java
@@ -17,4 +17,4 @@ install-oracle-java-11:
           - ansiblebit.oracle-java
         become: yes
       vars:
-        oracle_java_version: 11
+        oracle_java_version: 4.1

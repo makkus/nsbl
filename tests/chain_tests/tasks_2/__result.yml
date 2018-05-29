@@ -1,4 +1,4 @@
-- meta:
+- task:
     become: False
     default-key: free_form
     name: shell
@@ -13,7 +13,7 @@
       - removes
   vars:
     free_form: ls -lah
-- meta:
+- task:
     become: False
     default-key: free_form
     name: shell

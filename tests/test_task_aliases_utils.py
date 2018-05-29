@@ -18,20 +18,34 @@ yaml = YAML()
 yaml.default_flow_style = False
 
 REPO_PATHS = [
-    (os.path.join(PATH_TA, "fine"), ["install-oracle-java", "install-oracle-java-8", "install-oracle-java-9", "install-oracle-java-10"]),
+    (
+        os.path.join(PATH_TA, "fine"),
+        [
+            "install-oracle-java",
+            "install-oracle-java-8",
+            "install-oracle-java-9",
+            "install-oracle-java-10",
+        ],
+    ),
+    (
+        os.path.join(PATH_TA, "task-aliases-other-filename.yml"),
+        [
+            "install-oracle-java-4",
+            "install-oracle-java-5"
+        ]
+    )
 ]
+
 
 @pytest.mark.parametrize("path, expected", REPO_PATHS)
 def test_task_alias_single_repo(path, expected):
     repo = TaskAliasLucifier()
     repo.overlay_dictlet(path, add_dictlet=True)
-    result = repo.process().values()
-    print(result[0].keys())
-    assert sorted(list(result[0].keys())) == sorted(expected)
+    result = repo.process().keys()
+    assert sorted(list(result)) == sorted(expected)
 
-REPO_PATHS_DUP = [
-    (os.path.join(PATH_TA, "duplicate_alias"))
-]
+
+REPO_PATHS_DUP = [(os.path.join(PATH_TA, "duplicate_alias"))]
 
 @pytest.mark.parametrize("path", REPO_PATHS_DUP)
 def test_task_alias_single_repo_duplicate_alias(path):
@@ -43,15 +57,48 @@ def test_task_alias_single_repo_duplicate_alias(path):
 
 
 REPO_PATHS_MULTI = [
-    (os.path.join(PATH_TA, "fine"), ["install-oracle-java", "install-oracle-java-8", "install-oracle-java-9", "install-oracle-java-10"]),
+    (
+        [os.path.join(PATH_TA, "multi", "r1"), os.path.join(PATH_TA, "multi", "r2")],
+        [
+            "install-oracle-java-4",
+            "install-oracle-java-5",
+            "install-oracle-java-6",
+            "install-oracle-java-7",
+            "install-oracle-java-8",
+            "install-oracle-java-9",
+            "install-oracle-java-10",
+            "install-oracle-java-11",
+        ],
+    )
 ]
-
-@pytest.mark.parametrize("path, expected", REPO_PATHS_MULTI)
-def test_task_alias_single_repo(paths, expected):
+@pytest.mark.parametrize("paths, expected", REPO_PATHS_MULTI)
+def test_task_alias_multi_repo(paths, expected):
     repo = TaskAliasLucifier()
     for path in paths:
         repo.overlay_dictlet(path, add_dictlet=True)
-    result = repo.process().values()
-    print(result[0].keys())
-    assert sorted(list(result[0].keys())) == sorted(expected)
+    result = repo.process().keys()
+    assert sorted(list(result)) == sorted(expected)
 
+
+REPO_PATHS_MULTI_DUP = [
+    (
+        [os.path.join(PATH_TA, "multi_dup", "r1"), os.path.join(PATH_TA, "multi_dup", "r2")],
+        [
+            "install-oracle-java-4",
+            "install-oracle-java-5",
+            "install-oracle-java-6",
+            "install-oracle-java-7",
+            "install-oracle-java-8",
+            "install-oracle-java-9",
+            "install-oracle-java-10",
+        ],
+    )
+]
+@pytest.mark.parametrize("paths, expected", REPO_PATHS_MULTI_DUP)
+def test_task_alias_multi_repo(paths, expected):
+    repo = TaskAliasLucifier()
+    for path in paths:
+        repo.overlay_dictlet(path, add_dictlet=True)
+    result = repo.process().keys()
+    print("XXX")
+    assert sorted(list(result)) == sorted(expected)

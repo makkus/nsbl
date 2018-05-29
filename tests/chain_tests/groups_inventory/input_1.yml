@@ -14,14 +14,14 @@ envs:
             var_group_1_2: val2
           tasks:
             - shell:
-                meta:
+                task:
                   become: no
                   var_keys:
                     - free_form
                 vars:
                   free_form: ls -lah
             - shell:
-                meta:
+                task:
                   become: no
                   var_keys:
                     - free_form

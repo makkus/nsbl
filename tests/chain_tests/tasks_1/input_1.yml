@@ -1,11 +1,11 @@
 tasks:
   - shell:
-      meta:
+      task:
         become: no
       vars:
         free_form: ls -lah
   - shell:
-      meta:
+      task:
         become: no
         var-keys:
           - free_form

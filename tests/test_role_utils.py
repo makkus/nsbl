@@ -8,7 +8,7 @@ from ruamel.yaml import YAML
 from frutils import *
 from nsbl.defaults import *
 
-from nsbl.role_utils import *
+from nsbl.nsbl_context import *
 
 CWD = os.path.dirname(os.path.realpath(__file__))
 PATH_RR = os.path.join(CWD, "role_repos")

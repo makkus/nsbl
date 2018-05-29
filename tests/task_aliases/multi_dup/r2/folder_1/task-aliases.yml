@@ -1,5 +1,5 @@
 install-oracle-java-8:
-   meta:
+   task:
      task-type: ansible-role
      task-desc: installing oracle java
      task-name: ansiblebit.oracle-java
@@ -10,7 +10,7 @@ install-oracle-java-8:
      oracle_java_version: 8
 
 install-oracle-java-9:
-   meta:
+   task:
      task-type: ansible-role
      task-desc: installing oracle java
      task-name: ansiblebit.oracle-java
