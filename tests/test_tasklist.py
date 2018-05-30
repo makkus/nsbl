@@ -139,7 +139,7 @@ TTL1_R = [
             "task-name": "ansiblebit.oracle-java",
             "task-type": "ansible-role",
             "role-type": "internal",
-            "include-type": "import_role"
+            "include-type": "import_role",
         }
     }
 ]
@@ -159,7 +159,7 @@ TTL2_R = [
             "task-name": "ansiblebit.oracle-java2",
             "task-type": "ansible-role",
             "role-type": "external",
-            "include-type": "import_role"
+            "include-type": "import_role",
         }
     }
 ]
@@ -205,7 +205,9 @@ def test_calculate_task_types(
     modules_expected,
 ):
 
-    nsbl_context = NsblContext(role_repo_paths=role_repos, allow_external_roles=allow_external_roles)
+    nsbl_context = NsblContext(
+        role_repo_paths=role_repos, allow_external_roles=allow_external_roles
+    )
     import pprint
 
     pprint.pprint(nsbl_context.task_aliases)
@@ -227,13 +229,11 @@ TASK_TYPE_LIST_FAIL = [(TTL2, os.path.join(PATH_RR, "example_roles"), False)]
 )
 def test_calculate_task_types_fail(task_list, role_repos, allow_external_roles):
 
-    nsbl_context = NsblContext(role_repo_paths=role_repos, allow_external_roles=allow_external_roles)
+    nsbl_context = NsblContext(
+        role_repo_paths=role_repos, allow_external_roles=allow_external_roles
+    )
     with pytest.raises(NsblException):
-        calculate_task_types(
-            task_list,
-            None,
-            nsbl_context, 0, 0
-        )
+        calculate_task_types(task_list, None, nsbl_context, 0, 0)
 
 
 CTL_1 = ["apt"]
@@ -270,14 +270,12 @@ def test_tasklist_class_init(
 ):
 
     nsbl_context = NsblContext(
-        role_repo_paths=role_repos, task_alias_paths=task_alias_files, allow_external_roles=allow_external_roles
+        role_repo_paths=role_repos,
+        task_alias_paths=task_alias_files,
+        allow_external_roles=allow_external_roles,
     )
 
-    tl = TaskList(
-        task_list,
-        nsbl_context=nsbl_context,
-        run_metadata={},
-    )
+    tl = TaskList(task_list, nsbl_context=nsbl_context, run_metadata={})
 
     assert tl.tasklist == expected
     assert tl.internal_role_names == exp_int
@@ -314,14 +312,12 @@ def test_tasklist(
 ):
 
     nsbl_context = NsblContext(
-        role_repo_paths=role_repos, task_alias_paths=task_alias_files, allow_external_roles=allow_external_roles
+        role_repo_paths=role_repos,
+        task_alias_paths=task_alias_files,
+        allow_external_roles=allow_external_roles,
     )
 
-    tl = TaskList(
-        task_list,
-        nsbl_context=nsbl_context,
-        run_metadata={}
-    )
+    tl = TaskList(task_list, nsbl_context=nsbl_context, run_metadata={})
 
     result = tl.render_ansible_tasklist_dict()
     import pprint

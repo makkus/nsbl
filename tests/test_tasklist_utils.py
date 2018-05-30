@@ -18,6 +18,4 @@ PATH_TA = os.path.join(CWD, "task_aliases")
 yaml = YAML()
 yaml.default_flow_style = False
 
-TLREPO_PATHS = [
-    (PATH_TL, ["simple1.tsks"])
-]
+TLREPO_PATHS = [(PATH_TL, ["simple1.tsks"])]
