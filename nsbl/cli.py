@@ -11,7 +11,7 @@ from frutils.frutils_cli import output
 from . import __version__ as VERSION
 from .defaults import *
 from .inventory import NsblInventory
-from .nsbl import create
+from .nsbl import create_nsbl_env
 from .nsbl_context import NsblContext
 
 logger = logging.getLogger("nsbl")
@@ -50,7 +50,7 @@ def raise_error(exc):
     help="try to download roles from Ansible Galaxy if not available locally",
     is_flag=True,
 )
-@click_log.simple_verbosity_option(logger, "--verbosity", default="WARN")
+@click_log.simple_verbosity_option(logger, "--verbosity", default="INFO")
 @click.pass_context
 def cli(ctx, version, role_repo, task_aliases, task_lists, allow_external_roles):
     """'nsbl' is a wrapper framework for Ansible, trying to minimize configuration."""
@@ -60,13 +60,14 @@ def cli(ctx, version, role_repo, task_aliases, task_lists, allow_external_roles)
         sys.exit(0)
 
     ctx.obj = {}
-    nsbl_context = NsblContext(
+    nsbl_ctx = NsblContext(
         role_repo_paths=role_repo,
         task_list_paths=task_lists,
         task_alias_paths=task_aliases,
+        allow_external_tasklists=False,
+        allow_external_roles=allow_external_roles,
     )
-    ctx.obj["nsbl-context"] = nsbl_context
-    ctx.obj["allow-external-roles"] = allow_external_roles
+    ctx.obj["nsbl-ctx"] = nsbl_ctx
 
 
 @cli.command("list-groups")
@@ -226,9 +227,9 @@ def print_inventory(ctx, config, pager):
 def list_task_aliases(ctx, pager, format):
     """Prints all available tasks included in the included (or specified) task-desc files"""
 
-    context = ctx.obj["nsbl-context"]
+    nsbl_context = ctx.obj["nsbl-ctx"]
 
-    alias_names = context.task_aliases.keys()
+    alias_names = nsbl_context.task_aliases.keys()
     output(alias_names, format, pager)
 
 
@@ -281,19 +282,24 @@ def list_task_aliases(ctx, pager, format):
 )
 @click.pass_context
 def create(ctx, config, target, force):
-
-    nsbl_context = ctx.obj["nsbl-context"]
+    nsbl_ctx = ctx.obj["nsbl-ctx"]
     try:
-        allow_external_roles = ctx.obj["allow-external-roles"]
-        config = create(config, nsbl_context, allow_external_roles=allow_external_roles)
 
-        config.render(
+        click.echo("")
+        nsbl = create_nsbl_env(config, nsbl_context=nsbl_ctx)
+
+        nsbl.render(
             target, extract_vars=True, force=force, ansible_args="", callback="default"
         )
 
-        click.echo("Ansible environment written to: {}".format(os.path.abspath(target)))
+        click.echo("")
+        click.echo(
+            "Success. Ansible environment written to: {}".format(
+                os.path.abspath(target)
+            )
+        )
     except (Exception) as e:
-        logger.debug(e)
+        logger.debug(e, exc_info=1)
         raise click.ClickException(e.message)
 
     # try:

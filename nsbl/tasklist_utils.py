@@ -15,10 +15,19 @@ from lucify.finders import FolderOrFileFinder
 from lucify.lucify import Lucifier
 from lucify.readers import YamlFolderReader
 from nsbl.exceptions import NsblException
-
+from frkl import load_from_url_or_path
 from .defaults import *
 
 log = logging.getLogger("nsbl")
+
+
+def get_tasklist_file_format(path):
+
+    if not isinstance(path, string_types):
+        raise NsblException("tasklist file needs to be string: {}".format(path))
+
+    tasklist = load_from_url_or_path(path)
+    return get_task_list_format(tasklist), tasklist
 
 
 def get_task_list_format(task_list):
@@ -65,5 +74,4 @@ def get_task_list_format(task_list):
                     )
                 )
                 return "freckles"
-    return None
-
+    return "unknown"

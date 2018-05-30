@@ -5,6 +5,7 @@ import datetime
 import logging
 import shutil
 import subprocess
+import tempfile
 from datetime import datetime
 from six import string_types
 
@@ -15,6 +16,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 from frkl import load_from_url_or_path
+from frkl.utils import get_url_parents
 from frutils import can_passwordless_sudo, dict_merge
 from .defaults import *
 from .exceptions import NsblException
@@ -31,14 +33,15 @@ log = logging.getLogger("nsbl")
 
 yaml = YAML()
 yaml.default_flow_style = False
+yaml.preserve_quotes = True
 
 
-def create(
+def create_nsbl_env(
     urls,
+    base_path=None,
     nsbl_context=None,
     default_env_type=DEFAULT_ENV_TYPE,
     additional_files=None,
-    allow_external_roles=False,
 ):
 
     if nsbl_context is None:
@@ -50,12 +53,22 @@ def create(
         urls = [urls]  # we always want a list of lists as input for the Nsbl object
     config_dicts = load_from_url_or_path(urls)
 
+    if not base_path:
+        parent = get_url_parents(urls, return_list=True)
+        if len(parent) > 2:
+            raise NsblException(
+                "Multiple base paths calculated ({}). This is not allowed as it introduces unpredictable behaviour. Please specify the base path manually.".format(
+                    parent
+                )
+            )
+        base_path = parent[0]
+
     config = Nsbl(
         config_dicts,
-        nsbl_context,
-        default_env_type,
-        additional_files,
-        allow_external_roles,
+        base_path=base_path,
+        nsbl_context=nsbl_context,
+        default_env_type=default_env_type,
+        additional_files=additional_files,
     )
 
     return config
@@ -82,6 +95,7 @@ class Nsbl(object):
 
     Args:
         config (list): a list of configuration items
+        base_path (str): the base path to use for relative task list imports etc.
         nsbl_context (NsblContext): the context for this environment
         default_env_type (str): the type a environment is if it is not explicitely specified, either ENV_TYPE_HOST or ENV_TYPE_GROUP
         additional_files (dict): a dict of additional files to copy into the Ansible environment
@@ -91,11 +105,13 @@ class Nsbl(object):
     def __init__(
         self,
         config,
+        base_path=None,
         nsbl_context=None,
         default_env_type=DEFAULT_ENV_TYPE,
         additional_files=None,
     ):
 
+        self.base_path = base_path
         self.plays = CommentedMap()
         self.config = config
         if nsbl_context is None:
@@ -107,7 +123,6 @@ class Nsbl(object):
             additional_files = {}
 
         self.additional_files = copy.deepcopy(additional_files)
-
 
         if additional_files is None:
             additional_files = {}
@@ -133,16 +148,18 @@ class Nsbl(object):
 
             tl = TaskList(
                 task_list,
+                tasklist_parent=self.base_path,
                 nsbl_context=self.nsbl_context,
-                additional_files=None,
                 tasklist_id=tl_id,
                 env_id=env_id,
-                task_list_vars=task_list_vars,
+                tasklist_vars=task_list_vars,
                 run_metadata=run_metadata,
             )
             self.plays["{}_{}".format(env_name, env_id)] = {
                 "task_list": tl,
                 "meta": task_list_meta,
+                "env_id": env_id,
+                "env_name": env_name,
             }
 
             tl_id = tl_id + 1
@@ -309,8 +326,8 @@ class Nsbl(object):
 
             # td = copy.deepcopy(task_list_details)
             tasks = task_list_details["task_list"]
-            id = tasks.env_id
-            name = tasks.env_name
+            id = task_list_details["env_id"]
+            name = task_list_details["env_name"]
             playbook_name = "play_{}_{}.yml".format(name, id)
             playbook_file = os.path.join(playbook_dir, playbook_name)
 
@@ -320,7 +337,7 @@ class Nsbl(object):
             playbook_vars["_env_id"] = id
             playbook_vars["_env_name"] = name
 
-            task_list = tasks.render_ansible_tasklist()
+            task_list = tasks.render_ansible_tasklist_dict()
 
             playbook_dict = CommentedMap()
             playbook_dict["hosts"] = name
@@ -356,8 +373,36 @@ class Nsbl(object):
             playbook_var_name = details.get("var_name", None)
             file_name = details["target_name"]
 
+            skip_copy = False
             if file_type == ADD_TYPE_TASK_LIST:
                 target = os.path.join(env_dir, task_lists_target, file_name)
+                if "tasklist_rendered" in details.keys():
+                    log.debug(
+                        "Render 'freckle'-type tasklist for path: {}".format(path)
+                    )
+
+                    target_parent = os.path.dirname(target)
+                    if not os.path.exists(target_parent):
+                        os.makedirs(target_parent)
+
+                    with open(target, "w") as tlf:
+                        yaml.dump(details["tasklist_rendered"], tlf)
+                    skip_copy = True
+                elif (
+                    "tasklist_content" in details.keys()
+                    and details.get("tasklist_format", None) == "ansible"
+                ):
+                    log.debug(
+                        "Render 'ansible'-type tasklist for path: {}".format(path)
+                    )
+
+                    target_parent = os.path.dirname(target)
+                    if not os.path.exists(target_parent):
+                        os.makedirs(target_parent)
+
+                    with open(target, "w") as tlf:
+                        yaml.dump(details["tasklist_content"], tlf)
+                    skip_copy = True
                 playbook_var_value = os.path.join(
                     "{{ playbook_dir }}", "..", task_lists_target, file_name
                 )
@@ -385,19 +430,22 @@ class Nsbl(object):
             else:
                 raise NsblException("Invalid external file type: {}".format(file_type))
 
-            log.debug("Copying {} '{}': {}".format(file_type, file_name, target))
-            target_parent = os.path.basename(target)
-            if not os.path.exists(target_parent):
-                os.makedirs(target_parent)
-            if not os.path.isdir(os.path.realpath(target_parent)):
-                raise NsblException(
-                    "Can't copy files to '{}': not a directory".format(target_parent)
-                )
+            if not skip_copy:
+                log.debug("Copying {} '{}': {}".format(file_type, file_name, target))
+                target_parent = os.path.dirname(target)
+                if not os.path.exists(target_parent):
+                    os.makedirs(target_parent)
+                if not os.path.isdir(os.path.realpath(target_parent)):
+                    raise NsblException(
+                        "Can't copy files to '{}': not a directory".format(
+                            target_parent
+                        )
+                    )
 
-            if copy_source_type == "file":
-                shutil.copyfile(path, target)
-            else:
-                shutil.copytree(path, target)
+                if copy_source_type == "file":
+                    shutil.copyfile(path, target)
+                else:
+                    shutil.copytree(path, target)
 
             if playbook_var_value:
                 if playbook_var_name in external_files_vars.keys():

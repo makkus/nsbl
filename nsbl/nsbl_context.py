@@ -80,30 +80,30 @@ def find_roles_in_repo(role_repo):
     return result
 
 
-def calculate_task_list_repos(task_list_paths):
+def calculate_tasklist_repos(tasklist_search_paths):
     """Utility method to calculate which task-list repos to use.
 
     task-list repos are folders containing freckles or ansible task lists.
     """
 
-    if not task_list_paths:
-        task_list_paths = []
+    if not tasklist_search_paths:
+        tasklist_search_paths = []
 
-    if isinstance(task_list_paths, string_types):
-        task_list_paths = [task_list_paths]
+    if isinstance(tasklist_search_paths, string_types):
+        tasklist_search_paths = [tasklist_search_paths]
 
-    task_list_paths[:] = [
-        os.path.realpath(os.path.expanduser(tlp)) for tlp in task_list_paths
+    tasklist_search_paths[:] = [
+        os.path.realpath(os.path.expanduser(tlp)) for tlp in tasklist_search_paths
     ]
 
-    task_list_paths[:] = [
+    tasklist_search_paths[:] = [
         tlp
-        for tlp in task_list_paths
+        for tlp in tasklist_search_paths
         if os.path.exists(tlp) and os.path.isdir(os.path.realpath(tlp))
     ]
-    log.debug("final task-list-paths: {}".format(task_list_paths))
+    log.debug("final task-list-paths: {}".format(tasklist_search_paths))
 
-    return task_list_paths
+    return tasklist_search_paths
 
 
 def calculate_role_repos(role_repos):
@@ -194,8 +194,14 @@ class NsblContext(object):
     """Class to hold information about available roles, task-lists and task-aliases."""
 
     def __init__(
-        self, role_repo_paths=None, task_list_paths=None, task_alias_paths=None, allow_external_roles=False,
-        allow_external_tasklists=False, task_list_search_paths=None):
+        self,
+        role_repo_paths=None,
+        task_list_paths=None,
+        task_alias_paths=None,
+        allow_external_roles=False,
+        allow_external_tasklists=False,
+        tasklist_search_paths=None,
+    ):
 
         self.add_uppercase_task_descs = True
         self.allow_external_roles = allow_external_roles
@@ -214,10 +220,12 @@ class NsblContext(object):
         if isinstance(task_alias_paths, string_types):
             task_alias_paths = [task_alias_paths]
 
-        if task_list_search_paths is None:
-            task_list_search_paths = []
+        if tasklist_search_paths is None:
+            tasklist_search_paths = []
+        if isinstance(tasklist_search_paths, string_types):
+            tasklist_search_paths = [tasklist_search_paths]
 
-        self.task_list_repo_paths = calculate_task_list_repos(task_list_paths)
+        self.tasklist_search_paths = calculate_tasklist_repos(tasklist_search_paths)
         self.role_repo_paths = calculate_role_repos(role_repo_paths)
 
         temp_paths = []
