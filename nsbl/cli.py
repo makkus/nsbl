@@ -38,7 +38,7 @@ def raise_error(exc):
     multiple=True,
 )
 @click.option(
-    "--task-aliases",
+    "--task-alias",
     "-a",
     help="path to a local task alias files or repos",
     multiple=True,
@@ -52,7 +52,7 @@ def raise_error(exc):
 )
 @click_log.simple_verbosity_option(logger, "--verbosity", default="INFO")
 @click.pass_context
-def cli(ctx, version, role_repo, task_aliases, task_lists, allow_external_roles):
+def cli(ctx, version, role_repo, task_alias, task_lists, allow_external_roles):
     """'nsbl' is a wrapper framework for Ansible, trying to minimize configuration."""
 
     if version:
@@ -63,7 +63,7 @@ def cli(ctx, version, role_repo, task_aliases, task_lists, allow_external_roles)
     nsbl_ctx = NsblContext(
         role_repo_paths=role_repo,
         task_list_paths=task_lists,
-        task_alias_paths=task_aliases,
+        task_alias_paths=task_alias,
         allow_external_tasklists=False,
         allow_external_roles=allow_external_roles,
     )
@@ -301,21 +301,6 @@ def create(ctx, config, target, force):
     except (Exception) as e:
         logger.debug(e, exc_info=1)
         raise click.ClickException(e.message)
-
-    # try:
-    #     nsbl = Nsbl.create(config, ctx.obj["role-repos"], ctx.obj["task-desc"])
-    #     nsbl.render(
-    #         target, extract_vars=True, force=force, ansible_args="", callback="default"
-    #     )
-    #     click.echo("Ansible environment written to: {}".format(os.path.abspath(target)))
-    # except (Exception) as e:
-    #     raise_error(e)
-
-    # for play, tasks in result["plays"].items():
-    # pprint.pprint(play)
-    # pprint.pprint(tasks.roles)
-
-    # nsbl.render_environment(target, extract_vars=static, force=force, ansible_verbose="")
 
 
 if __name__ == "__main__":

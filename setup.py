@@ -39,15 +39,9 @@ setup(
             "nsbl=nsbl.cli:cli",
             "nsbl-inventory=nsbl.inventory_cli:main",
             "nsbl-plbk=nsbl.playbook_cli:cli",
-            "nsbl-tasks=nsbl.tasks_cli:cli",
-        ],
-        "frkl.frk": [
-            "augment_tasks=nsbl.nsbl:NsblTaskProcessor",
-            "create_dynamic_roles=nsbl.nsbl:NsblDynamicRoleProcessor",
         ],
         "frkl.collector": [
             "inventory=nsbl.nsbl:NsblInventory",
-            "tasks=nsbl.nsbl:NsblTasks",
         ],
     },
     include_package_data=True,

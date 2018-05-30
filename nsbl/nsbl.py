@@ -571,3 +571,7 @@ class Nsbl(object):
                     shutil.copytree(src, target)
 
         return result
+
+    def get_lookup_dict(self):
+
+        return {}
