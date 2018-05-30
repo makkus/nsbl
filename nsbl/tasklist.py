@@ -77,15 +77,11 @@ class AugmentingTaskProcessor(ConfigProcessor):
     This will also make sure that the task description has a 'meta/task-name' and 'vars' key/value pair.
     """
 
-    def __init__(self, init_params=None):
+    def __init__(self, **init_params):
 
-        self.nsbl_context = None
-        super(AugmentingTaskProcessor, self).__init__(init_params)
-
-    def validate_init(self):
-
+        super(AugmentingTaskProcessor, self).__init__(**init_params)
         self.nsbl_context = self.init_params.get("context", NsblContext())
-        return True
+
 
     def process_current_config(self):
 
@@ -141,7 +137,7 @@ def augment_and_expand_task_list(task_lists, nsbl_context):
     init_params = {"context": nsbl_context}
 
     task_format = generate_nsbl_tasks_format(nsbl_context.task_aliases)
-    chain = [FrklProcessor(task_format), AugmentingTaskProcessor(init_params)]
+    chain = [FrklProcessor(**task_format), AugmentingTaskProcessor(context=nsbl_context)]
     f = Frkl(task_lists, chain)
     new_list = f.process()
 

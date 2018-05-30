@@ -134,7 +134,7 @@ DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT = {
 }
 
 DEFAULT_NSBL_TASKS_BOOTSTRAP_CHAIN = [
-    FrklProcessor(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
+    FrklProcessor(**DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
 ]
 
 # bootstrap frkl processor chain for creating the inventory hosts/groups lists
@@ -150,7 +150,7 @@ NSBL_INVENTORY_BOOTSTRAP_CHAIN = [
     UrlAbbrevProcessor(),
     EnsureUrlProcessor(),
     EnsurePythonObjectProcessor(),
-    FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT),
+    FrklProcessor(**NSBL_INVENTORY_BOOTSTRAP_FORMAT),
 ]
 
 ANSIBLE_TASK_KEYWORDS = [

@@ -78,11 +78,11 @@ class NsblInventory(FrklCallback):
           NsblInventory: the inventory object, already 'processed'
         """
 
-        chain = pre_chain + [FrklProcessor(NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
+        chain = pre_chain + [FrklProcessor(**NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
         inv_frkl = Frkl(config, chain)
 
         init_params = {"default_env_type": default_env_type}
-        inventory = NsblInventory(init_params)
+        inventory = NsblInventory(default_env_type=default_env_type)
 
         inv_frkl.process(inventory)
 
@@ -90,7 +90,7 @@ class NsblInventory(FrklCallback):
 
     create = staticmethod(create)
 
-    def __init__(self, init_params=None):
+    def __init__(self, **init_params):
         """Class to be used to create a dynamic ansible inventory from (elastic) yaml config files.
 
         The only init_params key that is supported is:
@@ -99,7 +99,7 @@ class NsblInventory(FrklCallback):
         Args:
           init_params (dict): the dict to initialize this object
         """
-        super(NsblInventory, self).__init__(init_params)
+        super(NsblInventory, self).__init__(**init_params)
         self.groups = {}
         self.hosts = {}
         self.tasks = []
