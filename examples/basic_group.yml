@@ -1,0 +1,12 @@
+- localhost:
+    meta:
+      type: group
+      hosts:
+          - localhost
+    vars:
+      ansible_user: markus
+
+    tasks:
+      - apt:
+          name: zile
+      - install-gitea

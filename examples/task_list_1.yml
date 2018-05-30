@@ -1,0 +1,15 @@
+tasks:
+  - docker:
+      meta:
+        become: yes
+        task-name: angstwad.docker_ubuntu
+        task-type: ansible-role
+      vars:
+        docker_apt_cache_valid_time: 1200
+  - shell:
+      free_form: ls -lah
+  - apt:
+      meta:
+        become: yes
+        vars:
+        name: zile

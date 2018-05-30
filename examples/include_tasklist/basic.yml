@@ -1,0 +1,8 @@
+- localhost:
+    meta:
+      type: host
+    vars:
+      ansible_user: markus
+
+    tasks:
+      - include_tasks::single.yml

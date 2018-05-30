@@ -1,0 +1,4 @@
+- name: test
+  apt:
+        name: zile
+        state: present
