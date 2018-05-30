@@ -1,0 +1,3 @@
+- apt:
+        name: zile
+        state: present
