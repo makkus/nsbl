@@ -45,3 +45,4 @@ click-completion>=0.2.1
 git+https://github.com/makkus/frutils.git
 git+https://github.com/makkus/lucify.git
 git+https://github.com/makkus/frkl.git
+git+https://github.com/makkus/freckles.git
