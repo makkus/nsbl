@@ -12,7 +12,7 @@ import yaml
 from ruamel.yaml.comments import CommentedMap
 from six import string_types
 
-from frkl import load_from_url_or_path, Frkl
+from frkl import load_object_from_url_or_path, Frkl
 from frkl.utils import get_url_parents
 from frkl.processors import ConfigProcessor
 from frutils import StringYAML, dict_merge, is_url_or_abbrev
@@ -82,7 +82,6 @@ class AugmentingTaskProcessor(ConfigProcessor):
         super(AugmentingTaskProcessor, self).__init__(**init_params)
         self.nsbl_context = self.init_params.get("context", NsblContext())
 
-
     def process_current_config(self):
 
         new_config = self.current_input_config
@@ -100,6 +99,10 @@ class AugmentingTaskProcessor(ConfigProcessor):
 
         if "vars" not in new_config.keys():
             new_config["vars"] = {}
+
+        if new_config["task"]["task-name"].isupper():
+            new_config["task"]["task-name"] = new_config["task"]["task-name"].lower()
+            new_config["task"]["become"] = True
 
         return new_config
 
@@ -140,13 +143,6 @@ def augment_and_expand_task_list(task_lists, nsbl_context):
     chain = [FrklProcessor(**task_format), AugmentingTaskProcessor(context=nsbl_context)]
     f = Frkl(task_lists, chain)
     new_list = f.process()
-
-    for task in new_list:
-        name = task["task"]["task-name"]
-
-        if name.isupper():
-            task["task"]["task-name"] = name.lower()
-            task["task"]["become"] = True
 
     return new_list
 
@@ -259,7 +255,7 @@ def fill_task_type(
             else:
                 url = task_list_file
             log.info("- downloading remote tasklist: {}".format(url))
-            content = load_from_url_or_path(url)
+            content = load_object_from_url_or_path(url)
             if not content:
                 raise NsblException("Empty remote tasklist: {}".format(task_list_file))
             file_path = task_list_file
@@ -503,7 +499,7 @@ def create(
 
     url = [url]  # we always want a list of lists as input for the Nsbl object
 
-    task_lists = load_from_url_or_path(url)
+    task_lists = load_object_from_url_or_path(url)
     tl = TaskList(
         task_lists,
         tasklist_parent=tasklist_parent,
@@ -515,6 +511,14 @@ def create(
     )
 
     return tl
+
+def create_tasklist_meta():
+
+    meta = {
+        "tasklist_parent": "parent dir",
+        "tasklist_id": "tasklist id",
+        "env_id": "environment id",
+    }
 
 
 class TaskList(object):

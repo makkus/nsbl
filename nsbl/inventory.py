@@ -14,7 +14,10 @@ from frkl.processors import ConfigProcessor
 from .defaults import *
 from .exceptions import NsblException
 
-yaml = StringYAML(typ="safe")
+from ruamel.yaml.comments import CommentedMap
+
+
+yaml = StringYAML()
 yaml.default_flow_style = False
 yaml.encoding = "utf-8"
 yaml.allow_unicode = True
@@ -62,11 +65,7 @@ class NsblInventory(FrklCallback):
     def create(
         config,
         default_env_type=DEFAULT_ENV_TYPE,
-        pre_chain=[
-            UrlAbbrevProcessor(),
-            EnsureUrlProcessor(),
-            EnsurePythonObjectProcessor(),
-        ],
+        pre_chain=None
     ):
         """Convenience method to create a NsblInventory object out of the configs and a few optional parameters.
 
@@ -77,6 +76,12 @@ class NsblInventory(FrklCallback):
         Returns:
           NsblInventory: the inventory object, already 'processed'
         """
+
+        if pre_chain is None:
+            pre_chain = [UrlAbbrevProcessor(),
+                         EnsureUrlProcessor(),
+                         EnsurePythonObjectProcessor(safe_load=False),
+                        ],
 
         chain = pre_chain + [FrklProcessor(**NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
         inv_frkl = Frkl(config, chain)
@@ -100,17 +105,14 @@ class NsblInventory(FrklCallback):
           init_params (dict): the dict to initialize this object
         """
         super(NsblInventory, self).__init__(**init_params)
-        self.groups = {}
-        self.hosts = {}
+        self.groups = CommentedMap()
+        self.hosts = CommentedMap()
         self.tasks = []
         self.current_env_id = 0
 
-    def validate_init(self):
-
-        self.default_env_type = self.init_params.get(
+        self.default_env_type = init_params.get(
             "default_env_type", DEFAULT_ENV_TYPE
         )
-        return True
 
     def result(self):
         return self.list()
@@ -345,6 +347,7 @@ class NsblInventory(FrklCallback):
             )
 
         if TASKS_KEY in env.keys():
+
             current_meta = copy.deepcopy(env[ENV_META_KEY])
             current_meta[ENV_ID_KEY] = self.current_env_id
             env_name = env[ENV_META_KEY].get(ENV_NAME_KEY, False)

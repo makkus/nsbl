@@ -11,14 +11,20 @@ from collections import OrderedDict
 
 from ruamel.yaml.comments import CommentedMap
 
+from frutils import StringYAML
+
 from lucify.finders import FolderOrFileFinder
 from lucify.lucify import Lucifier
 from lucify.readers import YamlFolderReader
 from nsbl.exceptions import NsblException
-from frkl import load_from_url_or_path
+from frkl import load_object_from_url_or_path
 from .defaults import *
 
 log = logging.getLogger("nsbl")
+
+yaml = StringYAML()
+yaml.default_flow_style = False
+
 
 
 def get_tasklist_file_format(path):
@@ -26,7 +32,7 @@ def get_tasklist_file_format(path):
     if not isinstance(path, string_types):
         raise NsblException("tasklist file needs to be string: {}".format(path))
 
-    tasklist = load_from_url_or_path(path)
+    tasklist = load_object_from_url_or_path(path)
     return get_task_list_format(tasklist), tasklist
 
 
@@ -59,10 +65,10 @@ def get_task_list_format(task_list):
     # could check for 'meta' key above, but 'meta' can be a keyword in ansible too,
     # so figured I check for everything else first
     for item in task_list:
-        if "meta" in item.keys():
+        if "task" in item.keys():
             log.debug(
-                "task item '{}' has 'meta' key, determining this is a 'freckles' task list".format(
-                    item["meta"].get("name", item)
+                "task item '{}' has 'task' key, determining this is a 'freckles' task list".format(
+                    item["task"].get("name", item)
                 )
             )
             return "freckles"
@@ -75,3 +81,17 @@ def get_task_list_format(task_list):
                 )
                 return "freckles"
     return "unknown"
+
+def get_import_task_item(task_list_name):
+    """Small helper toget the task item for importing a task list."""
+
+    return {
+        "task": {
+            "name": "import_tasks",
+            "desc": "[importing tasks: {}]".format(task_list_name),
+            "task-name": task_list_name,
+            "task-type": TASK_LIST_TASK_TYPE,
+        }
+    }
+
+

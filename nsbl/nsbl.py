@@ -6,6 +6,7 @@ import logging
 import shutil
 import subprocess
 import tempfile
+from collections import OrderedDict
 from datetime import datetime
 from six import string_types
 
@@ -15,14 +16,14 @@ from jinja2 import Environment, PackageLoader
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
-from frkl import load_from_url_or_path
+from frkl import load_string_from_url_or_path
 from frkl.utils import get_url_parents
 from frutils import can_passwordless_sudo, dict_merge
+from freckles.exceptions import FrecklesConfigException
 from .defaults import *
 from .exceptions import NsblException
 from .inventory import NsblInventory
-from .nsbl_context import NsblContext
-from .tasklist import TaskList
+from .nsbl_tasklist import NsblContext, NsblTasklist
 
 try:
     set
@@ -44,14 +45,9 @@ def create_nsbl_env(
     additional_files=None,
 ):
 
-    if nsbl_context is None:
-        nsbl_context = NsblContext()
-    if additional_files is None:
-        additional_files = {}
-
     if isinstance(urls, string_types):
         urls = [urls]  # we always want a list of lists as input for the Nsbl object
-    config_dicts = load_from_url_or_path(urls)
+    config_dicts = load_string_from_url_or_path(urls, create_python_object=True, safe_load=False)
 
     if not base_path:
         parent = get_url_parents(urls, return_list=True)
@@ -61,12 +57,12 @@ def create_nsbl_env(
                     parent
                 )
             )
-        base_path = parent[0]
+        base_path = list(parent)[0]
 
     config = Nsbl(
         config_dicts,
         base_path=base_path,
-        nsbl_context=nsbl_context,
+        context=nsbl_context,
         default_env_type=default_env_type,
         additional_files=additional_files,
     )
@@ -106,7 +102,7 @@ class Nsbl(object):
         self,
         config,
         base_path=None,
-        nsbl_context=None,
+        context=None,
         default_env_type=DEFAULT_ENV_TYPE,
         additional_files=None,
     ):
@@ -114,21 +110,20 @@ class Nsbl(object):
         self.base_path = base_path
         self.plays = CommentedMap()
         self.config = config
-        if nsbl_context is None:
-            nsbl_context = NsblContext()
-        self.nsbl_context = nsbl_context
+        if context is None:
+            context = NsblContext()
+        elif isinstance(context, (dict, CommentedMap, OrderedDict)):
+            context = NsblContext(**context)
+        elif not isinstance(context, NsblContext):
+            raise FrecklesConfigException("Invalid type for context: {}".format(type(context)))
+        self.context = context
+
         self.default_env_type = default_env_type
 
         if additional_files is None:
             additional_files = {}
-
         self.additional_files = copy.deepcopy(additional_files)
 
-        if additional_files is None:
-            additional_files = {}
-        self.additional_files = additional_files
-
-        # self.config = expand_nsbl_config(self.config_raw)
         self.inventory = NsblInventory.create(
             self.config, default_env_type=self.default_env_type, pre_chain=[]
         )
@@ -144,16 +139,17 @@ class Nsbl(object):
 
             task_list = tasks["tasks"]
 
-            run_metadata = {}
+            meta = {}
+            meta["tasklist_id"] = tl_id
+            meta["env_id"] = env_id
+            meta["env_name"] = env_name
+            meta["tasklist_parent"] = self.base_path
 
-            tl = TaskList(
+            tl = NsblTasklist(
                 task_list,
-                tasklist_parent=self.base_path,
-                nsbl_context=self.nsbl_context,
-                tasklist_id=tl_id,
-                env_id=env_id,
-                tasklist_vars=task_list_vars,
-                run_metadata=run_metadata,
+                context=self.context,
+                meta=meta,
+                vars=task_list_vars
             )
             self.plays["{}_{}".format(env_name, env_id)] = {
                 "task_list": tl,
@@ -333,11 +329,11 @@ class Nsbl(object):
 
             playbook_vars = {}
             dict_merge(playbook_vars, global_vars, copy_dct=False)
-            dict_merge(playbook_vars, tasks.global_vars, copy_dct=False)
+            dict_merge(playbook_vars, tasks.vars, copy_dct=False)
             playbook_vars["_env_id"] = id
             playbook_vars["_env_name"] = name
 
-            task_list = tasks.render_ansible_tasklist_dict()
+            task_list = tasks.render_tasklist()
 
             playbook_dict = CommentedMap()
             playbook_dict["hosts"] = name
@@ -352,8 +348,8 @@ class Nsbl(object):
 
             dict_merge(self.additional_files, tasks.additional_files, copy_dct=False)
 
-            if tasks.external_role_names:
-                for n in tasks.external_role_names:
+            if tasks.external_roles:
+                for n in tasks.external_roles:
                     if n not in ext_roles:
                         ext_roles.append(n)
 

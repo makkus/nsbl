@@ -3,11 +3,13 @@
 # python 3 compatibility
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import copy
 import logging
 import os
 from collections import OrderedDict
 
 from ruamel.yaml.comments import CommentedMap
+from six import string_types
 
 from lucify.finders import FolderOrFileFinder
 from lucify.lucify import Lucifier
@@ -63,6 +65,57 @@ def assemble_task_aliases(paths):
     for p in paths:
         tl.overlay_dictlet(p, add_dictlet=True)
     task_aliases = tl.process()
+
+    return task_aliases
+
+
+def calculate_task_aliases(
+    task_alias_files_or_repos, add_upper_case_versions=True
+):
+    """Utility method to calculate which task descriptions to use.
+
+        Task descriptions are yaml files that translate task-names in a task config
+        into roles or ansible tasks, optionally with extra default parameters.
+
+        If additional role_repos are provided, we will check whether each of them
+        contains a file with the value of TASK_DESC_DEFAULT_FILENAME. If so, those
+        will be added to the beginning of the resulting list.
+
+        Args:
+          task_alias_files_or_repos (list): a string or list of strings of local files or repos containing 'task-aliases.yml' files
+          add_upper_case_versions (bool): if true, will add an upper-case version of every task desc that includes a meta/become = true entry
+
+        Returns:
+          list: a list of dicts of all task description configs to be used
+
+        """
+
+    if not task_alias_files_or_repos:
+        return {}
+
+    if isinstance(task_alias_files_or_repos, string_types):
+        task_alias_files_or_repos = [task_alias_files_or_repos]
+    elif not isinstance(task_alias_files_or_repos, (list, tuple)):
+        raise Exception(
+            "task_descs needs to be string or list: '{}'".format(
+                task_alias_files_or_repos
+            )
+        )
+
+    task_aliases = assemble_task_aliases(task_alias_files_or_repos)
+
+    if add_upper_case_versions:
+
+        ta_copy = copy.deepcopy(task_aliases)
+
+        for alias, md in ta_copy.items():
+
+            task_become = copy.deepcopy(md)
+
+            task_become["task"]["name"] = md["task"]["name"].upper()
+            task_become["task"]["become"] = True
+            alias_become = alias.upper()
+            task_aliases[alias_become] = task_become
 
     return task_aliases
 

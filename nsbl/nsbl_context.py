@@ -201,6 +201,7 @@ class NsblContext(object):
         allow_external_roles=False,
         allow_external_tasklists=False,
         tasklist_search_paths=None,
+        **kwargs
     ):
 
         self.add_uppercase_task_descs = True
