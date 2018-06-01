@@ -14,7 +14,7 @@ requirements = [
     "click-log>=0.1.8",
     "click-completion==0.2.1",
     "cookiecutter==1.6.0",
-    "ansible==2.5.3",
+    "ansible==2.5.4",
     "frkl>=0.1.0",
     "lucify>=0.1.0",
     "cursor>=1.2.0",
@@ -41,8 +41,11 @@ setup(
             "nsbl-plbk=nsbl.playbook_cli:cli",
         ],
         "frkl.collector": [
-            "inventory=nsbl.nsbl:NsblInventory",
+            "inventory=nsbl:NsblInventory",
         ],
+        "freckles.tasklists": [
+            "nsbl=nsbl:NsblTasklist"
+        ]
     },
     include_package_data=True,
     install_requires=requirements,
