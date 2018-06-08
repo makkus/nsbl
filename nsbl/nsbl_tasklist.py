@@ -280,7 +280,7 @@ class NsblTasklist(FrecklesTasklist):
         # adding roles to additional files
         for role in self.internal_roles:
 
-            role_path = self.nsbl_context.available_roles.get(role)
+            role_path = self.context.available_roles.get(role)
             self.additional_files[role_path] = {
                 "type": ADD_TYPE_ROLE,
                 "target_name": role,

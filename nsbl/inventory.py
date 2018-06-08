@@ -81,7 +81,7 @@ class NsblInventory(FrklCallback):
             pre_chain = [UrlAbbrevProcessor(),
                          EnsureUrlProcessor(),
                          EnsurePythonObjectProcessor(safe_load=False),
-                        ],
+                        ]
 
         chain = pre_chain + [FrklProcessor(**NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
         inv_frkl = Frkl(config, chain)

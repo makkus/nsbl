@@ -18,7 +18,7 @@ from ruamel.yaml.comments import CommentedMap
 
 from frkl import load_string_from_url_or_path
 from frkl.utils import get_url_parents
-from frutils import can_passwordless_sudo, dict_merge
+from frutils import can_passwordless_sudo, dict_merge, is_url_or_abbrev
 from freckles.exceptions import FrecklesConfigException
 from .defaults import *
 from .exceptions import NsblException
@@ -40,13 +40,16 @@ yaml.preserve_quotes = True
 def create_nsbl_env(
     urls,
     base_path=None,
-    nsbl_context=None,
+    context=None,
     default_env_type=DEFAULT_ENV_TYPE,
     additional_files=None,
 ):
 
     if isinstance(urls, string_types):
         urls = [urls]  # we always want a list of lists as input for the Nsbl object
+
+    if is_url_or_abbrev(urls[0]):
+        click.echo("Downloading configuration: {}".format(urls[0]))
     config_dicts = load_string_from_url_or_path(urls, create_python_object=True, safe_load=False)
 
     if not base_path:
@@ -62,7 +65,7 @@ def create_nsbl_env(
     config = Nsbl(
         config_dicts,
         base_path=base_path,
-        context=nsbl_context,
+        context=context,
         default_env_type=default_env_type,
         additional_files=additional_files,
     )
@@ -109,12 +112,16 @@ class Nsbl(object):
 
         self.base_path = base_path
         self.plays = CommentedMap()
+        self.internal_roles = set()
+        self.external_roles = set()
+
         self.config = config
         if context is None:
             context = NsblContext()
         elif isinstance(context, (dict, CommentedMap, OrderedDict)):
             context = NsblContext(**context)
         elif not isinstance(context, NsblContext):
+            print(type(context))
             raise FrecklesConfigException("Invalid type for context: {}".format(type(context)))
         self.context = context
 
@@ -159,6 +166,8 @@ class Nsbl(object):
             }
 
             tl_id = tl_id + 1
+            self.internal_roles.update(tl.internal_roles)
+            self.external_roles.update(tl.external_roles)
 
     def render(
         self,

@@ -9,7 +9,7 @@ import click_log
 
 from . import __version__ as VERSION
 from .nsbl import create_nsbl_env
-from .nsbl_context import NsblContext
+from .nsbl_tasklist import NsblContext
 from .runner import NsblRunner
 
 logger = logging.getLogger("nsbl")
@@ -38,6 +38,7 @@ def raise_error(exc):
     help="path to a local task description yaml file",
     multiple=True,
 )
+@click.option("--task-lists", "-l", help="path to a local task-list or task-list repo")
 @click.option(
     "--stdout-callback",
     "-c",
@@ -69,17 +70,25 @@ def raise_error(exc):
     is_flag=True,
     default=True,
 )
+@click.option(
+    "--allow-external",
+    "-a",
+    help="whether to allow remote tasklists/roles",
+    is_flag=True,
+)
 @click_log.simple_verbosity_option(logger, "--verbosity", default="INFO")
 def cli(
     version,
     role_repo,
     task_alias,
+    task_lists,
     stdout_callback,
     target,
     force,
     config,
     no_run,
     ask_become_pass,
+    allow_external
 ):
     """Create Ansible environments from (single) configuration files and execute them.
 
@@ -90,9 +99,17 @@ def cli(
         click.echo(VERSION)
         sys.exit(0)
 
-    nsbl_context = NsblContext(role_repo_paths=role_repo, task_alias_paths=task_alias)
+    click.echo("")
 
-    nsbl_obj = create_nsbl_env(config, base_path=None, nsbl_context=nsbl_context)
+    nsbl_ctx = NsblContext(
+        environment_paths={
+            "role_repo_paths": role_repo,
+            "task_list_paths": task_lists,
+            "task_alias_paths": task_alias},
+        allow_external_tasklists=allow_external,
+        allow_external_roles=allow_external
+    )
+    nsbl_obj = create_nsbl_env(config, context=nsbl_ctx)
 
     if stdout_callback == "verbose":
         stdout_callback = "default"

@@ -12,7 +12,7 @@ from . import __version__ as VERSION
 from .defaults import *
 from .inventory import NsblInventory
 from .nsbl import create_nsbl_env
-from .nsbl_context import NsblContext
+from .nsbl_tasklist import NsblContext
 
 logger = logging.getLogger("nsbl")
 click_log.basic_config(logger)
@@ -45,14 +45,14 @@ def raise_error(exc):
 )
 @click.option("--task-lists", "-l", help="path to a local task-list or task-list repo")
 @click.option(
-    "--allow-external-roles",
+    "--allow-external",
     "-a",
-    help="try to download roles from Ansible Galaxy if not available locally",
+    help="whether to allow remote tasklists/roles",
     is_flag=True,
 )
 @click_log.simple_verbosity_option(logger, "--verbosity", default="INFO")
 @click.pass_context
-def cli(ctx, version, role_repo, task_alias, task_lists, allow_external_roles):
+def cli(ctx, version, role_repo, task_alias, task_lists, allow_external):
     """'nsbl' is a wrapper framework for Ansible, trying to minimize configuration."""
 
     if version:
@@ -61,11 +61,12 @@ def cli(ctx, version, role_repo, task_alias, task_lists, allow_external_roles):
 
     ctx.obj = {}
     nsbl_ctx = NsblContext(
-        role_repo_paths=role_repo,
-        task_list_paths=task_lists,
-        task_alias_paths=task_alias,
-        allow_external_tasklists=False,
-        allow_external_roles=allow_external_roles,
+        environment_paths={
+            "role_repo_paths": role_repo,
+            "task_list_paths": task_lists,
+            "task_alias_paths": task_alias},
+        allow_external_tasklists=allow_external,
+        allow_external_roles=allow_external
     )
     ctx.obj["nsbl-ctx"] = nsbl_ctx
 
@@ -94,6 +95,8 @@ def list_groups(ctx, config, format, pager):
     inventory = NsblInventory.create(config)
     if inventory.groups:
         output(inventory.groups, format)
+    else:
+        click.echo("\nNo groups found.")
 
 
 @cli.command("list-hosts")
@@ -120,35 +123,71 @@ def list_hosts(ctx, config, format, pager):
     inventory = NsblInventory.create(config)
     if inventory.hosts:
         output(inventory.hosts, format)
+    else:
+        click.echo("No hosts found.")
 
+@cli.command("print-context")
+@click.option(
+    "--format",
+    "-f",
+    required=False,
+    default="yaml",
+    help="output format, either json or yaml (default)",
+)
+@click.option(
+    "--pager",
+    "-p",
+    required=False,
+    default=False,
+    is_flag=True,
+    help="output via pager",
+)
+@click.pass_context
+def print_context(ctx, format, pager):
 
-# @cli.command("list-roles")
-# @click.argument("config", required=True, nargs=-1)
-# @click.option(
-#     "--format",
-#     "-f",
-#     required=False,
-#     default="yaml",
-#     help="output format, either json or yaml (default)",
-# )
-# @click.option(
-#     "--pager",
-#     "-p",
-#     required=False,
-#     default=False,
-#     is_flag=True,
-#     help="output via pager",
-# )
-# @click.pass_context
-# def list_roles(ctx, config, format, pager):
-#     """Lists all roles from a task list"""
-#
-#     tasks = NsblTasks.create(config, ctx.obj["role-repos"], ctx.obj["task-desc"])
-#     result = []
-#     for role in tasks.roles:
-#         result.append(role.details())
-#
-#     output(result, format, pager)
+    nsbl_ctx = ctx.obj["nsbl-ctx"]
+
+    output(nsbl_ctx.__dict__, output_type=format, pager=pager)
+
+@cli.command("list-roles")
+@click.argument("config", required=True, nargs=-1)
+@click.option(
+    "--format",
+    "-f",
+    required=False,
+    default="yaml",
+    help="output format, either json or yaml (default)",
+)
+@click.option(
+    "--pager",
+    "-p",
+    required=False,
+    default=False,
+    is_flag=True,
+    help="output via pager",
+)
+@click.pass_context
+def list_roles(ctx, config, format, pager):
+    """Lists all roles from a task list"""
+
+    nsbl_ctx = ctx.obj["nsbl-ctx"]
+    nsbl = create_nsbl_env(config, context=nsbl_ctx)
+
+    if nsbl.external_roles:
+        click.echo("\nRemote roles:")
+        for role in sorted(nsbl.external_roles):
+            click.echo("  - {}".format(role))
+    else:
+        click.echo("\nRemote roles: None")
+
+    if nsbl.internal_roles:
+        click.echo("\nLocal roles:")
+        for role in sorted(nsbl.internal_roles):
+            click.echo("  - {}".format(role))
+    else:
+        click.echo("\nLocal roles: None")
+
+    click.echo("")
 
 
 # @cli.command('describe-tasks')
@@ -282,11 +321,12 @@ def list_task_aliases(ctx, pager, format):
 )
 @click.pass_context
 def create(ctx, config, target, force):
+
     nsbl_ctx = ctx.obj["nsbl-ctx"]
     try:
 
         click.echo("")
-        nsbl = create_nsbl_env(config, nsbl_context=nsbl_ctx)
+        nsbl = create_nsbl_env(config, context=nsbl_ctx)
 
         nsbl.render(
             target, extract_vars=True, force=force, ansible_args="", callback="default"
