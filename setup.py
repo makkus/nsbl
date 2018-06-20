@@ -43,7 +43,7 @@ setup(
         "frkl.collector": [
             "inventory=nsbl:NsblInventory",
         ],
-        "freckles.tasklists": [
+        "frkl.frklists": [
             "nsbl=nsbl:NsblTasklist"
         ]
     },
