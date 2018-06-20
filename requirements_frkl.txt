@@ -1,0 +1,6 @@
+# dev dependencies
+git+https://gitlab.com/frkl/frutils.git
+git+https://gitlab.com/frkl/luci.git
+git+https://gitlab.com/frkl/frkl.git
+git+https://gitlab.com/frkl/lupkg.git
+
