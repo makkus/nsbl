@@ -7,13 +7,13 @@ nsbl
            :target: https://pypi.python.org/pypi/nsbl
            :alt: pypi
 
-.. image:: https://img.shields.io/travis/makkus/nsbl.svg
-           :target: https://travis-ci.org/makkus/nsbl
-           :alt: travis
-
 .. image:: https://readthedocs.org/projects/nsbl/badge/?version=latest
            :target: https://nsbl.readthedocs.io/en/latest/?badge=latest
            :alt: documentation
+
+.. image:: https://gitlab.com/frkl/nsbl/badges/develop/pipeline.svg
+           :target: https://gitlab.com/frkl/nsbl/pipelines
+           :alt: pipeline status
 
 .. image:: https://pyup.io/repos/github/makkus/nsbl/shield.svg
            :target: https://pyup.io/repos/github/makkus/nsbl/
