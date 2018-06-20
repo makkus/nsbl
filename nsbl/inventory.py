@@ -18,7 +18,7 @@ from frkl.processors import (
     EnsurePythonObjectProcessor,
     FrklProcessor,
 )
-from defaults import (
+from .defaults import (
     DEFAULT_ENV_TYPE,
     NSBL_INVENTORY_BOOTSTRAP_FORMAT,
     VARS_KEY,

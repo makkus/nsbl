@@ -1,13 +1,9 @@
 import os
-import pprint
 
-from nsbl.tasklist import *
 import pytest
 
 from ruamel.yaml import YAML
-from frutils import *
-from nsbl.defaults import *
-from nsbl.inventory import *
+from nsbl.inventory import NsblInventory
 
 CWD = os.path.dirname(os.path.realpath(__file__))
 PATH_TL = os.path.join(CWD, "task_lists")

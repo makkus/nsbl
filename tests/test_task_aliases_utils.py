@@ -1,12 +1,12 @@
 import os
 import pprint
 
-from nsbl.tasklist import *
 import pytest
 
 from ruamel.yaml import YAML
-from frutils import *
-from nsbl.task_alias_utils import *
+
+from nsbl.exceptions import NsblException
+from nsbl.task_alias_utils import TaskAliasLucifier
 
 CWD = os.path.dirname(os.path.realpath(__file__))
 PATH_TL = os.path.join(CWD, "task_lists")

@@ -1,14 +1,11 @@
 import os
 import pprint
 
-from nsbl.tasklist import *
 import pytest
 
 from ruamel.yaml import YAML
 from frutils import *
-from nsbl.defaults import *
-
-from nsbl.nsbl_context import *
+from nsbl.role_utils import find_roles_in_repo, find_roles_in_repos
 
 CWD = os.path.dirname(os.path.realpath(__file__))
 PATH_RR = os.path.join(CWD, "role_repos")

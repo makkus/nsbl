@@ -8,9 +8,9 @@ import logging
 
 from frutils import StringYAML
 
-from nsbl.exceptions import NsblException
+from .exceptions import NsblException
 from frkl import load_object_from_url_or_path
-from defaults import ANSIBLE_TASK_KEYWORDS, TASK_LIST_TASK_TYPE
+from .defaults import ANSIBLE_TASK_KEYWORDS, TASK_LIST_TASK_TYPE
 
 log = logging.getLogger("nsbl")
 
