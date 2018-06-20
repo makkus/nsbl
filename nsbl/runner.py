@@ -15,14 +15,10 @@ import pexpect
 from .output import CursorOff, NsblLogCallbackAdapter, NsblPrintCallbackAdapter
 
 
-try:
-    set
-except NameError:
-    from sets import Set as set
-
 log = logging.getLogger("nsbl")
 
 DEFAULT_PEXPECT_TIMEOUT = 36000
+
 
 class NsblRunner(object):
 
@@ -79,7 +75,7 @@ class NsblRunner(object):
         Return:
           dict: the parameters of the run
         """
-        if callback == None:
+        if callback is None:
             callback = "default"
 
         if callback == "nsbl_internal":
@@ -106,7 +102,7 @@ class NsblRunner(object):
                 callback=callback,
                 add_timestamp_to_env=add_timestamp_to_env,
                 add_symlink_to_env=add_symlink_to_env,
-                extra_paths=extra_paths
+                extra_paths=extra_paths,
             )
 
             env_dir = parameters["env_dir"]

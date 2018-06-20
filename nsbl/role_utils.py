@@ -5,13 +5,12 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import fnmatch
 import logging
+import os
 
 from six import string_types
 
 from frutils.defaults import DEFAULT_EXCLUDE_DIRS
 from frutils import dict_merge
-from .defaults import *
-
 
 log = logging.getLogger("nsbl")
 
@@ -51,6 +50,7 @@ def calculate_role_repos(role_repos):
 
     return role_repos
 
+
 def find_roles_in_repos(role_repos):
 
     if isinstance(role_repos, string_types):
@@ -62,6 +62,7 @@ def find_roles_in_repos(role_repos):
         dict_merge(result, roles, copy_dct=False)
 
     return result
+
 
 def find_roles_in_repo(role_repo):
     """Utility function to find all roles in a role_repo.
@@ -97,7 +98,7 @@ def find_roles_in_repo(role_repo):
                 role_name = os.path.basename(role_folder)
                 result[role_name] = role_folder
 
-    except (UnicodeDecodeError) as e:
+    except (UnicodeDecodeError):
         print(
             " X one or more filenames under '{}' can't be decoded, ignoring. This can cause problems later. ".format(
                 root

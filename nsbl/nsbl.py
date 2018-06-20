@@ -1,11 +1,10 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import copy
-import datetime
 import logging
+import os
 import shutil
 import subprocess
-import tempfile
 from collections import OrderedDict
 from datetime import datetime
 from six import string_types
@@ -19,8 +18,17 @@ from ruamel.yaml.comments import CommentedMap
 from frkl import load_string_from_url_or_path
 from frkl.utils import get_url_parents
 from frutils import can_passwordless_sudo, dict_merge, is_url_or_abbrev
-from freckles.exceptions import FrecklesConfigException
-from .defaults import *
+from frkl.exceptions import FrklistConfigException
+from .defaults import (
+    DEFAULT_ENV_TYPE,
+    ADD_TYPE_TASK_LIST,
+    ADD_TYPE_ROLE,
+    ADD_TYPE_ACTION,
+    ADD_TYPE_CALLBACK,
+    ADD_TYPE_FILTER,
+    ADD_TYPE_LIBRARY,
+    ANSIBLE_ROLE_CACHE_DIR,
+)
 from .exceptions import NsblException
 from .inventory import NsblInventory
 from .nsbl_tasklist import NsblContext, NsblTasklist
@@ -50,7 +58,9 @@ def create_nsbl_env(
 
     if is_url_or_abbrev(urls[0]):
         click.echo("Downloading configuration: {}".format(urls[0]))
-    config_dicts = load_string_from_url_or_path(urls, create_python_object=True, safe_load=False)
+    config_dicts = load_string_from_url_or_path(
+        urls, create_python_object=True, safe_load=False
+    )
 
     if not base_path:
         parent = get_url_parents(urls, return_list=True)
@@ -122,7 +132,9 @@ class Nsbl(object):
             context = NsblContext(**context)
         elif not isinstance(context, NsblContext):
             print(type(context))
-            raise FrecklesConfigException("Invalid type for context: {}".format(type(context)))
+            raise FrklistConfigException(
+                "Invalid type for context: {}".format(type(context))
+            )
         self.context = context
 
         self.default_env_type = default_env_type
@@ -153,10 +165,7 @@ class Nsbl(object):
             meta["tasklist_parent"] = self.base_path
 
             tl = NsblTasklist(
-                task_list,
-                context=self.context,
-                meta=meta,
-                vars=task_list_vars
+                task_list, context=self.context, meta=meta, vars=task_list_vars
             )
             self.plays["{}_{}".format(env_name, env_id)] = {
                 "task_list": tl,
@@ -237,7 +246,7 @@ class Nsbl(object):
 
         playbook_dir = os.path.join(env_dir, "plays")
         result["playbook_dir"] = playbook_dir
-        roles_base_dir = os.path.join(env_dir, "roles")
+        # roles_base_dir = os.path.join(env_dir, "roles")
         result["roles_base_dir"] = playbook_dir
 
         if password is None:
@@ -262,7 +271,7 @@ class Nsbl(object):
             import ara
 
             ara_base = os.path.dirname(ara.__file__)
-        except:
+        except (Exception):
             ara_base = None
             pass
 
@@ -309,7 +318,7 @@ class Nsbl(object):
             link_parent = os.path.abspath(os.path.join(link_path, os.pardir))
             try:
                 os.makedirs(link_parent)
-            except:
+            except (Exception):
                 pass
             os.symlink(env_dir, link_path)
 

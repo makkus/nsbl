@@ -11,15 +11,15 @@ from collections import OrderedDict
 from ruamel.yaml.comments import CommentedMap
 from six import string_types
 
-from lucify.finders import FolderOrFileFinder
-from lucify.lucify import Lucifier
-from lucify.readers import YamlFolderReader
+from luci.finders import FolderOrFileFinder
+from luci.lucify import Lucifier
+from luci.readers import MetadataFolderReader
 from nsbl.exceptions import NsblException
 
 log = logging.getLogger("nsbl")
 
 
-class TaskAliasFolderReader(YamlFolderReader):
+class TaskAliasFolderReader(MetadataFolderReader):
 
     def __init__(self, **kwargs):
 
@@ -69,9 +69,7 @@ def assemble_task_aliases(paths):
     return task_aliases
 
 
-def calculate_task_aliases(
-    task_alias_files_or_repos, add_upper_case_versions=True
-):
+def calculate_task_aliases(task_alias_files_or_repos, add_upper_case_versions=True):
     """Utility method to calculate which task descriptions to use.
 
         Task descriptions are yaml files that translate task-names in a task config

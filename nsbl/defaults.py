@@ -4,7 +4,13 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os
 
-from frkl.defaults import *
+from frkl.defaults import (
+    CHILD_MARKER_NAME,
+    DEFAULT_LEAF_NAME,
+    DEFAULT_LEAFKEY_NAME,
+    KEY_MOVE_MAP_NAME,
+    OTHER_KEYS_NAME,
+)
 from frkl.processors import (
     EnsurePythonObjectProcessor,
     EnsureUrlProcessor,

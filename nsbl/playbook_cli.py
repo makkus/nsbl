@@ -88,7 +88,7 @@ def cli(
     config,
     no_run,
     ask_become_pass,
-    allow_external
+    allow_external,
 ):
     """Create Ansible environments from (single) configuration files and execute them.
 
@@ -105,9 +105,10 @@ def cli(
         environment_paths={
             "role_repo_paths": role_repo,
             "task_list_paths": task_lists,
-            "task_alias_paths": task_alias},
+            "task_alias_paths": task_alias,
+        },
         allow_external_tasklists=allow_external,
-        allow_external_roles=allow_external
+        allow_external_roles=allow_external,
     )
     nsbl_obj = create_nsbl_env(config, context=nsbl_ctx)
 

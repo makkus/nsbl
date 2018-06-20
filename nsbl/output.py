@@ -13,7 +13,15 @@ import yaml
 
 from six import string_types
 
-from .defaults import *
+from .defaults import (
+    ENV_ID_KEY,
+    ENV_NAME_KEY,
+    ROLE_ID_KEY,
+    TASK_META_NAME_KEY,
+    DYN_TASK_ID_KEY,
+    TASKS_KEY,
+    DYN_ROLE_TYPE,
+)
 
 log = logging.getLogger("nsbl")
 
@@ -93,9 +101,9 @@ def get_terminal_width():
     command = ["tput", "cols"]
     try:
         width = int(subprocess.check_output(command))
-    except OSError as e:
+    except OSError:
         return -1
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         return -1
     else:
         return width
@@ -232,7 +240,7 @@ class NsblLogCallbackAdapter(object):
 
         env_id = details.get(ENV_ID_KEY, None)
         if category == "play_start":
-            if self.current_role_id != None:
+            if self.current_role_id is not None:
                 self.output.process_task_changed(
                     self.task_has_items,
                     self.task_has_nsbl_items,
@@ -260,11 +268,11 @@ class NsblLogCallbackAdapter(object):
 
         role_id = details.get(ROLE_ID_KEY, None)
 
-        if category.startswith("nsbl") and env_id == None or role_id == None:
+        if category.startswith("nsbl") and env_id is None or role_id is None:
             env_id = self.current_env_id
             role_id = self.current_role_id
 
-        if (env_id == None or role_id == None) and not self.display_utility_tasks:
+        if (env_id is None or role_id is None) and not self.display_utility_tasks:
             return
 
         if env_id != self.current_env_id:
@@ -291,7 +299,7 @@ class NsblLogCallbackAdapter(object):
             task_changed = True
 
         if role_changed:
-            if self.current_role_id != None:
+            if self.current_role_id is not None:
                 self.output.process_task_changed(
                     self.task_has_items,
                     self.task_has_nsbl_items,
@@ -328,7 +336,7 @@ class NsblLogCallbackAdapter(object):
             self.msgs = []
 
         if task_changed:
-            if self.current_task_name != None and not role_changed:
+            if self.current_task_name is not None and not role_changed:
                 self.output.process_task_changed(
                     self.task_has_items,
                     self.task_has_nsbl_items,
@@ -338,7 +346,7 @@ class NsblLogCallbackAdapter(object):
 
             self.current_task_name = task_name
             self.current_dyn_task_id = dyn_task_id
-            if self.current_dyn_task_id != None:
+            if self.current_dyn_task_id is not None:
                 self.current_task = self.current_role[TASKS_KEY][
                     self.current_dyn_task_id
                 ]
@@ -411,7 +419,7 @@ class NsblLogCallbackAdapter(object):
         if status and status == "changed":
             self.changed = True
 
-        if skipped != None and not skipped:
+        if skipped is not None and not skipped:
             self.skipped = False
         if category == "failed" and not ignore_errors:
             self.failed = True
@@ -515,7 +523,7 @@ class ClickStdOutput(object):
             reserve = 2
             if len(task_str) > self.terminal_width - reserve:
                 task_str = u"{}...".format(
-                    task_str[0 : self.terminal_width - reserve - 3]
+                    task_str[0 : self.terminal_width - reserve - 3]  # noqa: E203
                 )
         click.echo(task_str, nl=False)
         self.new_line = False
@@ -544,7 +552,7 @@ class ClickStdOutput(object):
         if isinstance(item, string_types):
             try:
                 item = json.loads(item)
-            except Exception as e:
+            except (Exception):
                 return item
 
         if isinstance(item, dict):
@@ -623,10 +631,10 @@ class ClickStdOutput(object):
             for m in msg.split("\n"):
                 try:
                     click.echo(u"\t\t{}".format(m.strip()))
-                except:
+                except (Exception):
                     try:
                         click.echo(u"\t\t{}".format(m.decode("utf-8").strip()))
-                    except:
+                    except (Exception):
                         click.echo("... error decoding string ... ignoring ...")
 
     def display_item(self, ev, current_is_dyn_role):
@@ -759,8 +767,6 @@ class ClickStdOutput(object):
             click.echo("   => ", nl=False)
 
         if failed:
-
-            msg = ["n/a"]
 
             click.echo("")
             click.echo("")

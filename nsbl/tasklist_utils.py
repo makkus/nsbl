@@ -6,25 +6,16 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from six import string_types
 import logging
 
-import os
-from collections import OrderedDict
-
-from ruamel.yaml.comments import CommentedMap
-
 from frutils import StringYAML
 
-from lucify.finders import FolderOrFileFinder
-from lucify.lucify import Lucifier
-from lucify.readers import YamlFolderReader
 from nsbl.exceptions import NsblException
 from frkl import load_object_from_url_or_path
-from .defaults import *
+from defaults import ANSIBLE_TASK_KEYWORDS, TASK_LIST_TASK_TYPE
 
 log = logging.getLogger("nsbl")
 
 yaml = StringYAML()
 yaml.default_flow_style = False
-
 
 
 def get_tasklist_file_format(path):
@@ -82,6 +73,7 @@ def get_task_list_format(task_list):
                 return "freckles"
     return "unknown"
 
+
 def get_import_task_item(task_list_name):
     """Small helper toget the task item for importing a task list."""
 
@@ -93,5 +85,3 @@ def get_import_task_item(task_list_name):
             "task-type": TASK_LIST_TASK_TYPE,
         }
     }
-
-

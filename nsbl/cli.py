@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import os
 import sys
 
 import click
@@ -9,7 +10,6 @@ import click_log
 
 from frutils.frutils_cli import output
 from . import __version__ as VERSION
-from .defaults import *
 from .inventory import NsblInventory
 from .nsbl import create_nsbl_env
 from .nsbl_tasklist import NsblContext
@@ -64,9 +64,10 @@ def cli(ctx, version, role_repo, task_alias, task_lists, allow_external):
         environment_paths={
             "role_repo_paths": role_repo,
             "task_list_paths": task_lists,
-            "task_alias_paths": task_alias},
+            "task_alias_paths": task_alias,
+        },
         allow_external_tasklists=allow_external,
-        allow_external_roles=allow_external
+        allow_external_roles=allow_external,
     )
     ctx.obj["nsbl-ctx"] = nsbl_ctx
 
@@ -126,6 +127,7 @@ def list_hosts(ctx, config, format, pager):
     else:
         click.echo("No hosts found.")
 
+
 @cli.command("print-context")
 @click.option(
     "--format",
@@ -148,6 +150,7 @@ def print_context(ctx, format, pager):
     nsbl_ctx = ctx.obj["nsbl-ctx"]
 
     output(nsbl_ctx.__dict__, output_type=format, pager=pager)
+
 
 @cli.command("list-roles")
 @click.argument("config", required=True, nargs=-1)

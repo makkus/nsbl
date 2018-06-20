@@ -5,16 +5,24 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import copy
 import logging
-from os.path import splitext
+import os
 
-from frkl import Frkl, load_object_from_url_or_path
+from frkl import Frkl, load_object_from_url_or_path, Frklist, FrklistContext
 from frkl.utils import get_url_parents
-from frkl.processors import ConfigProcessor
+from frkl.processors import ConfigProcessor, FrklProcessor
 from frutils import StringYAML, dict_merge, is_url_or_abbrev
-from .defaults import *
+from .defaults import (
+    TASK_LIST_TASK_TYPE,
+    ADD_TYPE_TASK_LIST,
+    ADD_TYPE_ROLE,
+    ROLE_TASK_TYPE,
+    MODULE_TASK_TYPE,
+    DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT,
+    DEFAULT_KEY_KEY,
+    ANSIBLE_TASK_KEYWORDS,
+    KEY_MOVE_MAP_NAME,
+)
 from .exceptions import NsblException
-from freckles import FrecklesTasklist, FrecklesContext
-from .nsbl_context import NsblContext
 from .role_utils import find_roles_in_repos
 from .task_alias_utils import calculate_task_aliases
 from .tasklist_utils import get_task_list_format, get_tasklist_file_format
@@ -40,6 +48,7 @@ yaml = StringYAML()
 yaml.default_flow_style = False
 
 log = logging.getLogger("nsbl")
+
 
 class AugmentingTaskProcessor(ConfigProcessor):
     """Processor to augment a basic task list.
@@ -80,9 +89,11 @@ class AugmentingTaskProcessor(ConfigProcessor):
         return new_config
 
 
-class NsblContext(FrecklesContext):
+class NsblContext(FrklistContext):
 
-    def __init__(self, allow_external_roles=None, allow_external_tasklists=None, **kwargs):
+    def __init__(
+        self, allow_external_roles=None, allow_external_tasklists=None, **kwargs
+    ):
 
         super(NsblContext, self).__init__(**kwargs)
 
@@ -96,7 +107,9 @@ class NsblContext(FrecklesContext):
 
         self.role_repo_paths = self.environment_paths.get("role_repo_paths", [])
         self.task_alias_paths = self.environment_paths.get("task_alias_paths", [])
-        self.tasklist_search_paths = self.environment_paths.get("tasklist_search_paths", [])
+        self.tasklist_search_paths = self.environment_paths.get(
+            "tasklist_search_paths", []
+        )
 
         temp_paths = []
         temp_paths.extend(self.role_repo_paths)
@@ -105,8 +118,7 @@ class NsblContext(FrecklesContext):
         self.available_roles = find_roles_in_repos(self.role_repo_paths)
 
 
-
-class NsblTasklist(FrecklesTasklist):
+class NsblTasklist(Frklist):
 
     def __init__(self, tasklist, context=None, meta=None, vars=None):
 
@@ -121,7 +133,9 @@ class NsblTasklist(FrecklesTasklist):
 
     def preprocess_tasklist(self, tasklist, context, meta, vars):
 
-        content = super(NsblTasklist, self).preprocess_tasklist(tasklist, context, meta, vars)
+        content = super(NsblTasklist, self).preprocess_tasklist(
+            tasklist, context, meta, vars
+        )
 
         # if ansible format, replace task with import_task
         log.debug("Tasklist, preprocessed: {}".format(content))
@@ -149,12 +163,16 @@ class NsblTasklist(FrecklesTasklist):
                 file_name = "tasklist"
                 extension = ".yml"
             else:
-                file_name, extension = splitext(os.path.basename(self.tasklist_raw))
+                file_name, extension = os.path.splitext(
+                    os.path.basename(self.tasklist_raw)
+                )
 
             unique_file_name = "{}_env_{}_tasklist_{}{}".format(
                 file_name, self.env_id, self.tasklist_id, extension
             )
-            var_name = "_{}_env_{}_tasklist_{}".format(file_name, self.env_id, self.tasklist_id)
+            var_name = "_{}_env_{}_tasklist_{}".format(
+                file_name, self.env_id, self.tasklist_id
+            )
 
             task_list_item_new = {
                 "name": "import_tasks",
@@ -165,7 +183,7 @@ class NsblTasklist(FrecklesTasklist):
                 "tasklist_format": "ansible",
                 "tasklist_var": var_name,
                 "tasklist_target": unique_file_name,
-                "parse_ignore": True
+                "parse_ignore": True,
             }
 
             self.tasklist_files[unique_file_name] = {
@@ -173,7 +191,7 @@ class NsblTasklist(FrecklesTasklist):
                 "target_name": unique_file_name,
                 "type": ADD_TYPE_TASK_LIST,
                 "tasklist_format": "ansible",
-                "tasklist_content": task_list
+                "tasklist_content": task_list,
             }
 
             return [{"task": task_list_item_new}]
@@ -191,7 +209,10 @@ class NsblTasklist(FrecklesTasklist):
         tasklist = [tasklist]
 
         task_format = self.generate_nsbl_tasks_format()
-        chain = [FrklProcessor(**task_format), AugmentingTaskProcessor(context=self.context)]
+        chain = [
+            FrklProcessor(**task_format),
+            AugmentingTaskProcessor(context=self.context),
+        ]
         f = Frkl(tasklist, chain)
         tasklist = f.process()
 
@@ -202,7 +223,7 @@ class NsblTasklist(FrecklesTasklist):
 
             self.fill_task_type(task)
 
-            task_type = task["task"]["task-type"]
+            # task_type = task["task"]["task-type"]
             task_name = task["task"]["task-name"]
 
             task_roles = task["task"].get("task-roles", [])
@@ -225,7 +246,7 @@ class NsblTasklist(FrecklesTasklist):
 
     def parse_child_tasklists(self):
 
-         # parsing other tasklists
+        # parsing other tasklists
         counter = 0
         for tasklist_path, details in self.tasklist_files.items():
 
@@ -245,21 +266,18 @@ class NsblTasklist(FrecklesTasklist):
                     m = copy.deepcopy(self.meta)
                     m["tasklist_id"] = tl_id
                     tl = NsblTasklist(
-                        details["tasklist_content"],
-                        nsbl_context=self.context,
-                        meta=m,
+                        details["tasklist_content"], nsbl_context=self.context, meta=m
                     )
                     details["tasklist_format"] == "freckles"
                 except (Exception) as e:
+                    log.debug(e, exc_info=True)
                     details["tasklist_format"] == "ansible"
                     continue
             else:
                 m = copy.deepcopy(self.meta)
                 m["tasklist_id"] = tl_id
                 tl = NsblTasklist(
-                    details["tasklist_content"],
-                    context=self.context,
-                    meta=m
+                    details["tasklist_content"], context=self.context, meta=m
                 )
 
             self.children.append(tl)
@@ -286,7 +304,6 @@ class NsblTasklist(FrecklesTasklist):
                 "target_name": role,
             }
 
-
     def fill_task_type(self, task_item):
         """Utility method to guess the type of a task and fill in all necessary properties.
 
@@ -306,7 +323,8 @@ class NsblTasklist(FrecklesTasklist):
                 (
                     "." in task_name
                     and not (
-                        task_name.startswith("include_") or task_name.startswith("import_")
+                        task_name.startswith("include_")
+                        or task_name.startswith("import_")
                     )
                 )
                 or task_name.startswith("include_role::")
@@ -365,7 +383,8 @@ class NsblTasklist(FrecklesTasklist):
             file_path = None
             content = None
             if is_url_or_abbrev(task_list_file) or (
-                not os.path.isabs(task_list_file) and is_url_or_abbrev(self.meta["tasklist_parent"])
+                not os.path.isabs(task_list_file)
+                and is_url_or_abbrev(self.meta["tasklist_parent"])
             ):
                 if self.context.allow_external_tasklists:
                     raise NsblException(
@@ -381,7 +400,9 @@ class NsblTasklist(FrecklesTasklist):
 
                 content = load_object_from_url_or_path(url)
                 if not content:
-                    raise NsblException("Empty remote tasklist: {}".format(task_list_file))
+                    raise NsblException(
+                        "Empty remote tasklist: {}".format(task_list_file)
+                    )
                 file_path = task_list_file
             else:
                 if os.path.isabs(task_list_file):
@@ -457,19 +478,21 @@ class NsblTasklist(FrecklesTasklist):
             else:
                 task_item["task"]["tasklist_format"] = tf_format
 
-            file_name, extension = splitext(os.path.basename(file_path))
+            file_name, extension = os.path.splitext(os.path.basename(file_path))
 
             unique_file_name = "{}_env_{}_tasklist_{}{}".format(
                 file_name, self.meta["env_id"], self.meta["tasklist_id"], extension
             )
-            var_name = "_{}_env_{}_tasklist_{}".format(file_name, self.meta["env_id"], self.meta["tasklist_id"])
+            var_name = "_{}_env_{}_tasklist_{}".format(
+                file_name, self.meta["env_id"], self.meta["tasklist_id"]
+            )
 
             self.tasklist_files[file_path] = {
                 "var_name": var_name,
                 "target_name": unique_file_name,
                 "type": ADD_TYPE_TASK_LIST,
                 "tasklist_format": tf_format,
-                "tasklist_content": content
+                "tasklist_content": content,
             }
 
             task_item["task"]["tasklist_var"] = var_name
@@ -481,8 +504,9 @@ class NsblTasklist(FrecklesTasklist):
             log.debug("module task-item: {}".format(task_item))
             self.modules_used.add(task_name)
 
-    def generate_nsbl_tasks_format(self,
-        tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT):
+    def generate_nsbl_tasks_format(
+        self, tasks_format=DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT
+    ):
         """Utility method to populate the KEY_MOVE_MAP key for the tasks """
 
         result = copy.deepcopy(DEFAULT_NSBL_TASKS_BOOTSTRAP_FORMAT)
@@ -491,7 +515,7 @@ class NsblTasklist(FrecklesTasklist):
             if DEFAULT_KEY_KEY in task_desc["task"].keys():
                 # TODO: check for duplicate keys?
                 result[KEY_MOVE_MAP_NAME][task_desc["task"]["name"]] = "vars/{}".format(
-                task_desc["task"][DEFAULT_KEY_KEY]
+                    task_desc["task"][DEFAULT_KEY_KEY]
                 )
 
         return result
@@ -546,5 +570,3 @@ class NsblTasklist(FrecklesTasklist):
             result.append(task_item)
 
         return result
-
-

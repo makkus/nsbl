@@ -2,16 +2,37 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import copy
+import os
 import sys
 
-import copy
 from jinja2 import Environment, PackageLoader
 from six import string_types
 from frutils import StringYAML
 from frkl import Frkl
 from frkl.callbacks import FrklCallback
-from frkl.processors import ConfigProcessor
-from .defaults import *
+from frkl.processors import (
+    ConfigProcessor,
+    UrlAbbrevProcessor,
+    EnsureUrlProcessor,
+    EnsurePythonObjectProcessor,
+    FrklProcessor,
+)
+from defaults import (
+    DEFAULT_ENV_TYPE,
+    NSBL_INVENTORY_BOOTSTRAP_FORMAT,
+    VARS_KEY,
+    ENV_META_KEY,
+    ENV_TYPE_KEY,
+    ENV_TYPE_GROUP,
+    ENV_TYPE_HOST,
+    ENV_GROUPS_KEY,
+    ENV_HOSTS_KEY,
+    ENV_NAME_KEY,
+    ENV_ID_KEY,
+    TASKS_META_KEY,
+    TASKS_KEY,
+)
 from .exceptions import NsblException
 
 from ruamel.yaml.comments import CommentedMap
@@ -62,11 +83,7 @@ def parse_host_string(host_string):
 
 class NsblInventory(FrklCallback):
 
-    def create(
-        config,
-        default_env_type=DEFAULT_ENV_TYPE,
-        pre_chain=None
-    ):
+    def create(config, default_env_type=DEFAULT_ENV_TYPE, pre_chain=None):
         """Convenience method to create a NsblInventory object out of the configs and a few optional parameters.
 
         Args:
@@ -78,15 +95,15 @@ class NsblInventory(FrklCallback):
         """
 
         if pre_chain is None:
-            pre_chain = [UrlAbbrevProcessor(),
-                         EnsureUrlProcessor(),
-                         EnsurePythonObjectProcessor(safe_load=False),
-                        ]
+            pre_chain = [
+                UrlAbbrevProcessor(),
+                EnsureUrlProcessor(),
+                EnsurePythonObjectProcessor(safe_load=False),
+            ]
 
         chain = pre_chain + [FrklProcessor(**NSBL_INVENTORY_BOOTSTRAP_FORMAT)]
         inv_frkl = Frkl(config, chain)
 
-        init_params = {"default_env_type": default_env_type}
         inventory = NsblInventory(default_env_type=default_env_type)
 
         inv_frkl.process(inventory)
@@ -110,9 +127,7 @@ class NsblInventory(FrklCallback):
         self.tasks = []
         self.current_env_id = 0
 
-        self.default_env_type = init_params.get(
-            "default_env_type", DEFAULT_ENV_TYPE
-        )
+        self.default_env_type = init_params.get("default_env_type", DEFAULT_ENV_TYPE)
 
     def result(self):
         return self.list()
